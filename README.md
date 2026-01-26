@@ -1,4 +1,5 @@
 # MagicaVoxelMegre 使用说明（MagicaVoxel → GLB）
+ps: 该程序完全有windsurf编写。
 
 本工程用于将 MagicaVoxel 的 `.vox` 文件导出为 glTF 2.0 `.glb`，并提供：
 
