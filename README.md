@@ -166,6 +166,20 @@ python -m magicavoxel_merge \
 - `bottom`（等价于 `-z`）
 - `+x` / `-x` / `+y` / `-y` / `+z` / `-z`
 
+你也可以按 MagicaVoxel 的 `z` 平面裁剪底面：
+
+```bash
+--cull-mv-z 0
+```
+
+该裁剪使用 MagicaVoxel 的局部坐标来判断，并且发生在 `--center` 之前，因此无论是否使用 `--center` 都会保持一致。
+
+当你传入更大的阈值（例如 `--cull-mv-z 10`），会剔除更高处、且满足 `z <= 10` 的底面。
+
+在 `atlas` 模式下，会同步减少 atlas 图块（不生成/不打包被剔除面的图块）。
+
+如果你只想按朝向剔除而不关心阈值，使用 `--cull-mv-faces bottom` 即可。
+
 在 `atlas` 模式下，该选项会同时剔除对应面的图块生成与打包，从而让 atlas 贴图自动变小。
 
 在 `atlas-style baked` 下，如果多个 quad 的纹理区块内容完全一致，会自动复用同一个图块并只打包一次，从而进一步减少 atlas 面积。
@@ -378,6 +392,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - `--center` / `--center-bounds`
 - `--weld`
 - `--cull-mv-faces <csv>`
+- `--cull-mv-z <float>`
 - `--axis y_up|identity`
 - `--handedness right|left`
 - `--texture-out <path>`

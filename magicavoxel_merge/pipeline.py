@@ -60,6 +60,7 @@ def vox_to_glb(
     center_bounds: bool = False,
     weld: bool = False,
     cull_mv_faces: str | None = None,
+    cull_mv_z: float | None = None,
     atlas_pad: int = 2,
     atlas_inset: float = 1.5,
     atlas_style: str = "solid",
@@ -247,6 +248,33 @@ def vox_to_glb(
 
     mv_faces_set = _parse_mv_faces(cull_mv_faces)
 
+    def _cull_mv_z_mesh(
+        *,
+        positions: np.ndarray,
+        normals: np.ndarray,
+        texcoords: np.ndarray,
+        indices: np.ndarray,
+        plane_z: float,
+        translation_z: float = 0.0,
+        threshold: float = -0.5,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        if indices.size == 0:
+            return positions, normals, texcoords, indices
+        tris = indices.astype(np.uint32).reshape((-1, 3))
+        # Downward faces in MV are -Z.
+        nz = normals[tris[:, 0], 2]
+        drop = nz <= float(threshold)
+        z0 = positions[tris[:, 0], 2] + float(translation_z)
+        z1 = positions[tris[:, 1], 2] + float(translation_z)
+        z2 = positions[tris[:, 2], 2] + float(translation_z)
+        below = (z0 <= float(plane_z)) & (z1 <= float(plane_z)) & (z2 <= float(plane_z))
+        drop = drop & below
+
+        keep = ~drop
+        new_tris = tris[keep]
+        new_indices = new_tris.reshape((-1,)).astype(np.uint32)
+        return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
+
     def _cull_mv_oriented_faces(
         *,
         positions: np.ndarray,
@@ -337,6 +365,18 @@ def vox_to_glb(
             texcoords = mesh["texcoords"]
 
             texcoords = texcoords.copy()
+
+            # MV-space z-plane culling must happen before scale/center/axis.
+            if cull_mv_z is not None:
+                tz_mv = 0.0
+                positions, normals, texcoords, indices = _cull_mv_z_mesh(
+                    positions=positions,
+                    normals=normals,
+                    texcoords=texcoords,
+                    indices=indices,
+                    plane_z=float(cull_mv_z),
+                    translation_z=tz_mv,
+                )
 
             if mv_faces_set:
                 positions, normals, texcoords, indices = _cull_mv_oriented_faces(
@@ -638,6 +678,20 @@ def vox_to_glb(
                 tag = _quad_mv_dir_tag(q)
                 if tag is not None and tag in mv_faces_set:
                     continue
+                keep_quads.append(q)
+            quads = keep_quads
+
+        if cull_mv_z is not None:
+            tz_mv = 0.0
+            keep_quads = []
+            for q in quads:
+                tag = _quad_mv_dir_tag(q)
+                if tag == "-z":
+                    p0, p1, p2, p3 = q["verts"]
+                    zmin = min(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
+                    zmax = max(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
+                    if zmax <= float(cull_mv_z):
+                        continue
                 keep_quads.append(q)
             quads = keep_quads
 
