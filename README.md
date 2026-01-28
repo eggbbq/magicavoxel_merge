@@ -150,6 +150,15 @@ python -m magicavoxel_merge \
 
 该选项同时适用于 `palette` 与 `atlas` 两种模式。
 
+---
+
+### 3.7 `--cull-bottom` / `--cull-y`
+
+剔除底部不可见面：
+
+- `--cull-bottom`：剔除所有朝下的面
+- `--cull-y <float>`：剔除朝下的面中，位于世界坐标 `y <= <float>` 平面及以下的部分（会考虑节点的平移变换）
+
 如果你想撤回到默认行为，删除该参数或改回：
 
 ```bash
@@ -340,6 +349,8 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - `--scale <float>`
 - `--center` / `--center-bounds`
 - `--weld`
+- `--cull-bottom`
+- `--cull-y <float>`
 - `--axis y_up|identity`
 - `--handedness right|left`
 - `--texture-out <path>`

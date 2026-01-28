@@ -59,6 +59,8 @@ def vox_to_glb(
     center: bool = False,
     center_bounds: bool = False,
     weld: bool = False,
+    cull_bottom: bool = False,
+    cull_y: float | None = None,
     atlas_pad: int = 2,
     atlas_inset: float = 1.5,
     atlas_style: str = "solid",
@@ -200,6 +202,58 @@ def vox_to_glb(
 
     import io
 
+    def _compact_mesh(
+        *,
+        positions: np.ndarray,
+        normals: np.ndarray,
+        texcoords: np.ndarray,
+        indices: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        if indices.size == 0:
+            return (
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 2), dtype=np.float32),
+                indices.astype(np.uint32),
+            )
+        used = np.unique(indices.astype(np.uint32))
+        remap = np.full((positions.shape[0],), -1, dtype=np.int64)
+        remap[used] = np.arange(used.shape[0], dtype=np.int64)
+        new_indices = remap[indices.astype(np.uint32)].astype(np.uint32)
+        return (
+            positions[used],
+            normals[used],
+            texcoords[used],
+            new_indices,
+        )
+
+    def _cull_bottom_faces(
+        *,
+        positions: np.ndarray,
+        normals: np.ndarray,
+        texcoords: np.ndarray,
+        indices: np.ndarray,
+        plane_y: float | None = None,
+        translation_y: float = 0.0,
+        threshold: float = -0.5,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        if indices.size == 0:
+            return positions, normals, texcoords, indices
+        tris = indices.astype(np.uint32).reshape((-1, 3))
+        ny = normals[tris[:, 0], 1]
+        drop = ny <= float(threshold)
+        if plane_y is not None:
+            y0 = positions[tris[:, 0], 1] + float(translation_y)
+            y1 = positions[tris[:, 1], 1] + float(translation_y)
+            y2 = positions[tris[:, 2], 1] + float(translation_y)
+            below = (y0 <= float(plane_y)) & (y1 <= float(plane_y)) & (y2 <= float(plane_y))
+            drop = drop & below
+
+        keep = ~drop
+        new_tris = tris[keep]
+        new_indices = new_tris.reshape((-1,)).astype(np.uint32)
+        return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
+
     def _emit(output_path_local: str, meshes_local: list[dict[str, np.ndarray]], texture_png_local: bytes) -> None:
         if texture_out:
             tex_path = Path(texture_out)
@@ -253,14 +307,6 @@ def vox_to_glb(
                     translation = (base_translation[0] + float(offset[0]), base_translation[1] + float(offset[1]), base_translation[2] + float(offset[2]))
 
             name = vox.model_names[idx] if idx < len(vox.model_names) else f"model_{idx}"
-            if weld:
-                positions, normals, texcoords, indices = _weld_mesh(
-                    positions=positions,
-                    normals=normals,
-                    texcoords=texcoords,
-                    indices=indices,
-                )
-
             positions, normals, translation = _map_axes_mesh(positions, normals, translation)
 
             if flip_handedness:
@@ -269,6 +315,25 @@ def vox_to_glb(
                     normals=normals,
                     indices=indices,
                     translation=translation,
+                )
+
+            if cull_bottom or cull_y is not None:
+                ty = float(translation[1]) if translation is not None else 0.0
+                positions, normals, texcoords, indices = _cull_bottom_faces(
+                    positions=positions,
+                    normals=normals,
+                    texcoords=texcoords,
+                    indices=indices,
+                    plane_y=cull_y,
+                    translation_y=ty,
+                )
+
+            if weld:
+                positions, normals, texcoords, indices = _weld_mesh(
+                    positions=positions,
+                    normals=normals,
+                    texcoords=texcoords,
+                    indices=indices,
                 )
 
             extra: dict[str, np.ndarray] = {}
@@ -356,9 +421,9 @@ def vox_to_glb(
     rid = 0
     for midx, m in enumerate(vox.models):
         if atlas_style == "baked":
-            quads = greedy_quads_baked(m.voxels, m.size)
+            quads = greedy_quads_baked_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads_baked(m.voxels, m.size)
         else:
-            quads = greedy_quads(m.voxels, m.size)
+            quads = greedy_quads_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads(m.voxels, m.size)
         quads_per_model.append(quads)
         for q in quads:
             tex_w = int(q["w"]) * atlas_texel_scale
@@ -534,15 +599,6 @@ def vox_to_glb(
             indices.extend([len(positions) - 4, len(positions) - 3, len(positions) - 2, len(positions) - 4, len(positions) - 2, len(positions) - 1])
             local += 1
 
-        extra: dict[str, np.ndarray] = {}
-        if avg_normals_attr != "none":
-            avg_n = _compute_avg_normals_by_position(np.asarray(positions, dtype=np.float32), np.asarray(indices, dtype=np.uint32))
-            if avg_normals_attr == "color":
-                c = (avg_n * 0.5) + 0.5
-                extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-            else:
-                extra["tangent"] = np.concatenate([avg_n, np.ones((avg_n.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-
         positions = np.asarray(positions, dtype=np.float32)
         normals = np.asarray(normals, dtype=np.float32)
         texcoords = np.asarray(texcoords, dtype=np.float32)
@@ -571,14 +627,6 @@ def vox_to_glb(
                 translation = (base_translation[0] + float(offset[0]), base_translation[1] + float(offset[1]), base_translation[2] + float(offset[2]))
 
         name = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
-        if weld:
-            positions, normals, texcoords, indices = _weld_mesh(
-                positions=positions,
-                normals=normals,
-                texcoords=texcoords,
-                indices=indices,
-            )
-
         positions, normals, translation = _map_axes_mesh(positions, normals, translation)
 
         if flip_handedness:
@@ -588,6 +636,34 @@ def vox_to_glb(
                 indices=indices,
                 translation=translation,
             )
+
+        if cull_bottom or cull_y is not None:
+            ty = float(translation[1]) if translation is not None else 0.0
+            positions, normals, texcoords, indices = _cull_bottom_faces(
+                positions=positions,
+                normals=normals,
+                texcoords=texcoords,
+                indices=indices,
+                plane_y=cull_y,
+                translation_y=ty,
+            )
+
+        if weld:
+            positions, normals, texcoords, indices = _weld_mesh(
+                positions=positions,
+                normals=normals,
+                texcoords=texcoords,
+                indices=indices,
+            )
+
+        extra: dict[str, np.ndarray] = {}
+        if avg_normals_attr != "none":
+            avg_n = _compute_avg_normals_by_position(positions, indices)
+            if avg_normals_attr == "color":
+                c = (avg_n * 0.5) + 0.5
+                extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
+            else:
+                extra["tangent"] = np.concatenate([avg_n, np.ones((avg_n.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
 
         meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation, **extra})
 
