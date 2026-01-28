@@ -30,6 +30,12 @@ def main(argv=None) -> int:
     atlas_grp.add_argument("--atlas-square", dest="atlas_square", action="store_true")
     atlas_grp.add_argument("--no-atlas-square", dest="atlas_square", action="store_false")
     parser.set_defaults(atlas_square=True)
+
+    baked_dedup_grp = parser.add_mutually_exclusive_group()
+    baked_dedup_grp.add_argument("--baked-dedup", dest="baked_dedup", action="store_true")
+    baked_dedup_grp.add_argument("--no-baked-dedup", dest="baked_dedup", action="store_false")
+    parser.set_defaults(baked_dedup=True)
+
     parser.add_argument("--texture-out", default=None)
     grp = parser.add_mutually_exclusive_group()
     grp.add_argument("--preserve-transforms", dest="preserve_transforms", action="store_true")
@@ -55,6 +61,7 @@ def main(argv=None) -> int:
         atlas_pad=args.atlas_pad,
         atlas_inset=args.atlas_inset,
         atlas_style=args.atlas_style,
+        baked_dedup=args.baked_dedup,
         atlas_texel_scale=args.atlas_texel_scale,
         atlas_layout=args.atlas_layout,
         atlas_square=args.atlas_square,

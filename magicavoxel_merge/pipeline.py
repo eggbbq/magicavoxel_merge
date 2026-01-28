@@ -63,6 +63,7 @@ def vox_to_glb(
     atlas_pad: int = 2,
     atlas_inset: float = 1.5,
     atlas_style: str = "solid",
+    baked_dedup: bool = True,
     atlas_texel_scale: int = 1,
     atlas_layout: str = "global",
     atlas_square: bool = False,
@@ -656,7 +657,9 @@ def vox_to_glb(
     widths = [1 << k for k in range(4, 14)]
     heights = [1 << k for k in range(4, 14)]
 
-    if atlas_style == "baked":
+    do_baked_dedup = (atlas_style == "baked") and bool(baked_dedup)
+
+    if do_baked_dedup:
         # Deduplicate identical baked blocks.
         if atlas_layout == "global":
             # Global dedup: identical blocks across all models share one packed rect.
@@ -790,7 +793,7 @@ def vox_to_glb(
             # Keep original quad_meta (global rid indexing). We'll skip baking duplicates later.
             quad_meta_baked_by_model = model_rid_to_luid
     else:
-        # Non-baked: keep original packing behavior.
+        # No baked dedup (or non-baked style): pack all quads normally.
         if atlas_layout == "global":
             rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
             best_w, best_h, best_pos = pack_best_bin(rects_sorted, widths, heights)

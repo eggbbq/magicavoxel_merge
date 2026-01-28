@@ -170,6 +170,23 @@ python -m magicavoxel_merge \
 
 在 `atlas-style baked` 下，如果多个 quad 的纹理区块内容完全一致，会自动复用同一个图块并只打包一次，从而进一步减少 atlas 面积。
 
+你也可以通过开关控制该行为：
+
+```bash
+--baked-dedup
+--no-baked-dedup
+```
+
+默认开启（等价于 `--baked-dedup`）。
+
+如果你希望贴图保持 2 的幂但不强制正方形，可加：
+
+```bash
+--no-atlas-square
+```
+
+在 `atlas-layout by-model` 下，打包会尽量避免出现单方向过度增长的长条 atlas，从而提高填充率（不旋转图块）。
+
 如果你想撤回到默认行为，删除该参数或改回：
 
 ```bash
