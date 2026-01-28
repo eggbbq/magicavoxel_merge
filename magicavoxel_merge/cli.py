@@ -11,8 +11,6 @@ def main(argv=None) -> int:
     parser.add_argument("--center", action="store_true")
     parser.add_argument("--center-bounds", action="store_true")
     parser.add_argument("--weld", action="store_true")
-    parser.add_argument("--cull-bottom", action="store_true")
-    parser.add_argument("--cull-y", type=float, default=None)
     parser.add_argument("--cull-mv-faces", default=None)
     parser.add_argument("--mode", choices=("palette", "atlas"), default="palette")
     parser.add_argument("--axis", choices=("y_up", "identity"), default="y_up")
@@ -53,8 +51,6 @@ def main(argv=None) -> int:
         center=args.center,
         center_bounds=args.center_bounds,
         weld=args.weld,
-        cull_bottom=args.cull_bottom,
-        cull_y=args.cull_y,
         cull_mv_faces=args.cull_mv_faces,
         atlas_pad=args.atlas_pad,
         atlas_inset=args.atlas_inset,

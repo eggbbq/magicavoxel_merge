@@ -59,8 +59,6 @@ def vox_to_glb(
     center: bool = False,
     center_bounds: bool = False,
     weld: bool = False,
-    cull_bottom: bool = False,
-    cull_y: float | None = None,
     cull_mv_faces: str | None = None,
     atlas_pad: int = 2,
     atlas_inset: float = 1.5,
@@ -228,33 +226,6 @@ def vox_to_glb(
             new_indices,
         )
 
-    def _cull_bottom_faces(
-        *,
-        positions: np.ndarray,
-        normals: np.ndarray,
-        texcoords: np.ndarray,
-        indices: np.ndarray,
-        plane_y: float | None = None,
-        translation_y: float = 0.0,
-        threshold: float = -0.5,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        if indices.size == 0:
-            return positions, normals, texcoords, indices
-        tris = indices.astype(np.uint32).reshape((-1, 3))
-        ny = normals[tris[:, 0], 1]
-        drop = ny <= float(threshold)
-        if plane_y is not None:
-            y0 = positions[tris[:, 0], 1] + float(translation_y)
-            y1 = positions[tris[:, 1], 1] + float(translation_y)
-            y2 = positions[tris[:, 2], 1] + float(translation_y)
-            below = (y0 <= float(plane_y)) & (y1 <= float(plane_y)) & (y2 <= float(plane_y))
-            drop = drop & below
-
-        keep = ~drop
-        new_tris = tris[keep]
-        new_indices = new_tris.reshape((-1,)).astype(np.uint32)
-        return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
-
     def _parse_mv_faces(spec: str | None) -> set[str]:
         if not spec:
             return set()
@@ -406,17 +377,6 @@ def vox_to_glb(
                     normals=normals,
                     indices=indices,
                     translation=translation,
-                )
-
-            if cull_bottom or cull_y is not None:
-                ty = float(translation[1]) if translation is not None else 0.0
-                positions, normals, texcoords, indices = _cull_bottom_faces(
-                    positions=positions,
-                    normals=normals,
-                    texcoords=texcoords,
-                    indices=indices,
-                    plane_y=cull_y,
-                    translation_y=ty,
                 )
 
             if weld:
@@ -735,17 +695,6 @@ def vox_to_glb(
                 normals=normals,
                 indices=indices,
                 translation=translation,
-            )
-
-        if cull_bottom or cull_y is not None:
-            ty = float(translation[1]) if translation is not None else 0.0
-            positions, normals, texcoords, indices = _cull_bottom_faces(
-                positions=positions,
-                normals=normals,
-                texcoords=texcoords,
-                indices=indices,
-                plane_y=cull_y,
-                translation_y=ty,
             )
 
         if weld:

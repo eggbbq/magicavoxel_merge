@@ -82,7 +82,7 @@ convert_one() {
       $CENTER_FLAG \
       --texture-out "$out_png" \
       --weld \
-      --cull-mv-faces top,bottom \
+      --cull-mv-faces bottom \
       --merge-strategy maxrect
   else
     python -m magicavoxel_merge \
@@ -99,7 +99,7 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --weld \
-      --cull-mv-faces top,bottom \
+      --cull-mv-faces bottom \
       --merge-strategy maxrect
   fi
 }

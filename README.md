@@ -152,14 +152,9 @@ python -m magicavoxel_merge \
 
 ---
 
-### 3.7 `--cull-bottom` / `--cull-y`
+### 3.7 `--cull-mv-faces`
 
-剔除底部不可见面：
-
-- `--cull-bottom`：剔除所有朝下的面
-- `--cull-y <float>`：剔除朝下的面中，位于世界坐标 `y <= <float>` 平面及以下的部分（会考虑节点的平移变换）
-
-如果你希望在 MagicaVoxel 坐标系下剔除多个朝向面，可使用：
+在 MagicaVoxel 坐标系下剔除多个朝向面：
 
 ```bash
 --cull-mv-faces top,bottom
@@ -361,8 +356,6 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - `--scale <float>`
 - `--center` / `--center-bounds`
 - `--weld`
-- `--cull-bottom`
-- `--cull-y <float>`
 - `--cull-mv-faces <csv>`
 - `--axis y_up|identity`
 - `--handedness right|left`
