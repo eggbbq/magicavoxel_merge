@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 from .glb import write_glb_scene
-from .mesher import greedy_mesh, greedy_quads, greedy_quads_baked
+from .mesher import greedy_mesh, greedy_quads, greedy_quads_baked, greedy_quads_maxrect, greedy_quads_baked_maxrect
 from .vox import load_vox
 
 
@@ -54,6 +54,7 @@ def vox_to_glb(
     output_path: str,
     *,
     axis: str = "y_up",
+    merge_strategy: str = "greedy",
     scale: float = 1.0,
     center: bool = False,
     center_bounds: bool = False,
@@ -78,6 +79,9 @@ def vox_to_glb(
 
     if mode not in ("palette", "atlas"):
         raise ValueError("mode must be 'palette' or 'atlas'")
+
+    if merge_strategy not in ("greedy", "maxrect"):
+        raise ValueError("merge_strategy must be 'greedy' or 'maxrect'")
 
     if axis not in ("y_up", "mv_zup", "identity"):
         raise ValueError("axis must be 'y_up', 'mv_zup', or 'identity'")
@@ -352,9 +356,9 @@ def vox_to_glb(
     rid = 0
     for midx, m in enumerate(vox.models):
         if atlas_style == "baked":
-            quads = greedy_quads_baked(m.voxels, m.size)
+            quads = greedy_quads_baked_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads_baked(m.voxels, m.size)
         else:
-            quads = greedy_quads(m.voxels, m.size)
+            quads = greedy_quads_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads(m.voxels, m.size)
         quads_per_model.append(quads)
         for q in quads:
             tex_w = int(q["w"]) * atlas_texel_scale

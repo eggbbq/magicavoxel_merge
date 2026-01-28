@@ -81,7 +81,8 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --texture-out "$out_png" \
-      --weld 
+      --weld \
+      --merge-strategy maxrect 
   else
     python -m magicavoxel_merge \
       "$in_vox" "$out_glb" \
@@ -96,7 +97,8 @@ convert_one() {
       --handedness "$HANDEDNESS" \
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
-      --weld
+      --weld \
+      --merge-strategy maxrect 
   fi
 }
 

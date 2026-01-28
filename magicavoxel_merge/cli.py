@@ -14,6 +14,7 @@ def main(argv=None) -> int:
     parser.add_argument("--mode", choices=("palette", "atlas"), default="palette")
     parser.add_argument("--axis", choices=("y_up", "identity"), default="y_up")
     parser.add_argument("--mv-zup", dest="axis", action="store_const", const="y_up", help=argparse.SUPPRESS)
+    parser.add_argument("--merge-strategy", choices=("greedy", "maxrect"), default="greedy")
     parser.add_argument("--atlas-pad", type=int, default=2)
     parser.add_argument("--atlas-inset", type=float, default=1.5)
     parser.add_argument("--atlas-style", choices=("solid", "baked"), default="solid")
@@ -44,6 +45,7 @@ def main(argv=None) -> int:
         args.input,
         args.output,
         axis=args.axis,
+        merge_strategy=args.merge_strategy,
         scale=args.scale,
         center=args.center,
         center_bounds=args.center_bounds,
