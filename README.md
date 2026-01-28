@@ -286,39 +286,25 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - 若没有 `.vox`：会提示 `No .vox files found...`
 - 若有 `.vox`：会提示转换数量与关键模式信息
 
----
 
-## 10. Blender 无界面重拓扑（可选）
+## 10. 常见问题排查
 
-工程中提供：
-
-- `blender_retopo.py`：Blender 内部执行的重拓扑脚本
-- `blender_batch_retopo.sh`：批量对 `.glb` 执行重拓扑
-
-常用于将 voxel mesh 进一步做自动重建拓扑（例如 remesh + quadriflow）。
-
-> 注意：不同 Blender 版本的 Quadriflow/Remesh 参数可能略有变化，本工程脚本包含一定的兼容处理。
-
----
-
-## 11. 常见问题排查
-
-### 11.1 脚本“没有输出/看起来没导出”
+### 10.1 脚本“没有输出/看起来没导出”
 
 - 检查 `IN_DIR` 下是否真的有 `.vox`
 - 脚本会显示 `.vox` 数量；若为 0，会提示 `No .vox files found...`
 
-### 11.2 palette 模式颜色不对
+### 10.2 palette 模式颜色不对
 
 - 当前 palette 贴图为 `256x1`（一条线），UV 也按 1D 采样
 - 如果仍不对，优先确认引擎是否正确加载了 glb 内嵌纹理或外置纹理
 
-### 11.3 法线变平滑
+### 10.3 法线变平滑
 
 - 如果你开启 `--weld`，焊接不会跨法线合并（已包含 normal 在 key）
 - 若你自己在引擎端重新计算法线或启用平滑组，也会导致平滑效果
 
-### 11.4 Atlas 接缝/闪烁
+### 10.4 Atlas 接缝/闪烁
 
 - 增大 `--atlas-pad`
 - 增大 `--atlas-inset`
@@ -326,7 +312,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ---
 
-## 12. 参数速查表
+## 11. 参数速查表
 
 ### 通用
 
@@ -349,9 +335,9 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ---
 
-## 13. 推荐组合（直接复制）
+## 12. 推荐组合（直接复制）
 
-### 13.1 Cocos Creator：最少面数（推荐）
+### 12.1 Cocos Creator：最少面数（推荐）
 
 ```bash
 python -m magicavoxel_merge \
@@ -369,7 +355,7 @@ python -m magicavoxel_merge \
   --weld
 ```
 
-### 13.2 需要携带平均法线数据（写入 COLOR_0）
+### 12.2 需要携带平均法线数据（写入 COLOR_0）
 
 ```bash
 python -m magicavoxel_merge \
