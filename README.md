@@ -168,6 +168,8 @@ python -m magicavoxel_merge \
 
 在 `atlas` 模式下，该选项会同时剔除对应面的图块生成与打包，从而让 atlas 贴图自动变小。
 
+在 `atlas-style baked` 下，如果多个 quad 的纹理区块内容完全一致，会自动复用同一个图块并只打包一次，从而进一步减少 atlas 面积。
+
 如果你想撤回到默认行为，删除该参数或改回：
 
 ```bash

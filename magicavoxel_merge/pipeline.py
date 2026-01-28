@@ -483,6 +483,10 @@ def vox_to_glb(
             return "+z" if nz > 0.0 else "-z"
         return None
 
+    quad_meta_baked_by_model: list[dict[int, int]] | None = None
+    quad_meta_baked_global_pos: list[tuple[int, int]] | None = None
+    seen_baked_blocks: set[tuple[int, int]] = set()
+
     rid = 0
     for midx, m in enumerate(vox.models):
         if atlas_style == "baked":
@@ -500,6 +504,7 @@ def vox_to_glb(
             quads = keep_quads
 
         quads_per_model.append(quads)
+
         for q in quads:
             tex_w = int(q["w"]) * atlas_texel_scale
             tex_h = int(q["h"]) * atlas_texel_scale
@@ -509,46 +514,177 @@ def vox_to_glb(
             quad_meta.append((rid, midx, q))
             rid += 1
 
+    import hashlib
+
     widths = [1 << k for k in range(4, 14)]
 
-    if atlas_layout == "global":
-        rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
-        best_w, best_h, best_pos = pack_best(rects_sorted, widths)
-    else:
-        # Pack per-model into local blocks, then pack blocks into global atlas.
-        model_block_sizes: list[tuple[int, int]] = []
-        model_quad_local_pos: list[list[tuple[int, int]]] = []
+    if atlas_style == "baked":
+        # Deduplicate identical baked blocks.
+        if atlas_layout == "global":
+            # Global dedup: identical blocks across all models share one packed rect.
+            uniq_rects: list[tuple[int, int, int]] = []
+            uniq_meta: list[tuple[int, int, dict[str, object]]] = []
+            key_to_uid: dict[bytes, int] = {}
+            rid_to_uid: dict[int, int] = {}
 
-        for midx, quads in enumerate(quads_per_model):
-            rects_m: list[tuple[int, int, int]] = []
-            for qidx, q in enumerate(quads):
-                tex_w = int(q["w"]) * atlas_texel_scale
-                tex_h = int(q["h"]) * atlas_texel_scale
+            uid = 0
+            for ridx, midx, q in quad_meta:
+                colors = q.get("colors")
+                if colors is None:
+                    raise ValueError("baked atlas requires quad 'colors'")
+                c = np.asarray(colors, dtype=np.int32)
+                hq = int(q["h"])
+                wq = int(q["w"])
+                if c.shape != (hq, wq):
+                    raise ValueError("quad colors shape mismatch")
+                # Hash includes dimensions and sampling parameters that affect final pixels.
+                hsh = hashlib.blake2b(digest_size=16)
+                hsh.update(np.asarray([wq, hq, int(atlas_texel_scale), int(pad)], dtype=np.int32).tobytes())
+                hsh.update(c.tobytes())
+                key = hsh.digest()
+
+                if key in key_to_uid:
+                    rid_to_uid[int(ridx)] = key_to_uid[key]
+                    continue
+
+                key_to_uid[key] = uid
+                rid_to_uid[int(ridx)] = uid
+
+                tex_w = wq * atlas_texel_scale
+                tex_h = hq * atlas_texel_scale
                 w = tex_w + pad * 2
                 h = tex_h + pad * 2
-                rects_m.append((qidx, w, h))
+                uniq_rects.append((uid, w, h))
+                uniq_meta.append((uid, midx, q))
+                uid += 1
 
-            rects_m_sorted = sorted(rects_m, key=lambda t: (t[2], t[1]), reverse=True)
-            # model-local widths range depends on how big the model is; keep it bounded.
-            w_choices = [1 << k for k in range(4, 13)]
-            mw, mh, mpos = pack_best(rects_m_sorted, w_choices)
-            model_block_sizes.append((mw, mh))
-            model_quad_local_pos.append(mpos)
+            rects_sorted = sorted(uniq_rects, key=lambda t: (t[2], t[1]), reverse=True)
+            best_w, best_h, best_pos_uniq = pack_best(rects_sorted, widths)
 
-        # Pack blocks. rid is model index.
-        block_rects = [(midx, int(sz[0]), int(sz[1])) for midx, sz in enumerate(model_block_sizes)]
-        block_sorted = sorted(block_rects, key=lambda t: (t[2], t[1]), reverse=True)
-        best_w, best_h, model_pos = pack_best(block_sorted, widths)
+            quad_meta_baked_global_pos = best_pos_uniq
 
-        # Build best_pos for global quad rids (same indexing as rects/quad_meta).
-        best_pos = [(-1, -1)] * len(rects)
-        rid_base = 0
-        for midx, quads in enumerate(quads_per_model):
-            mx, my = model_pos[midx]
-            for qidx, _q in enumerate(quads):
-                qx, qy = model_quad_local_pos[midx][qidx]
-                best_pos[rid_base + qidx] = (mx + qx, my + qy)
-            rid_base += len(quads)
+            # Expand best_pos so each original quad rid maps to its unique rect pos.
+            best_pos = [(-1, -1)] * len(rects)
+            for ridx in range(len(rects)):
+                u = rid_to_uid.get(int(ridx))
+                if u is None:
+                    continue
+                best_pos[ridx] = best_pos_uniq[u]
+
+            # Only bake unique blocks.
+            quad_meta = [(uid_, midx_, q_) for (uid_, midx_, q_) in uniq_meta]
+        else:
+            # by-model dedup: identical blocks dedup within each model only.
+            model_block_sizes = []
+            model_quad_local_pos: list[list[tuple[int, int]]] = []
+            model_uniq_quads: list[list[dict[str, object]]] = []
+            model_rid_to_luid: list[dict[int, int]] = []
+
+            rid_base = 0
+            for midx, quads in enumerate(quads_per_model):
+                key_to_luid: dict[bytes, int] = {}
+                rid_to_luid: dict[int, int] = {}
+                uniq_quads: list[dict[str, object]] = []
+                rects_m: list[tuple[int, int, int]] = []
+
+                luid = 0
+                for qidx, q in enumerate(quads):
+                    colors = q.get("colors")
+                    if colors is None:
+                        raise ValueError("baked atlas requires quad 'colors'")
+                    c = np.asarray(colors, dtype=np.int32)
+                    hq = int(q["h"])
+                    wq = int(q["w"])
+                    if c.shape != (hq, wq):
+                        raise ValueError("quad colors shape mismatch")
+
+                    hsh = hashlib.blake2b(digest_size=16)
+                    hsh.update(np.asarray([wq, hq, int(atlas_texel_scale), int(pad)], dtype=np.int32).tobytes())
+                    hsh.update(c.tobytes())
+                    key = hsh.digest()
+
+                    global_rid = rid_base + qidx
+                    if key in key_to_luid:
+                        rid_to_luid[global_rid] = key_to_luid[key]
+                        continue
+
+                    key_to_luid[key] = luid
+                    rid_to_luid[global_rid] = luid
+                    uniq_quads.append(q)
+
+                    tex_w = wq * atlas_texel_scale
+                    tex_h = hq * atlas_texel_scale
+                    w = tex_w + pad * 2
+                    h = tex_h + pad * 2
+                    rects_m.append((luid, w, h))
+                    luid += 1
+
+                rects_m_sorted = sorted(rects_m, key=lambda t: (t[2], t[1]), reverse=True)
+                w_choices = [1 << k for k in range(4, 13)]
+                mw, mh, mpos = pack_best(rects_m_sorted, w_choices)
+                model_block_sizes.append((mw, mh))
+                model_quad_local_pos.append(mpos)
+                model_uniq_quads.append(uniq_quads)
+                model_rid_to_luid.append(rid_to_luid)
+
+                rid_base += len(quads)
+
+            block_rects = [(midx, int(sz[0]), int(sz[1])) for midx, sz in enumerate(model_block_sizes)]
+            block_sorted = sorted(block_rects, key=lambda t: (t[2], t[1]), reverse=True)
+            best_w, best_h, model_pos = pack_best(block_sorted, widths)
+
+            # best_pos for original quad rids
+            best_pos = [(-1, -1)] * len(rects)
+            rid_base = 0
+            for midx, quads in enumerate(quads_per_model):
+                mx, my = model_pos[midx]
+                rid_to_luid = model_rid_to_luid[midx]
+                for qidx, _q in enumerate(quads):
+                    global_rid = rid_base + qidx
+                    luid = rid_to_luid.get(global_rid)
+                    if luid is None:
+                        continue
+                    qx, qy = model_quad_local_pos[midx][luid]
+                    best_pos[global_rid] = (mx + qx, my + qy)
+                rid_base += len(quads)
+
+            # Keep original quad_meta (global rid indexing). We'll skip baking duplicates later.
+            quad_meta_baked_by_model = model_rid_to_luid
+    else:
+        # Non-baked: keep original packing behavior.
+        if atlas_layout == "global":
+            rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
+            best_w, best_h, best_pos = pack_best(rects_sorted, widths)
+        else:
+            model_block_sizes = []
+            model_quad_local_pos: list[list[tuple[int, int]]] = []
+            for midx, quads in enumerate(quads_per_model):
+                rects_m: list[tuple[int, int, int]] = []
+                for qidx, q in enumerate(quads):
+                    tex_w = int(q["w"]) * atlas_texel_scale
+                    tex_h = int(q["h"]) * atlas_texel_scale
+                    w = tex_w + pad * 2
+                    h = tex_h + pad * 2
+                    rects_m.append((qidx, w, h))
+
+                rects_m_sorted = sorted(rects_m, key=lambda t: (t[2], t[1]), reverse=True)
+                w_choices = [1 << k for k in range(4, 13)]
+                mw, mh, mpos = pack_best(rects_m_sorted, w_choices)
+                model_block_sizes.append((mw, mh))
+                model_quad_local_pos.append(mpos)
+
+            block_rects = [(midx, int(sz[0]), int(sz[1])) for midx, sz in enumerate(model_block_sizes)]
+            block_sorted = sorted(block_rects, key=lambda t: (t[2], t[1]), reverse=True)
+            best_w, best_h, model_pos = pack_best(block_sorted, widths)
+
+            best_pos = [(-1, -1)] * len(rects)
+            rid_base = 0
+            for midx, quads in enumerate(quads_per_model):
+                mx, my = model_pos[midx]
+                for qidx, _q in enumerate(quads):
+                    qx, qy = model_quad_local_pos[midx][qidx]
+                    best_pos[rid_base + qidx] = (mx + qx, my + qy)
+                rid_base += len(quads)
 
     atlas_arr = np.zeros((best_h, best_w, 4), dtype=np.uint8)
 
@@ -556,7 +692,20 @@ def vox_to_glb(
         return tuple(int(v) for v in vox.palette_rgba[color_index - 1])
 
     for ridx, midx, q in quad_meta:
-        ox, oy = best_pos[ridx]
+        if atlas_style == "baked" and atlas_layout != "global" and quad_meta_baked_by_model is not None:
+            # When baked+by-model dedup is active, skip baking duplicates.
+            rid_to_luid = quad_meta_baked_by_model[midx]
+            luid = rid_to_luid.get(int(ridx))
+            if luid is not None:
+                key = (int(midx), int(luid))
+                if key in seen_baked_blocks:
+                    continue
+                seen_baked_blocks.add(key)
+
+        if atlas_style == "baked" and atlas_layout == "global" and quad_meta_baked_global_pos is not None:
+            ox, oy = quad_meta_baked_global_pos[int(ridx)]
+        else:
+            ox, oy = best_pos[ridx]
 
         tex_w = int(q["w"]) * atlas_texel_scale
         tex_h = int(q["h"]) * atlas_texel_scale
