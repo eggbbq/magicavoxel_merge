@@ -137,6 +137,23 @@ python -m magicavoxel_merge \
 --atlas-layout by-model
 ```
 
+### 3.6 `--merge-strategy`
+
+控制网格合并策略：
+
+```bash
+--merge-strategy greedy|maxrect
+```
+
+- `greedy`：默认策略，速度更快
+- `maxrect`：更激进的矩形覆盖策略，通常 quad 分布更均匀（可能更慢）
+
+如果你想撤回到默认行为，删除该参数或改回：
+
+```bash
+--merge-strategy greedy
+```
+
 ---
 
 ## 4. 坐标轴 / 左右手系（适配引擎）
@@ -317,6 +334,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 ### 通用
 
 - `--mode palette|atlas`
+- `--merge-strategy greedy|maxrect`
 - `--scale <float>`
 - `--center` / `--center-bounds`
 - `--weld`
@@ -343,6 +361,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 python -m magicavoxel_merge \
   input.vox output.glb \
   --mode atlas \
+  --merge-strategy maxrect \
   --atlas-style baked \
   --atlas-texel-scale 1 \
   --atlas-pad 4 \
@@ -361,6 +380,7 @@ python -m magicavoxel_merge \
 python -m magicavoxel_merge \
   input.vox output.glb \
   --mode atlas \
+  --merge-strategy maxrect \
   --atlas-style baked \
   --avg-normals-attr color \
   --scale 0.02 \
