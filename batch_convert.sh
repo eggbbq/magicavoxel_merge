@@ -11,7 +11,7 @@ set -euo pipefail
 # - Output filenames follow input stem: <stem>.glb
 # - If you want external textures, set TEXTURE_OUT=1 (writes <stem>.png alongside .glb)
 
-IN_DIR="./"
+IN_DIR="/Users/graylian/workspace/VoxPLC"
 OUT_DIR="/Users/graylian/workspace/project_sh/pfl_cc/assets/assets/4_models"
 # Max parallel jobs. Leave empty to auto-detect CPU cores.
 JOBS="5"
@@ -40,9 +40,9 @@ ATLAS_STYLE="baked" # baked, solid
 ATLAS_TEXEL_SCALE="1" # texture texel scale
 ATLAS_LAYOUT="by-model" # by-model, by-palette
 CENTER_FLAG="--center" # center the model
-HANDEDNESS="left" # right, left
+HANDEDNESS="right" # right, left
 AXIS="y_up" # y_up, z_up
-AVG_NORMALS_ATTR="color" # none, color, tangent
+AVG_NORMALS_ATTR="none" # none, color, tangent
 
 # Set TEXTURE_OUT=1 to export external png beside the glb
 TEXTURE_OUT="${TEXTURE_OUT:-0}"
@@ -81,7 +81,7 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --texture-out "$out_png" \
-      --weld
+      --weld 
   else
     python -m magicavoxel_merge \
       "$in_vox" "$out_glb" \

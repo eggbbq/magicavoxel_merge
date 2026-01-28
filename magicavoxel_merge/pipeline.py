@@ -68,6 +68,7 @@ def vox_to_glb(
     texture_out: str | None = None,
     preserve_transforms: bool = True,
     avg_normals_attr: str = "none",
+    flip_v: bool = False,
     mode: str = "palette",
 ) -> None:
     vox = load_vox(input_path)
@@ -472,11 +473,60 @@ def vox_to_glb(
             u1 = (ox + pad + w - inset_u) / float(best_w)
             v1 = (oy + pad + h - inset_v) / float(best_h)
 
+            if flip_v:
+                # glTF commonly uses a top-left image origin convention, but some engines treat
+                # v=0 as bottom. Flip V while preserving v0 < v1 ordering.
+                v0, v1 = (1.0 - v1), (1.0 - v0)
+
             p0, p1, p2, p3 = q["verts"]
             n = q["normal"]
             positions.extend([p0, p1, p2, p3])
             normals.extend([n, n, n, n])
-            texcoords.extend([(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
+
+            # Robust UV mapping:
+            # - The mesher may swap p1/p3 for correct winding.
+            # - Quads have declared voxel dimensions (w_vox, h_vox); ensure the UV's U axis
+            #   aligns with the edge whose length matches w_vox, and V axis matches h_vox.
+            o = np.asarray(p0, dtype=np.float32)
+            e1 = np.asarray(p1, dtype=np.float32) - o
+            e3 = np.asarray(p3, dtype=np.float32) - o
+            len1 = float(np.linalg.norm(e1))
+            len3 = float(np.linalg.norm(e3))
+
+            # Decide whether (p0->p1) corresponds to width or height.
+            d_keep = abs(len1 - w_vox) + abs(len3 - h_vox)
+            d_swap = abs(len1 - h_vox) + abs(len3 - w_vox)
+            if d_swap < d_keep:
+                # Swap axes: treat e1 as V axis and e3 as U axis.
+                u_axis = e3
+                v_axis = e1
+                u0_, u1_ = u0, u1
+                v0_, v1_ = v0, v1
+            else:
+                u_axis = e1
+                v_axis = e3
+                u0_, u1_ = u0, u1
+                v0_, v1_ = v0, v1
+
+            uu = float(np.dot(u_axis, u_axis))
+            vv = float(np.dot(v_axis, v_axis))
+            if uu == 0.0:
+                uu = 1.0
+            if vv == 0.0:
+                vv = 1.0
+
+            def _uv_for(p: tuple[float, float, float]) -> tuple[float, float]:
+                d = np.asarray(p, dtype=np.float32) - o
+                a = float(np.dot(d, u_axis) / uu)
+                b = float(np.dot(d, v_axis) / vv)
+                # Clamp numerically; should be in {0,1} for rectangle verts.
+                a = 0.0 if a < 0.0 else (1.0 if a > 1.0 else a)
+                b = 0.0 if b < 0.0 else (1.0 if b > 1.0 else b)
+                u = u0_ + (u1_ - u0_) * a
+                v = v0_ + (v1_ - v0_) * b
+                return (float(u), float(v))
+
+            texcoords.extend([_uv_for(p0), _uv_for(p1), _uv_for(p2), _uv_for(p3)])
             indices.extend([len(positions) - 4, len(positions) - 3, len(positions) - 2, len(positions) - 4, len(positions) - 2, len(positions) - 1])
             local += 1
 

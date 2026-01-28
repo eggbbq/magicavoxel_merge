@@ -21,6 +21,7 @@ def main(argv=None) -> int:
     parser.add_argument("--atlas-layout", choices=("global", "by-model"), default="global")
     parser.add_argument("--handedness", choices=("right", "left"), default="right")
     parser.add_argument("--avg-normals-attr", choices=("none", "color", "tangent"), default="none")
+    parser.add_argument("--flip-v", action="store_true")
     parser.add_argument("--forward", choices=("posZ", "negZ"), default=None, help=argparse.SUPPRESS)
     parser.add_argument("--facing", choices=("+z", "-z"), default=None, help=argparse.SUPPRESS)
     atlas_grp = parser.add_mutually_exclusive_group()
@@ -57,6 +58,7 @@ def main(argv=None) -> int:
         texture_out=args.texture_out,
         preserve_transforms=args.preserve_transforms,
         avg_normals_attr=args.avg_normals_attr,
+        flip_v=args.flip_v,
         mode=args.mode,
     )
     return 0
