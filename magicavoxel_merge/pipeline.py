@@ -78,6 +78,37 @@ def vox_to_glb(
     vox = load_vox(input_path)
     meshes = []
 
+    debug_cull = os.environ.get("MVM_DEBUG_CULL") not in (None, "", "0", "false", "False")
+
+    mv_scene_ground_z = 0.0
+    mv_model_occ_min_z: list[float] = [0.0] * len(vox.models)
+    mv_model_bottom_world_z: list[float] = [0.0] * len(vox.models)
+    if preserve_transforms and getattr(vox, "model_translations", None):
+        try:
+            # Pick the scene "ground" by the dominant layer, weighted by voxel count.
+            # This makes large models define the ground instead of small outliers.
+            weights: dict[int, float] = {}
+            for i, m in enumerate(vox.models):
+                tr_z = float(vox.model_translations[i][2]) if i < len(vox.model_translations) else 0.0
+                occ_min_z = 0.0
+                if getattr(m, "voxels", None) is not None:
+                    filled = np.nonzero(m.voxels)
+                    if len(filled) == 3 and filled[2].size > 0:
+                        occ_min_z = float(int(filled[2].min()))
+                mv_model_occ_min_z[i] = occ_min_z
+                bottom_world = tr_z + occ_min_z
+                mv_model_bottom_world_z[i] = bottom_world
+                w = float(np.count_nonzero(m.voxels)) if getattr(m, "voxels", None) is not None else 1.0
+                key = int(round(float(bottom_world)))
+                weights[key] = weights.get(key, 0.0) + max(1.0, w)
+            if weights:
+                mv_scene_ground_z = float(max(weights.items(), key=lambda kv: kv[1])[0])
+        except Exception:
+            mv_scene_ground_z = 0.0
+
+    # Only cull models that are on/near the detected scene ground.
+    mv_ground_eps = 0.5
+
     name_prefix = Path(input_path).stem
 
     if mode not in ("palette", "atlas"):
@@ -369,14 +400,38 @@ def vox_to_glb(
             # MV-space z-plane culling must happen before scale/center/axis.
             if cull_mv_z is not None:
                 tz_mv = 0.0
-                positions, normals, texcoords, indices = _cull_mv_z_mesh(
-                    positions=positions,
-                    normals=normals,
-                    texcoords=texcoords,
-                    indices=indices,
-                    plane_z=float(cull_mv_z),
-                    translation_z=tz_mv,
-                )
+                bottom_world = 0.0
+                occ_min_z = 0.0
+                if preserve_transforms and idx < len(vox.model_translations):
+                    tr_z_dbg = float(vox.model_translations[idx][2])
+                    occ_min_z = mv_model_occ_min_z[idx] if idx < len(mv_model_occ_min_z) else 0.0
+                    bottom_world = mv_model_bottom_world_z[idx] if idx < len(mv_model_bottom_world_z) else (tr_z_dbg + occ_min_z)
+                    tz_mv = tr_z_dbg - mv_scene_ground_z
+
+                do_cull = (not preserve_transforms) or (abs(float(bottom_world) - float(mv_scene_ground_z)) <= mv_ground_eps)
+                if not do_cull:
+                    name_dbg = vox.model_names[idx] if idx < len(vox.model_names) else f"model_{idx}"
+                    tr_z_dbg = float(vox.model_translations[idx][2]) if (preserve_transforms and idx < len(vox.model_translations)) else 0.0
+                    if debug_cull:
+                        print(f"[MVM_DEBUG_CULL] palette cull-mv-z SKIP plane={float(cull_mv_z)} ground_z={mv_scene_ground_z} model={name_dbg} tr_z={tr_z_dbg} occ_min_z={occ_min_z} bottom_world_z={bottom_world} eps={mv_ground_eps}")
+                    do_cull = False
+
+                if do_cull:
+                    before_tris = int(indices.size // 3)
+                    positions, normals, texcoords, indices = _cull_mv_z_mesh(
+                        positions=positions,
+                        normals=normals,
+                        texcoords=texcoords,
+                        indices=indices,
+                        plane_z=float(cull_mv_z),
+                        translation_z=tz_mv,
+                    )
+
+                    if debug_cull:
+                        after_tris = int(indices.size // 3)
+                        name_dbg = vox.model_names[idx] if idx < len(vox.model_names) else f"model_{idx}"
+                        tr_z_dbg = float(vox.model_translations[idx][2]) if (preserve_transforms and idx < len(vox.model_translations)) else 0.0
+                        print(f"[MVM_DEBUG_CULL] palette cull-mv-z plane={float(cull_mv_z)} ground_z={mv_scene_ground_z} model={name_dbg} tr_z={tr_z_dbg} tz_mv={tz_mv} tris_before={before_tris} tris_after={after_tris} dropped={before_tris - after_tris}")
 
             if mv_faces_set:
                 positions, normals, texcoords, indices = _cull_mv_oriented_faces(
@@ -683,17 +738,53 @@ def vox_to_glb(
 
         if cull_mv_z is not None:
             tz_mv = 0.0
+            bottom_world = 0.0
+            occ_min_z = 0.0
+            if preserve_transforms and midx < len(vox.model_translations):
+                tr_z_dbg = float(vox.model_translations[midx][2])
+                occ_min_z = mv_model_occ_min_z[midx] if midx < len(mv_model_occ_min_z) else 0.0
+                bottom_world = mv_model_bottom_world_z[midx] if midx < len(mv_model_bottom_world_z) else (tr_z_dbg + occ_min_z)
+                tz_mv = tr_z_dbg - mv_scene_ground_z
+
+            do_cull = (not preserve_transforms) or (abs(float(bottom_world) - float(mv_scene_ground_z)) <= mv_ground_eps)
+            if not do_cull:
+                if debug_cull:
+                    name_dbg = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
+                    tr_z_dbg = float(vox.model_translations[midx][2]) if (preserve_transforms and midx < len(vox.model_translations)) else 0.0
+                    print(f"[MVM_DEBUG_CULL] atlas cull-mv-z SKIP plane={float(cull_mv_z)} ground_z={mv_scene_ground_z} model={name_dbg} tr_z={tr_z_dbg} occ_min_z={occ_min_z} bottom_world_z={bottom_world} eps={mv_ground_eps}")
             keep_quads = []
-            for q in quads:
-                tag = _quad_mv_dir_tag(q)
-                if tag == "-z":
-                    p0, p1, p2, p3 = q["verts"]
-                    zmin = min(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
-                    zmax = max(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
-                    if zmax <= float(cull_mv_z):
-                        continue
-                keep_quads.append(q)
-            quads = keep_quads
+            cand = 0
+            dropped = 0
+            cand_zmax_min = None
+            cand_zmax_max = None
+            if do_cull:
+                for q in quads:
+                    tag = _quad_mv_dir_tag(q)
+                    if tag == "-z":
+                        cand += 1
+                        p0, p1, p2, p3 = q["verts"]
+                        zmin = min(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
+                        zmax = max(float(p0[2]), float(p1[2]), float(p2[2]), float(p3[2])) + tz_mv
+                        if cand_zmax_min is None or zmax < cand_zmax_min:
+                            cand_zmax_min = float(zmax)
+                        if cand_zmax_max is None or zmax > cand_zmax_max:
+                            cand_zmax_max = float(zmax)
+                        if zmax <= float(cull_mv_z):
+                            dropped += 1
+                            continue
+                    keep_quads.append(q)
+                quads = keep_quads
+
+                if debug_cull:
+                    name_dbg = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
+                    tr_z_dbg = float(vox.model_translations[midx][2]) if (preserve_transforms and midx < len(vox.model_translations)) else 0.0
+                    print(f"[MVM_DEBUG_CULL] atlas cull-mv-z plane={float(cull_mv_z)} ground_z={mv_scene_ground_z} model={name_dbg} tr_z={tr_z_dbg} tz_mv={tz_mv} cand_zmax=[{cand_zmax_min},{cand_zmax_max}] quads_in={len(quads) + dropped} cand_negz={cand} dropped={dropped} quads_out={len(quads)}")
+            else:
+                # Pass through unchanged.
+                if debug_cull:
+                    name_dbg = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
+                    tr_z_dbg = float(vox.model_translations[midx][2]) if (preserve_transforms and midx < len(vox.model_translations)) else 0.0
+                    print(f"[MVM_DEBUG_CULL] atlas cull-mv-z PASS plane={float(cull_mv_z)} ground_z={mv_scene_ground_z} model={name_dbg} tr_z={tr_z_dbg} tz_mv={tz_mv} quads_in={len(quads)}")
 
         quads_per_model.append(quads)
 

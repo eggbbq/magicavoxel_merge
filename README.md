@@ -480,8 +480,9 @@ TEXTURE_OUT=1 ./batch_convert.sh
   - 示例：`--cull-mv-faces bottom`
 
 - `--cull-mv-z <float>`（默认：不裁剪）
-  - 含义：按 MagicaVoxel 局部坐标 `z <= 阈值` 剔除底面（`-z` 方向）
-  - 特性：裁剪发生在 `--center` 之前，因此无论是否 `--center` 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块
+  - 含义：按 MagicaVoxel 的 `z <= 阈值` 剔除底面（`-z` 方向）
+  - 坐标系：在 `--preserve-transforms` 开启时，会自动检测全场景地面 `ground_z = min(translation.z + 模型局部占用的最小 z)`，并且只对底部接近该地面的模型生效（抬高的小模型不会被裁）；关闭时按模型局部坐标裁剪
+  - 特性：裁剪发生在 `--center/--center-bounds` 之前，因此无论是否使用 center 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块
   - 示例：`--cull-mv-z 0`
 
 ### 11.4 atlas 模式参数（仅 `--mode atlas` 生效）
