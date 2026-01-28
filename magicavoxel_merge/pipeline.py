@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 from .glb import write_glb_scene
-from .mesher import greedy_mesh, greedy_quads, greedy_quads_baked, greedy_quads_maxrect, greedy_quads_baked_maxrect
+from .mesher import greedy_mesh, greedy_mesh_maxrect, greedy_quads, greedy_quads_baked, greedy_quads_maxrect, greedy_quads_baked_maxrect
 from .vox import load_vox
 
 
@@ -222,7 +222,7 @@ def vox_to_glb(
         texture_png = bio.getvalue()
 
         for idx, m in enumerate(vox.models):
-            mesh = greedy_mesh(m.voxels, m.size, vox.palette_rgba)
+            mesh = greedy_mesh_maxrect(m.voxels, m.size, vox.palette_rgba) if merge_strategy == "maxrect" else greedy_mesh(m.voxels, m.size, vox.palette_rgba)
             positions = mesh["positions"]
             indices = mesh["indices"]
             normals = mesh["normals"]
@@ -356,9 +356,9 @@ def vox_to_glb(
     rid = 0
     for midx, m in enumerate(vox.models):
         if atlas_style == "baked":
-            quads = greedy_quads_baked_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads_baked(m.voxels, m.size)
+            quads = greedy_quads_baked(m.voxels, m.size)
         else:
-            quads = greedy_quads_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads(m.voxels, m.size)
+            quads = greedy_quads(m.voxels, m.size)
         quads_per_model.append(quads)
         for q in quads:
             tex_w = int(q["w"]) * atlas_texel_scale

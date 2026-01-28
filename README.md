@@ -148,6 +148,8 @@ python -m magicavoxel_merge \
 - `greedy`：默认策略，速度更快
 - `maxrect`：更激进的矩形覆盖策略，通常 quad 分布更均匀（可能更慢）
 
+该选项同时适用于 `palette` 与 `atlas` 两种模式。
+
 如果你想撤回到默认行为，删除该参数或改回：
 
 ```bash
