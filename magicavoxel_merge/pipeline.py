@@ -469,12 +469,36 @@ def vox_to_glb(
     rects: list[tuple[int, int, int]] = []
     quad_meta = []
 
+    def _quad_mv_dir_tag(q: dict[str, object]) -> str | None:
+        n = q.get("normal")
+        if not isinstance(n, tuple) or len(n) != 3:
+            return None
+        nx, ny, nz = float(n[0]), float(n[1]), float(n[2])
+        ax, ay, az = abs(nx), abs(ny), abs(nz)
+        if ax >= ay and ax >= az and ax > 0.5:
+            return "+x" if nx > 0.0 else "-x"
+        if ay >= ax and ay >= az and ay > 0.5:
+            return "+y" if ny > 0.0 else "-y"
+        if az >= ax and az >= ay and az > 0.5:
+            return "+z" if nz > 0.0 else "-z"
+        return None
+
     rid = 0
     for midx, m in enumerate(vox.models):
         if atlas_style == "baked":
             quads = greedy_quads_baked_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads_baked(m.voxels, m.size)
         else:
             quads = greedy_quads_maxrect(m.voxels, m.size) if merge_strategy == "maxrect" else greedy_quads(m.voxels, m.size)
+
+        if mv_faces_set:
+            keep_quads = []
+            for q in quads:
+                tag = _quad_mv_dir_tag(q)
+                if tag is not None and tag in mv_faces_set:
+                    continue
+                keep_quads.append(q)
+            quads = keep_quads
+
         quads_per_model.append(quads)
         for q in quads:
             tex_w = int(q["w"]) * atlas_texel_scale
