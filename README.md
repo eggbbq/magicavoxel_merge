@@ -27,6 +27,37 @@
 python -m magicavoxel_merge input.vox output.glb
 ```
 
+### 1.3 一条完整调用示例（atlas + baked + by-model，推荐）
+
+下面是一条包含常用参数的完整命令，你可以直接复制后按需改动：
+
+```bash
+python -m magicavoxel_merge \
+  input.vox output.glb \
+  --mode atlas \
+  --atlas-style baked \
+  --atlas-layout by-model \
+  --merge-strategy maxrect \
+  --atlas-texel-scale 1 \
+  --atlas-pad 0 \
+  --atlas-inset 0 \
+  --baked-dedup \
+  --cull-mv-z 0 \
+  --no-atlas-square \
+  --axis y_up \
+  --handedness left \
+  --scale 0.02 \
+  --center \
+  --weld \
+  --avg-normals-attr none
+```
+
+如果你希望导出外置 PNG（而不是内嵌在 glb 中），加：
+
+```bash
+--texture-out output.png
+```
+
 ### 1.2 批量转换（推荐）
 
 编辑根目录的 `batch_convert.sh`，设置 `IN_DIR / OUT_DIR / JOBS` 和导出参数，然后运行：
@@ -384,27 +415,104 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ## 11. 参数速查表
 
-### 通用
+本章节按实际 CLI 参数逐项列出：所有可选值 + 默认值 + 作用说明。
 
-- `--mode palette|atlas`
-- `--merge-strategy greedy|maxrect`
-- `--scale <float>`
-- `--center` / `--center-bounds`
-- `--weld`
-- `--cull-mv-faces <csv>`
-- `--cull-mv-z <float>`
-- `--axis y_up|identity`
-- `--handedness right|left`
-- `--texture-out <path>`
-- `--avg-normals-attr none|color|tangent`
+### 11.1 位置参数
 
-### atlas 专用
+- `input`
+  - 含义：输入 `.vox` 文件路径
+- `output`
+  - 含义：输出 `.glb` 文件路径
 
-- `--atlas-style solid|baked`
-- `--atlas-texel-scale <int>=1`
-- `--atlas-pad <int>`
-- `--atlas-inset <float>`
-- `--atlas-layout global|by-model`
+### 11.2 通用参数
+
+- `--mode palette|atlas`（默认：`palette`）
+  - 含义：选择贴图/导出模式
+  - `palette`：256x1 调色板纹理
+  - `atlas`：生成 atlas 图集纹理
+
+- `--merge-strategy greedy|maxrect`（默认：`greedy`）
+  - 含义：quad 合并策略
+  - `greedy`：更快
+  - `maxrect`：更激进，通常 quad 更规整（可能更慢）
+
+- `--scale <float>`（默认：`1.0`）
+  - 含义：导出缩放
+
+- `--axis y_up|identity`（默认：`y_up`）
+  - 含义：坐标轴转换
+  - `y_up`：输出为 glTF 常用 Y-up（推荐）
+  - `identity`：不做轴转换（调试用途）
+
+- `--handedness right|left`（默认：`right`）
+  - 含义：输出左右手系
+
+- `--center` / `--center-bounds`（默认：都不启用）
+  - 含义：将模型平移到原点附近
+  - 注意：两者互斥，只能二选一
+
+- `--weld`（默认：关闭）
+  - 含义：焊接顶点（减少重复顶点）
+
+- `--avg-normals-attr none|color|tangent`（默认：`none`）
+  - 含义：将“平均法线”写入顶点属性
+  - `none`：不写入
+  - `color`：写入 `COLOR_0`
+  - `tangent`：写入 `TANGENT`
+
+- `--flip-v`（默认：关闭）
+  - 含义：翻转 UV 的 V 方向（某些引擎/贴图约定需要）
+
+- `--texture-out <path>`（默认：不导出外置纹理）
+  - 含义：导出外置 PNG 贴图文件
+
+- `--preserve-transforms` / `--no-preserve-transforms`（默认：开启 `--preserve-transforms`）
+  - 含义：是否保留 `.vox` 场景树中的模型平移/层级变换信息
+
+### 11.3 MV 坐标系裁剪
+
+- `--cull-mv-faces <csv>`（默认：不裁剪）
+  - 含义：在 MagicaVoxel 坐标系下按“朝向”剔除面
+  - 取值：
+    - `top`（等价 `+z`）
+    - `bottom`（等价 `-z`）
+    - `+x` / `-x` / `+y` / `-y` / `+z` / `-z`
+  - 示例：`--cull-mv-faces bottom`
+
+- `--cull-mv-z <float>`（默认：不裁剪）
+  - 含义：按 MagicaVoxel 局部坐标 `z <= 阈值` 剔除底面（`-z` 方向）
+  - 特性：裁剪发生在 `--center` 之前，因此无论是否 `--center` 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块
+  - 示例：`--cull-mv-z 0`
+
+### 11.4 atlas 模式参数（仅 `--mode atlas` 生效）
+
+- `--atlas-style solid|baked`（默认：`solid`）
+  - 含义：atlas 风格
+  - `solid`：每个合并后的 quad 用单一颜色填充
+  - `baked`：将颜色烘焙进纹理像素，合并几何时尽量不受颜色影响（更少面数）
+
+- `--atlas-texel-scale <int>`（默认：`1`）
+  - 含义：每个 voxel 对应的纹理像素密度（越大越清晰，但 atlas 越大）
+
+- `--atlas-pad <int>`（默认：`2`）
+  - 含义：每个图块周围额外 padding（像素）
+
+- `--atlas-inset <float>`（默认：`1.5`）
+  - 含义：UV inset（避免采样到边缘外侧造成串色/接缝）
+
+- `--atlas-layout global|by-model`（默认：`global`）
+  - 含义：atlas 的打包布局
+  - `global`：所有模型的图块全局打包
+  - `by-model`：先每个模型内部打包，再把“模型块”打到总 atlas
+
+- `--atlas-square` / `--no-atlas-square`（默认：开启 `--atlas-square`）
+  - 含义：是否强制 atlas 更倾向正方形
+  - 说明：你需要 pow2 但不需要正方形时，建议 `--no-atlas-square`
+
+- `--baked-dedup` / `--no-baked-dedup`（默认：开启 `--baked-dedup`）
+  - 含义：仅在 `--atlas-style baked` 下生效
+  - `--baked-dedup`：相同的纹理区块只打包/烘焙一次，其他 quad 复用同一块（减少 atlas 面积）
+  - `--no-baked-dedup`：关闭 baked 纹理块去重
 
 ---
 
