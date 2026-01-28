@@ -82,6 +82,7 @@ convert_one() {
       $CENTER_FLAG \
       --texture-out "$out_png" \
       --weld \
+      --no-atlas-square \
       --cull-mv-faces bottom \
       --merge-strategy maxrect
   else
@@ -99,6 +100,7 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --weld \
+      --no-atlas-square \
       --cull-mv-faces bottom \
       --merge-strategy maxrect
   fi

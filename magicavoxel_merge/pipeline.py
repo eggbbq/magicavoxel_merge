@@ -422,6 +422,7 @@ def vox_to_glb(
         best_w = None
         best_h = None
         best_max = None
+        best_score = None
         for w in widths_local:
             h_raw, pos = pack_shelf(rects_sorted_local, w)
             if h_raw >= 10**9:
@@ -437,11 +438,147 @@ def vox_to_glb(
                     best_w = w
                     best_h = h
             else:
-                if best_area is None or area < best_area:
+                # Prefer smaller area but avoid extreme aspect ratios that waste space
+                # (e.g. very tall or very wide atlases).
+                aspect = float(max(w, h)) / float(min(w, h))
+                penalty = 0.0
+                if aspect > 2.0:
+                    penalty = (aspect - 2.0) * 0.25
+                score = float(area) * (1.0 + penalty)
+                if best_score is None or score < best_score:
+                    best_score = score
                     best_area = area
                     best_pos = pos
                     best_w = w
                     best_h = h
+
+        if best_pos is None or best_w is None or best_h is None:
+            raise ValueError("Failed to pack atlas")
+        return int(best_w), int(best_h), best_pos
+
+    def pack_maxrect(rects_sorted: list[tuple[int, int, int]], width: int, height: int) -> list[tuple[int, int]] | None:
+        # MaxRects (best short side fit), no rotation.
+        # rects_sorted: (rid, w, h) in preferred placement order.
+        free: list[tuple[int, int, int, int]] = [(0, 0, int(width), int(height))]
+        out: list[tuple[int, int]] = [(-1, -1)] * len(rects_sorted)
+
+        def _prune(frs: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+            pruned: list[tuple[int, int, int, int]] = []
+            for i, a in enumerate(frs):
+                ax, ay, aw, ah = a
+                contained = False
+                for j, b in enumerate(frs):
+                    if i == j:
+                        continue
+                    bx, by, bw, bh = b
+                    if ax >= bx and ay >= by and ax + aw <= bx + bw and ay + ah <= by + bh:
+                        contained = True
+                        break
+                if not contained and aw > 0 and ah > 0:
+                    pruned.append(a)
+            return pruned
+
+        def _intersects(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
+            ax, ay, aw, ah = a
+            bx, by, bw, bh = b
+            return not (ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay)
+
+        for rid, w, h in rects_sorted:
+            bw = int(w)
+            bh = int(h)
+            best_i = -1
+            best_x = 0
+            best_y = 0
+            best_ss = None
+            best_ls = None
+
+            for i, (fx, fy, fw, fh) in enumerate(free):
+                if bw <= fw and bh <= fh:
+                    ss = min(fw - bw, fh - bh)
+                    ls = max(fw - bw, fh - bh)
+                    if best_ss is None or ss < best_ss or (ss == best_ss and ls < best_ls):
+                        best_ss = ss
+                        best_ls = ls
+                        best_i = i
+                        best_x = fx
+                        best_y = fy
+
+            if best_i < 0:
+                return None
+
+            out[int(rid)] = (int(best_x), int(best_y))
+
+            placed = (int(best_x), int(best_y), bw, bh)
+
+            # Split ALL free rectangles that intersect the placed rectangle.
+            new_free: list[tuple[int, int, int, int]] = []
+            for fr in free:
+                if not _intersects(fr, placed):
+                    new_free.append(fr)
+                    continue
+
+                fx, fy, fw, fh = fr
+                px, py, pw, ph = placed
+                pr = px + pw
+                pb = py + ph
+                fr_r = fx + fw
+                fr_b = fy + fh
+
+                # Left slice
+                if px > fx:
+                    new_free.append((fx, fy, px - fx, fh))
+                # Right slice
+                if pr < fr_r:
+                    new_free.append((pr, fy, fr_r - pr, fh))
+                # Top slice
+                if py > fy:
+                    new_free.append((fx, fy, fw, py - fy))
+                # Bottom slice
+                if pb < fr_b:
+                    new_free.append((fx, pb, fw, fr_b - pb))
+
+            free = _prune(new_free)
+
+        return out
+
+    def pack_best_bin(
+        rects_sorted_local: list[tuple[int, int, int]],
+        widths_local: list[int],
+        heights_local: list[int],
+    ) -> tuple[int, int, list[tuple[int, int]]]:
+        best_area = None
+        best_pos = None
+        best_w = None
+        best_h = None
+        best_max = None
+        best_score = None
+
+        for w in widths_local:
+            for h0 in heights_local:
+                pos = pack_maxrect(rects_sorted_local, int(w), int(h0))
+                if pos is None:
+                    continue
+                area = int(w) * int(h0)
+                if atlas_square:
+                    m = max(int(w), int(h0))
+                    if best_area is None or m < best_max or (m == best_max and area < best_area):
+                        best_area = area
+                        best_max = m
+                        best_pos = pos
+                        best_w = int(w)
+                        best_h = int(h0)
+                else:
+                    aspect = float(max(int(w), int(h0))) / float(min(int(w), int(h0)))
+                    penalty = 0.0
+                    if aspect > 2.0:
+                        penalty = (aspect - 2.0) * 0.25
+                    score = float(area) * (1.0 + penalty)
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_area = area
+                        best_pos = pos
+                        best_w = int(w)
+                        best_h = int(h0)
 
         if best_pos is None or best_w is None or best_h is None:
             raise ValueError("Failed to pack atlas")
@@ -517,6 +654,7 @@ def vox_to_glb(
     import hashlib
 
     widths = [1 << k for k in range(4, 14)]
+    heights = [1 << k for k in range(4, 14)]
 
     if atlas_style == "baked":
         # Deduplicate identical baked blocks.
@@ -559,7 +697,7 @@ def vox_to_glb(
                 uid += 1
 
             rects_sorted = sorted(uniq_rects, key=lambda t: (t[2], t[1]), reverse=True)
-            best_w, best_h, best_pos_uniq = pack_best(rects_sorted, widths)
+            best_w, best_h, best_pos_uniq = pack_best_bin(rects_sorted, widths, heights)
 
             quad_meta_baked_global_pos = best_pos_uniq
 
@@ -621,7 +759,8 @@ def vox_to_glb(
 
                 rects_m_sorted = sorted(rects_m, key=lambda t: (t[2], t[1]), reverse=True)
                 w_choices = [1 << k for k in range(4, 13)]
-                mw, mh, mpos = pack_best(rects_m_sorted, w_choices)
+                h_choices = [1 << k for k in range(4, 13)]
+                mw, mh, mpos = pack_best_bin(rects_m_sorted, w_choices, h_choices)
                 model_block_sizes.append((mw, mh))
                 model_quad_local_pos.append(mpos)
                 model_uniq_quads.append(uniq_quads)
@@ -631,7 +770,7 @@ def vox_to_glb(
 
             block_rects = [(midx, int(sz[0]), int(sz[1])) for midx, sz in enumerate(model_block_sizes)]
             block_sorted = sorted(block_rects, key=lambda t: (t[2], t[1]), reverse=True)
-            best_w, best_h, model_pos = pack_best(block_sorted, widths)
+            best_w, best_h, model_pos = pack_best_bin(block_sorted, widths, heights)
 
             # best_pos for original quad rids
             best_pos = [(-1, -1)] * len(rects)
@@ -654,7 +793,7 @@ def vox_to_glb(
         # Non-baked: keep original packing behavior.
         if atlas_layout == "global":
             rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
-            best_w, best_h, best_pos = pack_best(rects_sorted, widths)
+            best_w, best_h, best_pos = pack_best_bin(rects_sorted, widths, heights)
         else:
             model_block_sizes = []
             model_quad_local_pos: list[list[tuple[int, int]]] = []
@@ -669,13 +808,14 @@ def vox_to_glb(
 
                 rects_m_sorted = sorted(rects_m, key=lambda t: (t[2], t[1]), reverse=True)
                 w_choices = [1 << k for k in range(4, 13)]
-                mw, mh, mpos = pack_best(rects_m_sorted, w_choices)
+                h_choices = [1 << k for k in range(4, 13)]
+                mw, mh, mpos = pack_best_bin(rects_m_sorted, w_choices, h_choices)
                 model_block_sizes.append((mw, mh))
                 model_quad_local_pos.append(mpos)
 
             block_rects = [(midx, int(sz[0]), int(sz[1])) for midx, sz in enumerate(model_block_sizes)]
             block_sorted = sorted(block_rects, key=lambda t: (t[2], t[1]), reverse=True)
-            best_w, best_h, model_pos = pack_best(block_sorted, widths)
+            best_w, best_h, model_pos = pack_best_bin(block_sorted, widths, heights)
 
             best_pos = [(-1, -1)] * len(rects)
             rid_base = 0
