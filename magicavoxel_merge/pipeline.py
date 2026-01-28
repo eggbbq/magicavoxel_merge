@@ -61,6 +61,7 @@ def vox_to_glb(
     weld: bool = False,
     cull_bottom: bool = False,
     cull_y: float | None = None,
+    cull_mv_faces: str | None = None,
     atlas_pad: int = 2,
     atlas_inset: float = 1.5,
     atlas_style: str = "solid",
@@ -254,6 +255,87 @@ def vox_to_glb(
         new_indices = new_tris.reshape((-1,)).astype(np.uint32)
         return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
 
+    def _parse_mv_faces(spec: str | None) -> set[str]:
+        if not spec:
+            return set()
+        parts = [p.strip().lower() for p in str(spec).split(",") if p.strip()]
+        out: set[str] = set()
+        for p in parts:
+            if p == "top":
+                out.add("+z")
+            elif p == "bottom":
+                out.add("-z")
+            else:
+                out.add(p)
+        allowed = {"+x", "-x", "+y", "-y", "+z", "-z"}
+        bad = sorted([p for p in out if p not in allowed])
+        if bad:
+            raise ValueError("cull_mv_faces has invalid entries: " + ",".join(bad))
+        return out
+
+    mv_faces_set = _parse_mv_faces(cull_mv_faces)
+
+    def _cull_mv_oriented_faces(
+        *,
+        positions: np.ndarray,
+        normals: np.ndarray,
+        texcoords: np.ndarray,
+        indices: np.ndarray,
+        faces: set[str],
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        if not faces or indices.size == 0:
+            return positions, normals, texcoords, indices
+
+        tris = indices.astype(np.uint32).reshape((-1, 3))
+        p0 = positions[tris[:, 0]]
+        p1 = positions[tris[:, 1]]
+        p2 = positions[tris[:, 2]]
+        fn = np.cross(p1 - p0, p2 - p0)
+
+        ax = np.abs(fn[:, 0])
+        ay = np.abs(fn[:, 1])
+        az = np.abs(fn[:, 2])
+        dom = np.stack([ax, ay, az], axis=1)
+        k = np.argmax(dom, axis=1)
+
+        # Only treat clearly axis-aligned faces as cull candidates.
+        domv = dom[np.arange(dom.shape[0]), k]
+        oth = (ax + ay + az) - domv
+        aligned = (domv > 1e-6) & (domv >= oth * 4.0)
+
+        dir_tags = np.empty((tris.shape[0],), dtype=np.int8)
+        # 0 none, 1 +x,2 -x,3 +y,4 -y,5 +z,6 -z
+        dir_tags[:] = 0
+        sx = fn[:, 0] >= 0.0
+        sy = fn[:, 1] >= 0.0
+        sz = fn[:, 2] >= 0.0
+        dir_tags[(k == 0) & aligned & sx] = 1
+        dir_tags[(k == 0) & aligned & (~sx)] = 2
+        dir_tags[(k == 1) & aligned & sy] = 3
+        dir_tags[(k == 1) & aligned & (~sy)] = 4
+        dir_tags[(k == 2) & aligned & sz] = 5
+        dir_tags[(k == 2) & aligned & (~sz)] = 6
+
+        want = set(faces)
+        drop = np.zeros((tris.shape[0],), dtype=bool)
+        if "+x" in want:
+            drop |= dir_tags == 1
+        if "-x" in want:
+            drop |= dir_tags == 2
+        if "+y" in want:
+            drop |= dir_tags == 3
+        if "-y" in want:
+            drop |= dir_tags == 4
+        if "+z" in want:
+            drop |= dir_tags == 5
+        if "-z" in want:
+            drop |= dir_tags == 6
+
+        keep = ~drop
+        new_tris = tris[keep]
+        new_indices = new_tris.reshape((-1,)).astype(np.uint32)
+        return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
+
     def _emit(output_path_local: str, meshes_local: list[dict[str, np.ndarray]], texture_png_local: bytes) -> None:
         if texture_out:
             tex_path = Path(texture_out)
@@ -283,6 +365,15 @@ def vox_to_glb(
             texcoords = mesh["texcoords"]
 
             texcoords = texcoords.copy()
+
+            if mv_faces_set:
+                positions, normals, texcoords, indices = _cull_mv_oriented_faces(
+                    positions=positions,
+                    normals=normals,
+                    texcoords=texcoords,
+                    indices=indices,
+                    faces=mv_faces_set,
+                )
 
             if scale != 1.0:
                 positions = positions * float(scale)
@@ -603,6 +694,15 @@ def vox_to_glb(
         normals = np.asarray(normals, dtype=np.float32)
         texcoords = np.asarray(texcoords, dtype=np.float32)
         indices = np.asarray(indices, dtype=np.uint32)
+
+        if mv_faces_set:
+            positions, normals, texcoords, indices = _cull_mv_oriented_faces(
+                positions=positions,
+                normals=normals,
+                texcoords=texcoords,
+                indices=indices,
+                faces=mv_faces_set,
+            )
 
         if scale != 1.0:
             positions = positions * float(scale)
