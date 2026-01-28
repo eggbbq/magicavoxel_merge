@@ -100,7 +100,7 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --weld \
-      --cull-mv-z 0 \
+      --cull-mv-floor 0 \
       --no-atlas-square \
       --merge-strategy maxrect
   fi

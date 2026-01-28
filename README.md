@@ -479,10 +479,11 @@ TEXTURE_OUT=1 ./batch_convert.sh
     - `+x` / `-x` / `+y` / `-y` / `+z` / `-z`
   - 示例：`--cull-mv-faces bottom`
 
-- `--cull-mv-z <float>`（默认：不裁剪）
+- `--cull-mv-z <float>` / `--cull-mv-floor <float>`（默认：不裁剪）
   - 含义：按 MagicaVoxel 的 `z <= 阈值` 剔除底面（`-z` 方向）
-  - 坐标系：在 `--preserve-transforms` 开启时，会自动检测全场景地面 `ground_z = min(translation.z + 模型局部占用的最小 z)`，并且只对底部接近该地面的模型生效（抬高的小模型不会被裁）；关闭时按模型局部坐标裁剪
-  - 特性：裁剪发生在 `--center/--center-bounds` 之前，因此无论是否使用 center 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块
+  - 坐标系：MagicaVoxel `.vox` 只保存“模型局部体素 + 场景 translation”，没有绝对“世界地面”概念；因此在 `--preserve-transforms` 开启时，本工具会扫描所有模型的 `translation.z + 模型局部最小占用 z`，以体素数量加权方式推断出最低/最大众数的 `ground_z`，并且只对底部接近该地面的模型生效（抬高的小模型不会被裁）；关闭时按模型局部坐标裁剪
+  - 特性：裁剪发生在 `--center/--center-bounds` 之前，因此无论是否使用 center 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块；`<float>` 参数表示相对于检测到的地面层 (`ground_z + plane`) 的阈值，而非绝对 MV 原点
+  - 使用建议：在批量导出/流水线场景中，若希望只 cull 真正“贴地”的模型，请在 VOX 场景中确保需要裁剪的物体位于同一地面层（或在导出前人为对齐）；若某些模型不应裁剪，可在 MagicaVoxel 中把它们整体抬高（translation.z 调大）、将其放在更高平台，或直接关闭 `--cull-mv-floor`
   - 示例：`--cull-mv-z 0`
 
 ### 11.4 atlas 模式参数（仅 `--mode atlas` 生效）
