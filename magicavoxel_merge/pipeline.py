@@ -70,6 +70,7 @@ def vox_to_glb(
     atlas_square: bool = False,
     handedness: str = "right",
     texture_out: str | None = None,
+    normal_atlas_out: str | None = None,
     preserve_transforms: bool = True,
     avg_normals_attr: str = "none",
     flip_v: bool = False,
@@ -79,6 +80,8 @@ def vox_to_glb(
     meshes = []
 
     debug_cull = os.environ.get("MVM_DEBUG_CULL") not in (None, "", "0", "false", "False")
+    normal_atlas_png: bytes | None = None
+    normal_atlas_arr: np.ndarray | None = None
 
     mv_scene_ground_z = 0.0
     mv_model_occ_min_z: list[float] = [0.0] * len(vox.models)
@@ -138,32 +141,35 @@ def vox_to_glb(
 
     flip_handedness = handedness == "left"
 
-    def _compute_avg_normals_by_position(positions: np.ndarray, indices: np.ndarray) -> np.ndarray:
+    def _compute_avg_normals_by_position(positions: np.ndarray, normals: np.ndarray) -> np.ndarray:
         positions = np.asarray(positions, dtype=np.float32)
-        indices = np.asarray(indices, dtype=np.uint32)
+        normals = np.asarray(normals, dtype=np.float32)
 
-        if positions.shape[0] == 0 or indices.shape[0] == 0:
+        if positions.shape[0] == 0 or normals.shape[0] == 0:
             return np.zeros_like(positions, dtype=np.float32)
 
-        # Group vertices by position (quantized) so hard edges share the same average.
         key_i = np.round(positions * 1_000_000.0).astype(np.int64)
         uniq, inv = np.unique(key_i, axis=0, return_inverse=True)
         acc = np.zeros((uniq.shape[0], 3), dtype=np.float32)
 
-        tris = indices.reshape((-1, 3))
-        p0 = positions[tris[:, 0]]
-        p1 = positions[tris[:, 1]]
-        p2 = positions[tris[:, 2]]
-        fn = np.cross(p1 - p0, p2 - p0)
+        np.add.at(acc, inv, normals)
 
-        np.add.at(acc, inv[tris[:, 0]], fn)
-        np.add.at(acc, inv[tris[:, 1]], fn)
-        np.add.at(acc, inv[tris[:, 2]], fn)
+        lens = np.linalg.norm(acc, axis=1)
+        mask = lens > 0.0
+        acc[mask] = acc[mask] / lens[mask, None]
+        return acc[inv]
 
-        out = acc[inv]
-        lens = np.linalg.norm(out, axis=1)
-        lens = np.where(lens == 0.0, 1.0, lens)
-        return out / lens[:, None]
+    def _map_axes_vector(vec: np.ndarray) -> np.ndarray:
+        v = np.asarray(vec, dtype=np.float32)
+        ax = axis
+        if ax == "identity":
+            return v
+        if ax == "mv_zup":
+            ax = "y_up"
+        if ax == "y_up":
+            x, y, z = v
+            return np.asarray([x, z, -y], dtype=np.float32)
+        raise ValueError(f"unsupported axis mapping: {ax}")
 
     def _map_axes_mesh(
         positions: np.ndarray,
@@ -381,6 +387,9 @@ def vox_to_glb(
         else:
             write_glb_scene(output_path_local, meshes=meshes_local, texture_png=texture_png_local, name_prefix=name_prefix)
 
+    if normal_atlas_out and mode != "atlas":
+        raise ValueError("normal_atlas_out is only supported in atlas mode")
+
     if mode == "palette":
         palette_rgba = vox.palette_rgba
         img = Image.fromarray(palette_rgba.reshape((1, 256, 4)), mode="RGBA")
@@ -485,7 +494,7 @@ def vox_to_glb(
 
             extra: dict[str, np.ndarray] = {}
             if avg_normals_attr != "none":
-                avg_n = _compute_avg_normals_by_position(positions, indices)
+                avg_n = _compute_avg_normals_by_position(positions, normals)
                 if avg_normals_attr == "color":
                     c = (avg_n * 0.5) + 0.5
                     extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
@@ -495,7 +504,6 @@ def vox_to_glb(
             meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation, **extra})
 
         _emit(output_path, meshes, texture_png)
-        return
 
     # atlas mode
     pad = int(atlas_pad)
@@ -826,6 +834,8 @@ def vox_to_glb(
                 # Hash includes dimensions and sampling parameters that affect final pixels.
                 hsh = hashlib.blake2b(digest_size=16)
                 hsh.update(np.asarray([wq, hq, int(atlas_texel_scale), int(pad)], dtype=np.int32).tobytes())
+                n_vec = np.asarray(q.get("normal", (0, 0, 0)), dtype=np.int8)
+                hsh.update(n_vec.tobytes())
                 hsh.update(c.tobytes())
                 key = hsh.digest()
 
@@ -886,6 +896,8 @@ def vox_to_glb(
 
                     hsh = hashlib.blake2b(digest_size=16)
                     hsh.update(np.asarray([wq, hq, int(atlas_texel_scale), int(pad)], dtype=np.int32).tobytes())
+                    n_vec = np.asarray(q.get("normal", (0, 0, 0)), dtype=np.int8)
+                    hsh.update(n_vec.tobytes())
                     hsh.update(c.tobytes())
                     key = hsh.digest()
 
@@ -975,6 +987,8 @@ def vox_to_glb(
                 rid_base += len(quads)
 
     atlas_arr = np.zeros((best_h, best_w, 4), dtype=np.uint8)
+    if normal_atlas_out:
+        normal_atlas_arr = np.zeros((best_h, best_w, 4), dtype=np.uint8)
 
     def pal_color(color_index: int) -> tuple[int, int, int, int]:
         return tuple(int(v) for v in vox.palette_rgba[color_index - 1])
@@ -999,6 +1013,23 @@ def vox_to_glb(
         tex_h = int(q["h"]) * atlas_texel_scale
         full_w = tex_w + pad * 2
         full_h = tex_h + pad * 2
+
+        if normal_atlas_arr is not None:
+            n = np.asarray(q["normal"], dtype=np.float32)
+            n = _map_axes_vector(n)
+            if flip_handedness:
+                n = n.copy()
+                n[2] *= -1.0
+            n_len = float(np.linalg.norm(n))
+            if n_len > 0.0:
+                n = n / n_len
+            n_col = np.clip((n * 0.5) + 0.5, 0.0, 1.0)
+            n_rgb = (n_col * 255.0).astype(np.uint8)
+            block = normal_atlas_arr[oy : oy + full_h, ox : ox + full_w, :]
+            block[..., 0] = n_rgb[0]
+            block[..., 1] = n_rgb[1]
+            block[..., 2] = n_rgb[2]
+            block[..., 3] = 255
 
         if atlas_style == "baked":
             quad_colors = q.get("colors")
@@ -1026,6 +1057,13 @@ def vox_to_glb(
     bio = io.BytesIO()
     atlas.save(bio, format="PNG")
     texture_png = bio.getvalue()
+
+    normal_atlas_png: bytes | None = None
+    if normal_atlas_out and normal_atlas_arr is not None:
+        atlas_norm = Image.fromarray(normal_atlas_arr, mode="RGBA")
+        bio_norm = io.BytesIO()
+        atlas_norm.save(bio_norm, format="PNG")
+        normal_atlas_png = bio_norm.getvalue()
 
     for midx, quads in enumerate(quads_per_model):
         positions = []
@@ -1168,7 +1206,7 @@ def vox_to_glb(
 
         extra: dict[str, np.ndarray] = {}
         if avg_normals_attr != "none":
-            avg_n = _compute_avg_normals_by_position(positions, indices)
+            avg_n = _compute_avg_normals_by_position(positions, normals)
             if avg_normals_attr == "color":
                 c = (avg_n * 0.5) + 0.5
                 extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
@@ -1178,3 +1216,16 @@ def vox_to_glb(
         meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation, **extra})
 
     _emit(output_path, meshes, texture_png)
+
+    if normal_atlas_png is None and normal_atlas_arr is not None:
+        atlas_norm = Image.fromarray(normal_atlas_arr, mode="RGBA")
+        bio_norm = io.BytesIO()
+        atlas_norm.save(bio_norm, format="PNG")
+        normal_atlas_png = bio_norm.getvalue()
+
+    if normal_atlas_png is not None and normal_atlas_out:
+        norm_path = Path(normal_atlas_out)
+        if norm_path.is_dir() or str(normal_atlas_out).endswith("/"):
+            norm_path = norm_path / (Path(output_path).stem + "_normal.png")
+        norm_path.parent.mkdir(parents=True, exist_ok=True)
+        norm_path.write_bytes(normal_atlas_png)

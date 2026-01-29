@@ -26,6 +26,7 @@ def main(argv=None) -> int:
     parser.add_argument("--handedness", choices=("right", "left"), default="right")
     parser.add_argument("--avg-normals-attr", choices=("none", "color", "tangent"), default="none")
     parser.add_argument("--flip-v", action="store_true")
+    parser.add_argument("--normal-atlas-out", default=None, help="When in atlas mode, write an object-space normal atlas PNG alongside the GLB")
     parser.add_argument("--forward", choices=("posZ", "negZ"), default=None, help=argparse.SUPPRESS)
     parser.add_argument("--facing", choices=("+z", "-z"), default=None, help=argparse.SUPPRESS)
     atlas_grp = parser.add_mutually_exclusive_group()
@@ -70,6 +71,7 @@ def main(argv=None) -> int:
         atlas_square=args.atlas_square,
         handedness=handedness,
         texture_out=args.texture_out,
+        normal_atlas_out=args.normal_atlas_out,
         preserve_transforms=args.preserve_transforms,
         avg_normals_attr=args.avg_normals_attr,
         flip_v=args.flip_v,

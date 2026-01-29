@@ -42,7 +42,7 @@ ATLAS_LAYOUT="by-model" # by-model, by-palette
 CENTER_FLAG="--center-bounds" # center the model --center-bounds --center
 HANDEDNESS="right" # right, left
 AXIS="y_up" # y_up, z_up
-AVG_NORMALS_ATTR="none" # none, color, tangent
+AVG_NORMALS_ATTR="color" # none, color, tangent, 
 
 # Set TEXTURE_OUT=1 to export external png beside the glb
 TEXTURE_OUT="${TEXTURE_OUT:-0}"
@@ -81,6 +81,7 @@ convert_one() {
       --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --texture-out "$out_png" \
+      --normal-atlas-out "$OUT_DIR" \
       --weld \
       --cull-mv-z 0 \
       --no-atlas-square \
@@ -101,7 +102,8 @@ convert_one() {
       $CENTER_FLAG \
       --weld \
       --cull-mv-floor 0 \
-      --no-atlas-square \
+      --no-atlas-square \ru
+      --normal-atlas-out "$OUT_DIR" \
       --merge-strategy maxrect
   fi
 }
