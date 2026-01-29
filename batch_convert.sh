@@ -42,7 +42,6 @@ ATLAS_LAYOUT="by-model" # by-model, by-palette
 CENTER_FLAG="--center-bounds" # center the model --center-bounds --center
 HANDEDNESS="right" # right, left
 AXIS="y_up" # y_up, z_up
-AVG_NORMALS_ATTR="none" # none, color, tangent, 
 
 # Set TEXTURE_OUT=1 to export external png beside the glb
 TEXTURE_OUT="${TEXTURE_OUT:-0}"
@@ -55,7 +54,7 @@ if [[ -z "${AXIS:-}" ]]; then
   AXIS="y_up"
 fi
 
-export OUT_DIR MODE SCALE ATLAS_PAD ATLAS_INSET ATLAS_STYLE ATLAS_TEXEL_SCALE ATLAS_LAYOUT CENTER_FLAG HANDEDNESS AXIS AVG_NORMALS_ATTR TEXTURE_OUT
+export OUT_DIR MODE SCALE ATLAS_PAD ATLAS_INSET ATLAS_STYLE ATLAS_TEXEL_SCALE ATLAS_LAYOUT CENTER_FLAG HANDEDNESS AXIS TEXTURE_OUT
 
 convert_one() {
   local in_vox="$1"
@@ -78,7 +77,6 @@ convert_one() {
       --atlas-texel-scale "$ATLAS_TEXEL_SCALE" \
       --atlas-layout "$ATLAS_LAYOUT" \
       --handedness "$HANDEDNESS" \
-      --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --texture-out "$out_png" \
       --weld \
@@ -97,7 +95,6 @@ convert_one() {
       --atlas-texel-scale "$ATLAS_TEXEL_SCALE" \
       --atlas-layout "$ATLAS_LAYOUT" \
       --handedness "$HANDEDNESS" \
-      --avg-normals-attr "$AVG_NORMALS_ATTR" \
       $CENTER_FLAG \
       --weld \
       --cull-mv-floor 0 \

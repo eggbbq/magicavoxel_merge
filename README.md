@@ -12,7 +12,6 @@
 - `atlas-style baked`（烘焙型 atlas：尽量少面数）
 - 坐标轴与左右手系转换（适配 Cocos Creator / Blender 等）
 - 可选顶点焊接（weld）
-- 可选导出“平均法线”到顶点属性（`COLOR_0` 或 `TANGENT`）
 - 批量转换脚本与 Blender 无界面重拓扑脚本
 
 ---
@@ -49,7 +48,6 @@ python -m magicavoxel_merge \
   --scale 0.02 \
   --center \
   --weld \
-  --avg-normals-attr none
 ```
 
 如果你希望导出外置 PNG（而不是内嵌在 glb 中），加：
@@ -308,41 +306,7 @@ python -m magicavoxel_merge \
 
 ---
 
-## 7. 导出“平均法线”到顶点属性（写入 COLOR_0 / TANGENT）
-
-### 7.1 适用场景
-
-如果你希望：
-
-- 保持当前 `NORMAL`（用于渲染硬边/正确光照）
-- 同时额外携带一份“按位置聚合的平均法线”（用于你自己的 shader/特效/调试）
-
-可以启用该选项。
-
-### 7.2 参数
-
-```bash
---avg-normals-attr none|color|tangent
-```
-
-- `none`：不导出（默认）
-- `color`：写入 `COLOR_0`（推荐，兼容性最好）
-- `tangent`：写入 `TANGENT`（不推荐，但可用）
-
-示例（推荐写到 `COLOR_0`）：
-
-```bash
---avg-normals-attr color
-```
-
-写入规则：
-
-- `color`：将平均法线 `[-1,1]` 映射到 `[0,1]`（`rgb = n*0.5+0.5`，`a=1`）
-- `tangent`：写入 `xyz=n`，`w=1`
-
----
-
-## 8. 外置贴图输出（可选）
+## 7. 外置贴图输出（可选）
 
 默认贴图嵌入 `.glb` 内。
 
@@ -362,7 +326,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ---
 
-## 9. 批量转换脚本：`batch_convert.sh`
+## 8. 批量转换脚本：`batch_convert.sh`
 
 ### 9.1 你需要配置的变量
 
@@ -380,7 +344,6 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - `ATLAS_PAD` / `ATLAS_INSET`
 - `ATLAS_LAYOUT`
 - `AXIS` / `HANDEDNESS`
-- `AVG_NORMALS_ATTR`：`none` / `color` / `tangent`
 
 ### 9.2 脚本运行时输出
 
@@ -388,7 +351,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - 若有 `.vox`：会提示转换数量与关键模式信息
 
 
-## 10. 常见问题排查
+## 9. 常见问题排查
 
 ### 10.1 脚本“没有输出/看起来没导出”
 
@@ -413,7 +376,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ---
 
-## 11. 参数速查表
+## 10. 参数速查表
 
 本章节按实际 CLI 参数逐项列出：所有可选值 + 默认值 + 作用说明。
 
@@ -453,12 +416,6 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 - `--weld`（默认：关闭）
   - 含义：焊接顶点（减少重复顶点）
-
-- `--avg-normals-attr none|color|tangent`（默认：`none`）
-  - 含义：将“平均法线”写入顶点属性
-  - `none`：不写入
-  - `color`：写入 `COLOR_0`
-  - `tangent`：写入 `TANGENT`
 
 - `--flip-v`（默认：关闭）
   - 含义：翻转 UV 的 V 方向（某些引擎/贴图约定需要）
@@ -518,7 +475,7 @@ TEXTURE_OUT=1 ./batch_convert.sh
 
 ---
 
-## 12. 推荐组合（直接复制）
+## 11. 推荐组合（直接复制）
 
 ### 12.1 Cocos Creator：最少面数（推荐）
 
@@ -539,7 +496,7 @@ python -m magicavoxel_merge \
   --weld
 ```
 
-### 12.2 需要携带平均法线数据（写入 COLOR_0）
+### 12.2 
 
 ```bash
 python -m magicavoxel_merge \
@@ -547,7 +504,6 @@ python -m magicavoxel_merge \
   --mode atlas \
   --merge-strategy maxrect \
   --atlas-style baked \
-  --avg-normals-attr color \
   --scale 0.02 \
   --axis y_up \
   --handedness left \

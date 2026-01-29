@@ -71,7 +71,6 @@ def vox_to_glb(
     handedness: str = "right",
     texture_out: str | None = None,
     preserve_transforms: bool = True,
-    avg_normals_attr: str = "none",
     flip_v: bool = False,
     mode: str = "palette",
 ) -> None:
@@ -133,28 +132,7 @@ def vox_to_glb(
     if handedness not in ("right", "left"):
         raise ValueError("handedness must be 'right' or 'left'")
 
-    if avg_normals_attr not in ("none", "color", "tangent"):
-        raise ValueError("avg_normals_attr must be 'none', 'color', or 'tangent'")
-
     flip_handedness = handedness == "left"
-
-    def _compute_avg_normals_by_position(positions: np.ndarray, normals: np.ndarray) -> np.ndarray:
-        positions = np.asarray(positions, dtype=np.float32)
-        normals = np.asarray(normals, dtype=np.float32)
-
-        if positions.shape[0] == 0 or normals.shape[0] == 0:
-            return np.zeros_like(positions, dtype=np.float32)
-
-        key_i = np.round(positions * 1_000_000.0).astype(np.int64)
-        uniq, inv = np.unique(key_i, axis=0, return_inverse=True)
-        acc = np.zeros((uniq.shape[0], 3), dtype=np.float32)
-
-        np.add.at(acc, inv, normals)
-
-        lens = np.linalg.norm(acc, axis=1)
-        mask = lens > 0.0
-        acc[mask] = acc[mask] / lens[mask, None]
-        return acc[inv]
 
     def _map_axes_vector(vec: np.ndarray) -> np.ndarray:
         v = np.asarray(vec, dtype=np.float32)
@@ -486,16 +464,7 @@ def vox_to_glb(
                     indices=indices,
                 )
 
-            extra: dict[str, np.ndarray] = {}
-            if avg_normals_attr != "none":
-                avg_n = _compute_avg_normals_by_position(positions, normals)
-                if avg_normals_attr == "color":
-                    c = (avg_n * 0.5) + 0.5
-                    extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-                else:
-                    extra["tangent"] = np.concatenate([avg_n, np.ones((avg_n.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-
-            meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation, **extra})
+            meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation})
 
         _emit(output_path, meshes, texture_png)
 
@@ -1172,15 +1141,6 @@ def vox_to_glb(
                 indices=indices,
             )
 
-        extra: dict[str, np.ndarray] = {}
-        if avg_normals_attr != "none":
-            avg_n = _compute_avg_normals_by_position(positions, normals)
-            if avg_normals_attr == "color":
-                c = (avg_n * 0.5) + 0.5
-                extra["color0"] = np.concatenate([c, np.ones((c.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-            else:
-                extra["tangent"] = np.concatenate([avg_n, np.ones((avg_n.shape[0], 1), dtype=np.float32)], axis=1).astype(np.float32)
-
-        meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation, **extra})
+        meshes.append({"positions": positions, "indices": indices, "normals": normals, "texcoords": texcoords, "name": name, "translation": translation})
 
     _emit(output_path, meshes, texture_png)
