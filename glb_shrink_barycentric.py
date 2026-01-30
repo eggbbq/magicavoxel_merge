@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -38,25 +38,6 @@ def _read_accessor(gltf: GLTF2, blob: bytes, accessor_index: int) -> np.ndarray:
     return np.frombuffer(data, dtype=dtype).reshape(accessor.count, width)
 
 
-def _barycentric(pt: np.ndarray, a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    v0 = b - a
-    v1 = c - a
-    v2 = pt - a
-    d00 = float(np.dot(v0, v0))
-    d01 = float(np.dot(v0, v1))
-    d11 = float(np.dot(v1, v1))
-    d20 = float(np.dot(v2, v0))
-    d21 = float(np.dot(v2, v1))
-    denom = d00 * d11 - d01 * d01
-    if abs(denom) < 1e-10:
-        return np.array([1.0, 0.0, 0.0], dtype=np.float32)
-    inv = 1.0 / denom
-    v = (d11 * d20 - d01 * d21) * inv
-    w = (d00 * d21 - d01 * d20) * inv
-    u = 1.0 - v - w
-    return np.array([u, v, w], dtype=np.float32)
-
-
 def _canonical_normal(normal: np.ndarray, plane_offset: float) -> tuple[np.ndarray, float]:
     n = normal.copy()
     off = plane_offset
@@ -69,6 +50,15 @@ def _canonical_normal(normal: np.ndarray, plane_offset: float) -> tuple[np.ndarr
 def _quantize(vec: Sequence[float], eps: float) -> tuple[int, ...]:
     scale = 1.0 / max(eps, 1e-12)
     return tuple(int(round(float(v) * scale)) for v in vec)
+
+
+def _plane_axes_from_normal(normal: np.ndarray) -> tuple[int, int]:
+    axis = int(np.argmax(np.abs(normal)))
+    if axis == 0:
+        return 1, 2  # normal is X → use Y/Z
+    if axis == 1:
+        return 0, 2  # normal is Y → use X/Z
+    return 0, 1  # normal is Z → use X/Y
 
 
 def _edges_of(face: Iterable[int]) -> list[tuple[int, int]]:
@@ -85,8 +75,8 @@ def _process_primitive(
 ) -> np.ndarray:
     vertex_count = positions.shape[0]
     colors = np.zeros((vertex_count, 4), dtype=np.float32)
-    accum = np.zeros((vertex_count, 3), dtype=np.float64)
-    counts = np.zeros(vertex_count, dtype=np.int32)
+    axis_data = np.zeros((vertex_count, 4), dtype=np.float64)
+    has_data = np.zeros(vertex_count, dtype=bool)
 
     faces = indices.reshape(-1, 3)
     face_normals = np.cross(positions[faces[:, 1]] - positions[faces[:, 0]], positions[faces[:, 2]] - positions[faces[:, 0]])
@@ -102,19 +92,24 @@ def _process_primitive(
         p0 = positions[faces[tri_idx, 0]]
         d = float(np.dot(n, p0))
         n, d = _canonical_normal(n, d)
-        plane_key = _quantize((n[0], n[1], n[2], d), normal_eps)
+        n_key = _quantize((n[0], n[1], n[2]), normal_eps)
+        d_scale = int(round(d / max(plane_eps, 1e-12)))
+        plane_key = (*n_key, d_scale)
         plane_to_tris[plane_key].append(tri_idx)
 
     for plane_tris in plane_to_tris.values():
         if not plane_tris:
             continue
         adjacency: dict[int, set[int]] = {tri_idx: set() for tri_idx in plane_tris}
+        edge_to_tris: dict[tuple[int, int], list[int]] = defaultdict(list)
         for tri_idx in plane_tris:
             for edge in _edges_of(faces[tri_idx]):
-                tris_for_edge = [idx for idx in plane_tris if idx != tri_idx and set(edge).issubset(faces[idx])]
-                for other in tris_for_edge:
-                    adjacency[tri_idx].add(other)
-                    adjacency[other].add(tri_idx)
+                edge_to_tris[edge].append(tri_idx)
+        for edge_tris in edge_to_tris.values():
+            if len(edge_tris) == 2:
+                a, b = edge_tris
+                adjacency[a].add(b)
+                adjacency[b].add(a)
 
         visited: set[int] = set()
         for tri_idx in plane_tris:
@@ -124,15 +119,12 @@ def _process_primitive(
             stack = [tri_idx]
             visited.add(tri_idx)
             component: list[int] = []
-            component_edges: list[tuple[int, int]] = []
             vertices_in_comp: set[int] = set()
             while stack:
                 cur = stack.pop()
                 component.append(cur)
                 verts = faces[cur]
                 vertices_in_comp.update(verts)
-                for edge in _edges_of(verts):
-                    component_edges.append(edge)
                 for nb in adjacency[cur]:
                     if nb not in visited:
                         visited.add(nb)
@@ -140,22 +132,28 @@ def _process_primitive(
 
             if not component:
                 continue
-            centroid = positions[list(vertices_in_comp)].mean(axis=0)
+            axis_u_idx, axis_v_idx = _plane_axes_from_normal(face_normals[component[0]])
+            comp_vertices = np.array(sorted(vertices_in_comp))
+            coords = positions[comp_vertices]
+            u_vals = coords[:, axis_u_idx]
+            v_vals = coords[:, axis_v_idx]
+            u_min, u_max = u_vals.min(), u_vals.max()
+            v_min, v_max = v_vals.min(), v_vals.max()
+            center_u = 0.5 * (u_min + u_max)
+            center_v = 0.5 * (v_min + v_max)
+            half_u = max((u_max - u_min) * 0.5, 1e-6)
+            half_v = max((v_max - v_min) * 0.5, 1e-6)
 
-            for cur in component:
-                tri = faces[cur]
-                pts = positions[tri]
-                for local_idx, v_idx in enumerate(tri):
-                    shrink_pos = centroid + (positions[v_idx] - centroid) * shrink_factor
-                    bary = _barycentric(shrink_pos, pts[0], pts[1], pts[2])
-                    accum[v_idx] += bary
-                    counts[v_idx] += 1
+            for v_idx, u_val, v_val in zip(comp_vertices, u_vals, v_vals):
+                axis_data[v_idx, 0] = u_val - center_u
+                axis_data[v_idx, 1] = v_val - center_v
+                axis_data[v_idx, 2] = half_u
+                axis_data[v_idx, 3] = half_v
+                has_data[v_idx] = True
 
-    mask = counts > 0
+    mask = has_data
     if np.any(mask):
-        averaged = (accum[mask] / counts[mask][:, None]).astype(np.float32)
-        colors[mask, :3] = averaged
-        colors[mask, 3] = 1.0
+        colors[mask] = axis_data[mask].astype(np.float32)
     return colors
 
 
@@ -213,10 +211,21 @@ def process_glb(
 
             mask = colors[:, 3] > 0.0
             if np.any(mask):
-                vals = colors[mask, 0]
-                stats.append((mesh_name, prim_idx, float(vals.min()), float(vals.max()), int(mask.sum())))
+                uvals = colors[mask, 0]
+                vvals = colors[mask, 1]
+                stats.append(
+                    (
+                        mesh_name,
+                        prim_idx,
+                        float(uvals.min()),
+                        float(uvals.max()),
+                        float(vvals.min()),
+                        float(vvals.max()),
+                        int(mask.sum()),
+                    )
+                )
             else:
-                stats.append((mesh_name, prim_idx, 0.0, 0.0, 0))
+                stats.append((mesh_name, prim_idx, 0.0, 0.0, 0.0, 0.0, 0))
 
     if not gltf.buffers:
         gltf.buffers = []
@@ -226,10 +235,10 @@ def process_glb(
     gltf.save_binary(str(output_path))
 
     if stats:
-        print("Barycentric COLOR_0 ranges per primitive:")
-        for mesh_name, prim_idx, vmin, vmax, count in stats:
+        print("Plane UV COLOR_0 ranges per primitive:")
+        for mesh_name, prim_idx, umin, umax, vmin, vmax, count in stats:
             print(
-                f"  {mesh_name} prim#{prim_idx}: boundary={count} min={vmin:.4f} max={vmax:.4f}"
+                f"  {mesh_name} prim#{prim_idx}: verts={count} u=[{umin:.4f}, {umax:.4f}] v=[{vmin:.4f}, {vmax:.4f}]"
             )
     else:
         print("No mesh primitives processed; no COLOR_0 written.")

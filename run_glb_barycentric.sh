@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # === 参数在此声明 ===
-INPUT_GLB="/Users/graylian/workspace/magicavox_model_export/Assets/Vox/cube.glb"
+INPUT_GLB="/Users/graylian/workspace/magicavox_model_export/Assets/Vox/hospital.glb"
 OUTPUT_GLB="/Users/graylian/workspace/magicavox_model_export/Assets/Vox/cube_cracked.glb"
 SHRINK=0.85
 NORMAL_EPS=0.001
