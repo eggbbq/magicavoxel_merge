@@ -82,6 +82,7 @@ convert_one() {
       --texture-out "$out_png" \
       --weld \
       --no-atlas-square \
+      --cull-mv-z 0 \
       --merge-strategy maxrect
   else
     python -m magicavoxel_merge \
@@ -98,6 +99,7 @@ convert_one() {
       $CENTER_FLAG \
       --weld \
       --no-atlas-square \
+      --cull-mv-z 0 \
       --merge-strategy maxrect
   fi
 }
