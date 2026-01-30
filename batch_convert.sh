@@ -12,7 +12,8 @@ set -euo pipefail
 # - If you want external textures, set TEXTURE_OUT=1 (writes <stem>.png alongside .glb)
 
 IN_DIR="/Users/graylian/workspace/VoxPLC"
-OUT_DIR="/Users/graylian/workspace/project_sh/pfl_cc/assets/assets/4_models"
+# OUT_DIR="/Users/graylian/workspace/project_sh/pfl_cc/assets/assets/4_models"
+OUT_DIR="/Users/graylian/workspace/magicavox_model_export/Assets/Vox"
 # Max parallel jobs. Leave empty to auto-detect CPU cores.
 JOBS="5"
 
@@ -80,7 +81,6 @@ convert_one() {
       $CENTER_FLAG \
       --texture-out "$out_png" \
       --weld \
-      --cull-mv-z 0 \
       --no-atlas-square \
       --merge-strategy maxrect
   else
@@ -97,7 +97,6 @@ convert_one() {
       --handedness "$HANDEDNESS" \
       $CENTER_FLAG \
       --weld \
-      --cull-mv-floor 0 \
       --no-atlas-square \
       --merge-strategy maxrect
   fi
