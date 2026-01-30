@@ -351,6 +351,50 @@ TEXTURE_OUT=1 ./batch_convert.sh
 - 若有 `.vox`：会提示转换数量与关键模式信息
 
 
+## 10. 附：GLB 重心着色工具
+
+仓库根目录新增了一个独立脚本 `glb_shrink_barycentric.py`，用于在现有 `.glb` 上重新计算“裂缝”用的重心权重并写入顶点颜色（`COLOR_0`）。它的流程是：
+
+1. 读取 glTF/GLB（使用 `pygltflib`）。
+2. 按平面将三角面分组，找到同一平面下的外轮廓顶点。
+3. 将外轮廓顶点向平面质心做一次缩放（`--shrink` 控制缩放比例）。
+4. 计算缩点在原三角形内的 barycentric，并把结果写入顶点颜色（`RGB`），`A` 设为 1。
+5. 输出新的 `.glb` 文件。
+
+### 10.1 依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+确保安装了 `numpy` 与 `pygltflib`（`requirements.txt` 已包含）。
+
+### 10.2 使用示例
+
+```bash
+python glb_shrink_barycentric.py \
+  /path/to/input.glb \
+  /path/to/output.glb \
+  --shrink 0.85
+```
+
+- `--shrink`：外轮廓顶点收缩比例，取值 (0,1)。默认 0.85（越小收缩越明显）。
+- `--normal-eps` / `--plane-eps`：平面合并的量化精度（通常不需要修改）。
+
+生成的输出 glb 会在 `COLOR_0` 中携带新的 barycentric 数据，可以直接在渲染端读取 `color.rgb` 做裂缝/描边效果。
+
+### 10.3 一键执行脚本
+
+如果不想每次都手动输入参数，可运行根目录的 `run_glb_barycentric.sh`。脚本里已经声明了输入/输出路径以及缩放参数，直接编辑文件顶部变量即可：
+
+```bash
+chmod +x run_glb_barycentric.sh
+./run_glb_barycentric.sh
+```
+
+脚本会自动调用 `glb_shrink_barycentric.py`，并使用你在文件内设置的参数。
+
+
 ## 9. 常见问题排查
 
 ### 10.1 脚本“没有输出/看起来没导出”
