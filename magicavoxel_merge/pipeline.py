@@ -349,10 +349,14 @@ def vox_to_glb(
         return _compact_mesh(positions=positions, normals=normals, texcoords=texcoords, indices=new_indices)
 
     def _emit(output_path_local: str, meshes_local: list[dict[str, np.ndarray]], texture_png_local: bytes) -> None:
-        if texture_out:
-            tex_path = Path(texture_out)
-            if tex_path.is_dir() or str(texture_out).endswith("/"):
-                tex_path = tex_path / (Path(output_path_local).stem + ".png")
+        if texture_out is not None:
+            if texture_out == "__AUTO__":
+                tex_path = Path(output_path_local).with_suffix(".png")
+            else:
+                tex_path = Path(texture_out)
+                if tex_path.is_dir() or str(texture_out).endswith("/"):
+                    tex_path = tex_path / (Path(output_path_local).stem + ".png")
+
             tex_path.parent.mkdir(parents=True, exist_ok=True)
             tex_path.write_bytes(texture_png_local)
             glb_dir = Path(output_path_local).parent

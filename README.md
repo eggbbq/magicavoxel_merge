@@ -56,6 +56,12 @@ python -m magicavoxel_merge \
 --texture-out output.png
 ```
 
+如果你希望恢复旧行为（贴图内嵌在 glb 中），加：
+
+```bash
+--embed-texture
+```
+
 ### 1.2 批量转换（推荐）
 
 编辑根目录的 `batch_convert.sh`，设置 `IN_DIR / OUT_DIR / JOBS` 和导出参数，然后运行：
@@ -308,12 +314,18 @@ python -m magicavoxel_merge \
 
 ## 7. 外置贴图输出（可选）
 
-默认贴图嵌入 `.glb` 内。
+默认贴图外置（写出与 `.glb` 同名的 `.png`，并在 glb 内用相对路径引用）。
 
-如果要输出外置 PNG：
+如果要自定义外置 PNG 的输出位置：
 
 ```bash
 --texture-out /path/to/output.png
+```
+
+如果要把贴图内嵌回 `.glb`：
+
+```bash
+--embed-texture
 ```
 
 在 `batch_convert.sh` 里可以用环境变量控制：

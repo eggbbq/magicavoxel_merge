@@ -37,7 +37,16 @@ def main(argv=None) -> int:
     baked_dedup_grp.add_argument("--no-baked-dedup", dest="baked_dedup", action="store_false")
     parser.set_defaults(baked_dedup=True)
 
-    parser.add_argument("--texture-out", default=None)
+    parser.add_argument(
+        "--embed-texture",
+        action="store_true",
+        help="Embed texture PNG into the .glb instead of writing an external .png next to it",
+    )
+    parser.add_argument(
+        "--texture-out",
+        default="__AUTO__",
+        help="Write external texture PNG to this path (file or directory). Default: <output>.png",
+    )
     grp = parser.add_mutually_exclusive_group()
     grp.add_argument("--preserve-transforms", dest="preserve_transforms", action="store_true")
     grp.add_argument("--no-preserve-transforms", dest="preserve_transforms", action="store_false")
@@ -48,6 +57,8 @@ def main(argv=None) -> int:
         raise SystemExit("--center and --center-bounds are mutually exclusive")
 
     handedness = args.handedness
+
+    texture_out = None if args.embed_texture else args.texture_out
 
     vox_to_glb(
         args.input,
@@ -68,7 +79,7 @@ def main(argv=None) -> int:
         atlas_layout=args.atlas_layout,
         atlas_square=args.atlas_square,
         handedness=handedness,
-        texture_out=args.texture_out,
+        texture_out=texture_out,
         preserve_transforms=args.preserve_transforms,
         flip_v=args.flip_v,
         mode=args.mode,

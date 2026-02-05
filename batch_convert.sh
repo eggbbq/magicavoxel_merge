@@ -9,11 +9,10 @@ set -euo pipefail
 # Notes:
 # - Uses xargs parallelism (jobs defaults to number of CPU cores).
 # - Output filenames follow input stem: <stem>.glb
-# - If you want external textures, set TEXTURE_OUT=1 (writes <stem>.png alongside .glb)
+# - External textures are default (writes <stem>.png alongside .glb). Set TEXTURE_OUT=0 to embed textures into .glb
 
 IN_DIR="/Users/graylian/workspace/VoxPLC"
-# OUT_DIR="/Users/graylian/workspace/project_sh/pfl_cc/assets/assets/4_models"
-OUT_DIR="/Users/graylian/workspace/magicavox_model_export/Assets/Vox"
+OUT_DIR="/Users/graylian/workspace/project_sh/test3d/assets/assets/4_models"
 # Max parallel jobs. Leave empty to auto-detect CPU cores.
 JOBS="5"
 
@@ -44,8 +43,8 @@ CENTER_FLAG="--center-bounds" # center the model --center-bounds --center
 HANDEDNESS="right" # right, left
 AXIS="y_up" # y_up, z_up
 
-# Set TEXTURE_OUT=1 to export external png beside the glb
-TEXTURE_OUT="${TEXTURE_OUT:-0}"
+# Set TEXTURE_OUT=0 to embed textures into the glb
+TEXTURE_OUT="${TEXTURE_OUT:-1}"
 
 if [[ -z "${HANDEDNESS:-}" ]]; then
   HANDEDNESS="right"
@@ -81,6 +80,7 @@ convert_one() {
       $CENTER_FLAG \
       --texture-out "$out_png" \
       --weld \
+      --cull-mv-z 0 \
       --no-atlas-square \
       --merge-strategy maxrect
   else
