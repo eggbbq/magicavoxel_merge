@@ -63,9 +63,12 @@ convert_one() {
   base="${base%.vox}"
 
   local out_glb="$OUT_DIR/${base}.glb"
+  local out_uv_json="$OUT_DIR/${base}_uv.json"
 
   if [[ "$TEXTURE_OUT" == "1" ]]; then
     local out_png="$OUT_DIR/${base}.png"
+    # --cull-mv-z 0 \
+    # --weld \
     python -m magicavoxel_merge \
       "$in_vox" "$out_glb" \
       --axis "$AXIS" \
@@ -79,8 +82,7 @@ convert_one() {
       --handedness "$HANDEDNESS" \
       $CENTER_FLAG \
       --texture-out "$out_png" \
-      --weld \
-      --cull-mv-z 0 \
+      --export-uv-offsets "$out_uv_json" \
       --no-atlas-square \
       --merge-strategy maxrect
   else
@@ -97,6 +99,7 @@ convert_one() {
       --handedness "$HANDEDNESS" \
       $CENTER_FLAG \
       --weld \
+      --export-uv-offsets "$out_uv_json" \
       --no-atlas-square \
       --merge-strategy maxrect
   fi

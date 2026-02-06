@@ -47,6 +47,12 @@ def main(argv=None) -> int:
         default="__AUTO__",
         help="Write external texture PNG to this path (file or directory). Default: <output>.png",
     )
+    parser.add_argument(
+        "--export-uv-offsets",
+        dest="export_uv_offsets",
+        default=None,
+        help="Write per-model atlas UV offset/scale info to this JSON file",
+    )
     grp = parser.add_mutually_exclusive_group()
     grp.add_argument("--preserve-transforms", dest="preserve_transforms", action="store_true")
     grp.add_argument("--no-preserve-transforms", dest="preserve_transforms", action="store_false")
@@ -83,5 +89,6 @@ def main(argv=None) -> int:
         preserve_transforms=args.preserve_transforms,
         flip_v=args.flip_v,
         mode=args.mode,
+        export_uv_offsets=args.export_uv_offsets,
     )
     return 0

@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import os
+import json
 
 from .glb import write_glb_scene
 from .mesher import greedy_mesh, greedy_mesh_maxrect, greedy_quads, greedy_quads_baked, greedy_quads_maxrect, greedy_quads_baked_maxrect
@@ -73,6 +74,7 @@ def vox_to_glb(
     preserve_transforms: bool = True,
     flip_v: bool = False,
     mode: str = "palette",
+    export_uv_offsets: str | None = None,
 ) -> None:
     vox = load_vox(input_path)
     meshes = []
@@ -779,6 +781,9 @@ def vox_to_glb(
 
     do_baked_dedup = (atlas_style == "baked") and bool(baked_dedup)
 
+    model_pos: list[tuple[int, int]] | None = None
+    model_block_sizes: list[tuple[int, int]] | None = None
+
     if do_baked_dedup:
         # Deduplicate identical baked blocks.
         if atlas_layout == "global":
@@ -1005,6 +1010,82 @@ def vox_to_glb(
     bio = io.BytesIO()
     atlas.save(bio, format="PNG")
     texture_png = bio.getvalue()
+
+    if export_uv_offsets is not None:
+        out_path = Path(str(export_uv_offsets)).expanduser()
+        if out_path.parent:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        payload: dict[str, object] = {"width": int(best_w), "height": int(best_h)}
+        used_keys: set[str] = set()
+
+        def _unique_key(name: str, idx: int) -> str:
+            key = name
+            if key in used_keys:
+                key = f"{name}_{idx}"
+            used_keys.add(key)
+            return key
+
+        if atlas_layout == "by-model" and model_pos is not None and model_block_sizes is not None:
+            for midx, (mx, my) in enumerate(model_pos):
+                mw, mh = model_block_sizes[midx]
+                name = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
+                u0 = float(mx) / float(best_w)
+                v0 = float(my) / float(best_h)
+                u1 = float(mx + mw) / float(best_w)
+                v1 = float(my + mh) / float(best_h)
+                key = _unique_key(str(name), int(midx))
+                payload[key] = [u0, v0, u1, v1]
+        else:
+            for midx, quads in enumerate(quads_per_model):
+                rid_base = sum(len(qs) for qs in quads_per_model[:midx])
+                u_min = None
+                v_min = None
+                u_max = None
+                v_max = None
+
+                for local, q in enumerate(quads):
+                    ridx = rid_base + local
+                    ox, oy = best_pos[ridx]
+                    w = float(q["w"]) * float(atlas_texel_scale)
+                    h = float(q["h"]) * float(atlas_texel_scale)
+                    inset_u = min(inset, max(0.0, (w - 1.0) / 2.0))
+                    inset_v = min(inset, max(0.0, (h - 1.0) / 2.0))
+                    uu0 = (ox + pad + inset_u) / float(best_w)
+                    vv0 = (oy + pad + inset_v) / float(best_h)
+                    uu1 = (ox + pad + w - inset_u) / float(best_w)
+                    vv1 = (oy + pad + h - inset_v) / float(best_h)
+                    if flip_v:
+                        vv0, vv1 = (1.0 - vv1), (1.0 - vv0)
+
+                    u0_ = float(min(uu0, uu1))
+                    u1_ = float(max(uu0, uu1))
+                    v0_ = float(min(vv0, vv1))
+                    v1_ = float(max(vv0, vv1))
+
+                    u_min = u0_ if u_min is None else min(u_min, u0_)
+                    v_min = v0_ if v_min is None else min(v_min, v0_)
+                    u_max = u1_ if u_max is None else max(u_max, u1_)
+                    v_max = v1_ if v_max is None else max(v_max, v1_)
+
+                name = vox.model_names[midx] if midx < len(vox.model_names) else f"model_{midx}"
+                key = _unique_key(str(name), int(midx))
+                payload[key] = [
+                    float(u_min) if u_min is not None else 0.0,
+                    float(v_min) if v_min is not None else 0.0,
+                    float(u_max) if u_max is not None else 0.0,
+                    float(v_max) if v_max is not None else 0.0,
+                ]
+
+        items: list[tuple[str, object]] = list(payload.items())
+        lines: list[str] = ["{"]
+        for i, (k, v) in enumerate(items):
+            ks = json.dumps(k, ensure_ascii=False)
+            vs = json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+            comma = "," if i != len(items) - 1 else ""
+            lines.append(f"  {ks}:{vs}{comma}")
+        lines.append("}")
+        out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     for midx, quads in enumerate(quads_per_model):
         positions = []
