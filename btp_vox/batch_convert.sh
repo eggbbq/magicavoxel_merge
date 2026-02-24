@@ -29,10 +29,11 @@ btp_convert_one() {
   local args=(
     "$in_vox"
     "$out_glb"
+    --scale "0.02"
     --texture-out "$out_png"
     --uv-json-out "$out_uv"
     --atlas-pot
-    --pivot center
+    --pivot bottom_center
   )
 
   python -m btp_vox.cli "${args[@]}"
