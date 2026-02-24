@@ -26,6 +26,8 @@ class VoxModel:
 class VoxScene:
     models: List[VoxModel]
     palette_rgba: np.ndarray  # shape (256, 4), uint8
+    nodes: list["VoxNode"]
+    root_node_ids: list[int]
 
     @property
     def model_names(self) -> Sequence[str]:
@@ -39,20 +41,22 @@ def load_scene(path: str | Path) -> VoxScene:
     vox = _load_vox(str(path))
     models: List[VoxModel] = []
 
-    sg_translations, sg_rotations = _parse_scenegraph_model_transforms(path)
+    nodes, root_node_ids, sg_world_translations, sg_world_rotations = _parse_scenegraph(path)
 
     for idx, model in enumerate(vox.models):
         name = vox.model_names[idx] if idx < len(vox.model_names) else f"model_{idx}"
-        # Prefer the upstream loader's best-effort per-model translations (matches MagicaVoxel in many files).
-        # Fall back to scene-graph accumulated transforms when not present.
+        # Prefer scene-graph accumulated transforms when available.
+        # Fall back to upstream loader's best-effort per-model translations.
         translation = (0.0, 0.0, 0.0)
-        if getattr(vox, "model_translations", None) and idx < len(vox.model_translations):
+        if idx < len(sg_world_translations):
+            translation = sg_world_translations[idx]
+        elif getattr(vox, "model_translations", None) and idx < len(vox.model_translations):
             t = vox.model_translations[idx]
             translation = (float(t[0]), float(t[1]), float(t[2]))
-        elif idx < len(sg_translations):
-            translation = sg_translations[idx]
 
-        rotation = sg_rotations[idx] if idx < len(sg_rotations) else (0.0, 0.0, 0.0, 1.0)
+        rotation = (0.0, 0.0, 0.0, 1.0)
+        if idx < len(sg_world_rotations):
+            rotation = sg_world_rotations[idx]
 
         voxels = np.asarray(model.voxels, dtype=np.int32)
         models.append(
@@ -66,7 +70,24 @@ def load_scene(path: str | Path) -> VoxScene:
         )
 
     palette = np.asarray(vox.palette_rgba, dtype=np.uint8)
-    return VoxScene(models=models, palette_rgba=palette)
+    return VoxScene(models=models, palette_rgba=palette, nodes=nodes, root_node_ids=root_node_ids)
+
+
+@dataclass(slots=True)
+class VoxNode:
+    kind: str  # trn, grp, shp
+    name: str
+    # Local transform (only meaningful for trn nodes)
+    translation: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    rotation: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)
+    children: list[int] = None  # type: ignore[assignment]
+    model_ids: list[int] = None  # only for shp
+
+    def __post_init__(self) -> None:
+        if self.children is None:
+            self.children = []
+        if self.model_ids is None:
+            self.model_ids = []
 
 
 def _decode_rotation_byte(r: int) -> np.ndarray:
@@ -201,23 +222,31 @@ def _read_dict_from(buf: bytes, off: int) -> tuple[dict[str, str], int]:
     return d, off
 
 
-def _parse_scenegraph_model_transforms(
+def _parse_scenegraph(
     path: Path,
-) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float, float]]]:
-    """Best-effort per-model world transforms from VOX scene graph.
+) -> tuple[
+    list[VoxNode],
+    list[int],
+    list[tuple[float, float, float]],
+    list[tuple[float, float, float, float]],
+]:
+    """Parse VOX scene graph and also compute per-model world transforms.
 
-    This walks the nTRN/nGRP/nSHP hierarchy and accumulates transforms.
-    Returns lists indexed by model id.
+    Returns:
+    - nodes: list of VoxNode indexed by node_id (sparse ids allowed; missing ids are filled with dummy grp)
+    - root_node_ids: ids of root nodes
+    - model_world_translations: list indexed by model id
+    - model_world_rotations: list indexed by model id
     """
 
     try:
         with path.open("rb") as f:
             if _read_exact(f, 4) != b"VOX ":
-                return ([], [])
+                return ([], [], [], [])
             _ = _read_u32(f)  # version
             chunk_id, content_size, children_size = _read_chunk_header(f)
             if chunk_id != b"MAIN":
-                return ([], [])
+                return ([], [], [], [])
             if content_size:
                 f.seek(content_size, 1)
             end_of_main = f.tell() + children_size
@@ -227,6 +256,7 @@ def _parse_scenegraph_model_transforms(
             shp_nodes: dict[int, list[int]] = {}
             child_nodes: set[int] = set()
             max_model_id = -1
+            all_node_ids: set[int] = set()
 
             while f.tell() < end_of_main:
                 cid, csize, chsize = _read_chunk_header(f)
@@ -263,6 +293,8 @@ def _parse_scenegraph_model_transforms(
                                 pass
 
                     trn_nodes[int(node_id)] = (int(child_id), t, r)
+                    all_node_ids.add(int(node_id))
+                    all_node_ids.add(int(child_id))
 
                 elif cid == b"nGRP":
                     off = 0
@@ -275,6 +307,9 @@ def _parse_scenegraph_model_transforms(
                         children.append(int(ch))
                         child_nodes.add(int(ch))
                     grp_nodes[int(node_id)] = children
+                    all_node_ids.add(int(node_id))
+                    for ch in children:
+                        all_node_ids.add(int(ch))
 
                 elif cid == b"nSHP":
                     off = 0
@@ -289,12 +324,13 @@ def _parse_scenegraph_model_transforms(
                         if int(mid) > max_model_id:
                             max_model_id = int(mid)
                     shp_nodes[int(node_id)] = mids
+                    all_node_ids.add(int(node_id))
 
                 if chsize:
                     f.seek(chsize, 1)
 
             if max_model_id < 0:
-                return ([], [])
+                return ([], [], [], [])
 
             translations: list[tuple[float, float, float]] = [(0.0, 0.0, 0.0)] * (max_model_id + 1)
             rotations: list[tuple[float, float, float, float]] = [(0.0, 0.0, 0.0, 1.0)] * (max_model_id + 1)
@@ -333,6 +369,22 @@ def _parse_scenegraph_model_transforms(
             for rid in sorted(roots):
                 walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
-            return translations, rotations
+            # Build VoxNode list indexed by id.
+            max_node_id = max(all_node_ids) if all_node_ids else -1
+            nodes: list[VoxNode] = [VoxNode(kind="grp", name=f"node_{i}") for i in range(max_node_id + 1)]
+            for nid in range(max_node_id + 1):
+                nodes[nid].children = []
+                nodes[nid].model_ids = []
+
+            for nid, (child_id, lt, lr) in trn_nodes.items():
+                nodes[nid] = VoxNode(kind="trn", name=f"trn_{nid}", translation=lt, rotation=lr, children=[int(child_id)])
+
+            for nid, children in grp_nodes.items():
+                nodes[nid] = VoxNode(kind="grp", name=f"grp_{nid}", children=[int(c) for c in children])
+
+            for nid, mids in shp_nodes.items():
+                nodes[nid] = VoxNode(kind="shp", name=f"shp_{nid}", model_ids=[int(mid) for mid in mids])
+
+            return nodes, [int(r) for r in sorted(roots)], translations, rotations
     except Exception:
-        return ([], [])
+        return ([], [], [], [])

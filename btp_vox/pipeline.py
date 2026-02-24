@@ -88,6 +88,7 @@ def convert(
     meshes = _to_y_up_left_handed(meshes)
     if bool(opts.bake_translation):
         meshes = _bake_translation_into_vertices(meshes)
+
     glb_writer.write_meshes(
         output_glb,
         meshes=meshes,
@@ -191,8 +192,8 @@ def _assemble_meshes(
         if not positions:
             continue
 
-        # Pivot handling: shift vertices so chosen pivot is at local origin, and offset node translation
-        # so the model stays in the same world location.
+        # Pivot handling: shift vertices so chosen pivot is at local origin.
+        # Compensate node translation so world placement stays the same: t' = t + R*p.
         sx, sy, sz = scene.models[midx].size
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
@@ -217,6 +218,7 @@ def _assemble_meshes(
         meshes.append(
             {
                 "name": scene.models[midx].name,
+                "model_id": int(midx),
                 "positions": pos_arr,
                 "normals": np.asarray(normals, dtype=np.float32),
                 "texcoords": np.asarray(texcoords, dtype=np.float32),
@@ -355,6 +357,8 @@ def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
         out.append(mm)
 
     return out
+
+
 
 
 def _bake_translation_into_vertices(meshes: List[dict]) -> List[dict]:

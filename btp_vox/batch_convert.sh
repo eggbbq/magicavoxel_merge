@@ -25,12 +25,13 @@ btp_convert_one() {
 #   --pivot corner 
 #   --pivot bottom_center
 #   --pivot center
-#   --normal-to-color
+#   --atlas-layout by-model | global
+
 
   local args=(
     "$in_vox"
     "$out_glb"
-    --scale "0.02"
+    --scale "1.0"
     --texture-out "$out_png"
     --uv-json-out "$out_uv"
     --atlas-pot
