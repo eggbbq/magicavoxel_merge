@@ -364,13 +364,14 @@ def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
     """Convert from MagicaVoxel coords to Y-up, then mirror Z for left-handed output.
 
     Axis map used by the main project: (x,y,z) -> (x,z,-y)
-    Left-handed conversion: mirror Z and flip triangle winding.
+    Left-handed conversion: mirror Y and Z.
     """
 
     # Basis change MV->Y-up.
-    b = np.asarray([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]], dtype=np.float32)
+    b = np.asarray([[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, -1.0, 0.0]], dtype=np.float32)
     bt = b.T
-    h = np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32)
+    # Reflect Y and Z.
+    h = np.asarray([[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32)
 
     out: List[dict] = []
     for m in meshes:
@@ -397,16 +398,14 @@ def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
             rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
 
-        # Mirror Z for left-handed
+        # Mirror Y/Z
+        pos[:, 1] *= -1.0
         pos[:, 2] *= -1.0
+        nrm[:, 1] *= -1.0
         nrm[:, 2] *= -1.0
         if tr is not None:
             tx, ty, tz = mm["translation"]
-            mm["translation"] = (float(tx), float(ty), -float(tz))
-
-        if idx.size % 3 != 0:
-            raise ValueError("indices length must be multiple of 3")
-        idx = idx.reshape((-1, 3))[:, [0, 2, 1]].reshape((-1,)).astype(np.uint32)
+            mm["translation"] = (float(tx), -float(ty), -float(tz))
 
         mm["positions"] = pos
         mm["normals"] = nrm

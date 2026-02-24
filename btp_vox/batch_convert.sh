@@ -36,7 +36,7 @@ btp_convert_one() {
     --uv-json-out "$out_uv"
     --debug-transforms-out "$OUT_DIR/${stem}_xf.json"
     --atlas-pot
-    --pivot bottom_center
+    --pivot center
   )
 
   python -m btp_vox.cli "${args[@]}"
