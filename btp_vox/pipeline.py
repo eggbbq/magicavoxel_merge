@@ -247,18 +247,14 @@ def _assemble_meshes(
         # double-counts the pivot and causes large offsets. We therefore keep node translation
         # as the scene-provided translation.
         pos_arr = np.asarray(positions, dtype=np.float32)
-        if pos_arr.size:
-            mn = pos_arr.min(axis=0)
-            mx = pos_arr.max(axis=0)
-        else:
-            mn = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
-            mx = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
+        sx, sy, sz = scene.models[midx].size
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         elif pivot == "bottom_center":
-            p = np.asarray(((mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5, mn[2]), dtype=np.float32)
+            # MagicaVoxel pivot is defined in model volume space, not occupied-geometry bounds.
+            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, 0.0), dtype=np.float32)
         else:
-            p = np.asarray(((mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5, (mn[2] + mx[2]) * 0.5), dtype=np.float32)
+            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, float(sz) * 0.5 * scale), dtype=np.float32)
 
         if pos_arr.size:
             pos_arr = pos_arr.copy()
