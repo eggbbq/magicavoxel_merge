@@ -509,5 +509,4 @@ def load_vox(path: str) -> VoxFile:
                 for mid in mids:
                     if 0 <= mid < len(model_translations):
                         model_translations[mid] = tr
-
         return VoxFile(models=models, palette_rgba=palette, model_names=model_names, model_translations=model_translations)

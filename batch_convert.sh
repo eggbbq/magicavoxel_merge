@@ -12,7 +12,7 @@ set -euo pipefail
 # - External textures are default (writes <stem>.png alongside .glb). Set TEXTURE_OUT=0 to embed textures into .glb
 
 IN_DIR="/Users/graylian/workspace/VoxPLC"
-OUT_DIR="/Users/graylian/workspace/project_sh/test3d/assets/assets/4_models"
+OUT_DIR="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
 # Max parallel jobs. Leave empty to auto-detect CPU cores.
 JOBS="5"
 
