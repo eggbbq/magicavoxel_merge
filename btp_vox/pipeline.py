@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
+import json
+
 import numpy as np
 
 from . import atlas as atlas_mod
@@ -45,6 +47,7 @@ def convert(
     *,
     texture_out: str | None = None,
     uv_json_out: str | None = None,
+    debug_transforms_out: str | None = None,
     options: PipelineOptions | None = None,
 ) -> None:
     """Run the Block-Topology Preservation pipeline end-to-end."""
@@ -85,9 +88,15 @@ def convert(
         pivot=str(opts.pivot),
     )
 
+    if debug_transforms_out:
+        _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
+
     meshes = _to_y_up_left_handed(meshes)
     if bool(opts.bake_translation):
         meshes = _bake_translation_into_vertices(meshes)
+
+    if debug_transforms_out:
+        _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
 
     glb_writer.write_meshes(
         output_glb,
@@ -110,6 +119,47 @@ def convert(
                 key = name
             rects[key] = rect
         uv_export.write_uv_json(uv_json_out, width=atlas_result.width, height=atlas_result.height, model_rects=rects)
+
+
+def _write_transform_debug(path: str | Path, *, scene: VoxScene, meshes: list[dict], stage: str) -> None:
+    p = Path(path)
+    if p.parent:
+        p.parent.mkdir(parents=True, exist_ok=True)
+
+    prev: dict = {}
+    if p.exists():
+        try:
+            prev = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            prev = {}
+
+    model_rows: list[dict] = []
+    for midx, m in enumerate(scene.models):
+        model_rows.append(
+            {
+                "model_id": int(midx),
+                "name": m.name,
+                "scene_translation": [float(m.translation[0]), float(m.translation[1]), float(m.translation[2])],
+                "scene_rotation": [float(m.rotation[0]), float(m.rotation[1]), float(m.rotation[2]), float(m.rotation[3])],
+            }
+        )
+
+    mesh_rows: list[dict] = []
+    for i, mm in enumerate(meshes):
+        mesh_rows.append(
+            {
+                "mesh_index": int(i),
+                "name": str(mm.get("name")),
+                "model_id": int(mm.get("model_id", -1)),
+                "translation": [float(x) for x in (mm.get("translation") or (0.0, 0.0, 0.0))],
+                "rotation": [float(x) for x in (mm.get("rotation") or (0.0, 0.0, 0.0, 1.0))],
+                "pivot_p": [float(x) for x in (mm.get("pivot_p") or (0.0, 0.0, 0.0))],
+                "pivot_rp": [float(x) for x in (mm.get("pivot_rp") or (0.0, 0.0, 0.0))],
+            }
+        )
+
+    prev[str(stage)] = {"models": model_rows, "meshes": mesh_rows}
+    p.write_text(json.dumps(prev, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _assemble_meshes(
@@ -193,17 +243,23 @@ def _assemble_meshes(
             continue
 
         # Pivot handling: shift vertices so chosen pivot is at local origin.
-        # Compensate node translation so world placement stays the same: t' = t + R*p.
-        sx, sy, sz = scene.models[midx].size
+        # NOTE: MagicaVoxel scene translations are authored in a pivoted space; adding R*p here
+        # double-counts the pivot and causes large offsets. We therefore keep node translation
+        # as the scene-provided translation.
+        pos_arr = np.asarray(positions, dtype=np.float32)
+        if pos_arr.size:
+            mn = pos_arr.min(axis=0)
+            mx = pos_arr.max(axis=0)
+        else:
+            mn = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
+            mx = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         elif pivot == "bottom_center":
-            p = np.asarray((float(sx) * 0.5, float(sy) * 0.5, 0.0), dtype=np.float32)
+            p = np.asarray(((mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5, mn[2]), dtype=np.float32)
         else:
-            p = np.asarray((float(sx) * 0.5, float(sy) * 0.5, float(sz) * 0.5), dtype=np.float32)
-        p = p * float(scale)
+            p = np.asarray(((mn[0] + mx[0]) * 0.5, (mn[1] + mx[1]) * 0.5, (mn[2] + mx[2]) * 0.5), dtype=np.float32)
 
-        pos_arr = np.asarray(positions, dtype=np.float32)
         if pos_arr.size:
             pos_arr = pos_arr.copy()
             pos_arr[:, 0] -= float(p[0])
@@ -213,7 +269,6 @@ def _assemble_meshes(
         t = np.asarray((float(tx) * scale, float(ty) * scale, float(tz) * scale), dtype=np.float32)
         r = (float(rx), float(ry), float(rz), float(rw))
         rp = np.asarray(_quat_rotate_vec(r, (float(p[0]), float(p[1]), float(p[2]))), dtype=np.float32)
-        t = t + rp
 
         meshes.append(
             {
@@ -225,6 +280,8 @@ def _assemble_meshes(
                 "indices": np.asarray(indices, dtype=np.uint32),
                 "translation": (float(t[0]), float(t[1]), float(t[2])),
                 "rotation": r,
+                "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
+                "pivot_rp": (float(rp[0]), float(rp[1]), float(rp[2])),
             }
         )
 

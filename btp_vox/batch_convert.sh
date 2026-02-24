@@ -31,9 +31,10 @@ btp_convert_one() {
   local args=(
     "$in_vox"
     "$out_glb"
-    --scale "1.0"
+    --scale "0.02"
     --texture-out "$out_png"
     --uv-json-out "$out_uv"
+    --debug-transforms-out "$OUT_DIR/${stem}_xf.json"
     --atlas-pot
     --pivot bottom_center
   )
