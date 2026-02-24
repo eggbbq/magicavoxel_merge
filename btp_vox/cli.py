@@ -18,6 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scale", type=float, default=1.0, help="Uniform scale applied to geometry")
     parser.add_argument("--center", action="store_true", help="Center each model at origin")
     parser.add_argument("--center-bounds", action="store_true", help="Center using bounding box midpoint")
+    parser.add_argument("--pivot", choices=("corner", "bottom_center", "center"), default="corner", help="Model pivot")
     parser.add_argument("--weld", action="store_true", help="Enable vertex welding")
     parser.add_argument("--flip-v", action="store_true", help="Flip V texture coordinate")
     parser.add_argument("--bake-translation", action="store_true", help="Bake translation into vertex positions")
@@ -50,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     pipeline_opts = PipelineOptions(
         scale=args.scale,
+        pivot=args.pivot,
         center=args.center,
         center_bounds=args.center_bounds,
         weld=args.weld,

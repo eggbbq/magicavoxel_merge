@@ -22,12 +22,17 @@ btp_convert_one() {
   local out_png="$OUT_DIR/${stem}.png"
   local out_uv="$OUT_DIR/${stem}_uv.json"
 
+#   --pivot corner 
+#   --pivot bottom_center
+#   --pivot center
+
   local args=(
     "$in_vox"
     "$out_glb"
     --texture-out "$out_png"
     --uv-json-out "$out_uv"
     --atlas-pot
+    --pivot center
   )
 
   python -m btp_vox.cli "${args[@]}"

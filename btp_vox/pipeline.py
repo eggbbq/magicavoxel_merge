@@ -30,6 +30,7 @@ class AtlasOptions:
 class PipelineOptions:
     axis: str = "y_up"
     scale: float = 1.0
+    pivot: str = "corner"
     center: bool = False
     center_bounds: bool = False
     weld: bool = False
@@ -81,6 +82,7 @@ def convert(
         atlas_result,
         scale=float(opts.scale),
         flip_v=bool(opts.flip_v),
+        pivot=str(opts.pivot),
     )
 
     meshes = _to_y_up_left_handed(meshes)
@@ -116,8 +118,12 @@ def _assemble_meshes(
     *,
     scale: float,
     flip_v: bool,
+    pivot: str = "corner",
 ) -> List[dict]:
     meshes: List[dict] = []
+
+    if pivot not in ("corner", "bottom_center", "center"):
+        raise ValueError("pivot must be one of: corner, bottom_center, center")
 
     for midx, quads in enumerate(mesher_result.quads_per_model):
         tx, ty, tz = scene.models[midx].translation
@@ -185,19 +191,58 @@ def _assemble_meshes(
         if not positions:
             continue
 
+        # Pivot handling: shift vertices so chosen pivot is at local origin, and offset node translation
+        # so the model stays in the same world location.
+        sx, sy, sz = scene.models[midx].size
+        if pivot == "corner":
+            p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
+        elif pivot == "bottom_center":
+            p = np.asarray((float(sx) * 0.5, float(sy) * 0.5, 0.0), dtype=np.float32)
+        else:
+            p = np.asarray((float(sx) * 0.5, float(sy) * 0.5, float(sz) * 0.5), dtype=np.float32)
+        p = p * float(scale)
+
+        pos_arr = np.asarray(positions, dtype=np.float32)
+        if pos_arr.size:
+            pos_arr = pos_arr.copy()
+            pos_arr[:, 0] -= float(p[0])
+            pos_arr[:, 1] -= float(p[1])
+            pos_arr[:, 2] -= float(p[2])
+
+        t = np.asarray((float(tx) * scale, float(ty) * scale, float(tz) * scale), dtype=np.float32)
+        r = (float(rx), float(ry), float(rz), float(rw))
+        rp = np.asarray(_quat_rotate_vec(r, (float(p[0]), float(p[1]), float(p[2]))), dtype=np.float32)
+        t = t + rp
+
         meshes.append(
             {
                 "name": scene.models[midx].name,
-                "positions": np.asarray(positions, dtype=np.float32),
+                "positions": pos_arr,
                 "normals": np.asarray(normals, dtype=np.float32),
                 "texcoords": np.asarray(texcoords, dtype=np.float32),
                 "indices": np.asarray(indices, dtype=np.uint32),
-                "translation": (float(tx) * scale, float(ty) * scale, float(tz) * scale),
-                "rotation": (float(rx), float(ry), float(rz), float(rw)),
+                "translation": (float(t[0]), float(t[1]), float(t[2])),
+                "rotation": r,
             }
         )
 
     return meshes
+
+
+def _quat_rotate_vec(q: tuple[float, float, float, float], v: tuple[float, float, float]) -> tuple[float, float, float]:
+    # Rotate vector v by quaternion q.
+    x, y, z, w = (float(q[0]), float(q[1]), float(q[2]), float(q[3]))
+    vx, vy, vz = (float(v[0]), float(v[1]), float(v[2]))
+    # q * (v,0)
+    ix = w * vx + y * vz - z * vy
+    iy = w * vy + z * vx - x * vz
+    iz = w * vz + x * vy - y * vx
+    iw = -x * vx - y * vy - z * vz
+    # (q * v) * conj(q)
+    rx = ix * w + iw * -x + iy * -z - iz * -y
+    ry = iy * w + iw * -y + iz * -x - ix * -z
+    rz = iz * w + iw * -z + ix * -y - iy * -x
+    return (float(rx), float(ry), float(rz))
 
 
 def _quat_to_mat3(q: tuple[float, float, float, float]) -> np.ndarray:
