@@ -25,6 +25,7 @@ btp_convert_one() {
 #   --pivot corner 
 #   --pivot bottom_center
 #   --pivot center
+#   --normal-to-color
 
   local args=(
     "$in_vox"
