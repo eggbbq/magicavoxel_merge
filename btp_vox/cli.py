@@ -26,8 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--atlas-inset", type=float, default=1.0, help="Atlas inset in texels")
     parser.add_argument("--atlas-texel-scale", type=int, default=1, help="Texel scale applied to each quad")
     parser.add_argument("--atlas-style", choices=("baked", "solid"), default="baked", help="Atlas style")
+    parser.add_argument("--atlas-layout", choices=("by-model", "global"), default="by-model", help="Atlas layout")
     parser.add_argument("--atlas-square", action="store_true", help="Force atlas to be square")
     parser.add_argument("--atlas-pot", action="store_true", help="Force atlas dimensions to power-of-two")
+    parser.add_argument("--atlas-tight-blocks", action="store_true", help="Tight-pack per-model blocks (by-model layout)")
 
     return parser
 
@@ -40,8 +42,10 @@ def main(argv: list[str] | None = None) -> int:
         pad=args.atlas_pad,
         inset=args.atlas_inset,
         texel_scale=args.atlas_texel_scale,
+        layout=args.atlas_layout,
         square=args.atlas_square,
         pot=args.atlas_pot,
+        tight_blocks=args.atlas_tight_blocks,
         style=args.atlas_style,
     )
     pipeline_opts = PipelineOptions(

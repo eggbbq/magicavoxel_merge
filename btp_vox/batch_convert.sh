@@ -22,11 +22,15 @@ btp_convert_one() {
   local out_png="$OUT_DIR/${stem}.png"
   local out_uv="$OUT_DIR/${stem}_uv.json"
 
-  python -m btp_vox.cli \
-    "$in_vox" "$out_glb" \
-    --texture-out "$out_png" \
-    --atlas-pot \
+  local args=(
+    "$in_vox"
+    "$out_glb"
+    --texture-out "$out_png"
     --uv-json-out "$out_uv"
+    --atlas-pot
+  )
+
+  python -m btp_vox.cli "${args[@]}"
 }
 
 export -f btp_convert_one

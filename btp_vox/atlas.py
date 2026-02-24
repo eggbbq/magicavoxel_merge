@@ -38,43 +38,99 @@ def build_atlas(
     texel_scale: int = 1,
     square: bool = False,
     pot: bool = False,
+    layout: str = "by-model",
+    tight_blocks: bool = False,
     style: str = "baked",
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
     if style not in ("baked", "solid"):
         raise ValueError("style must be 'baked' or 'solid'")
+    if layout not in ("by-model", "global"):
+        raise ValueError("layout must be 'by-model' or 'global'")
 
     quads_per_model = mesher_result.quads_per_model
-    quad_local_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
-    model_block_sizes: Dict[int, Tuple[int, int]] = {}
 
-    for midx, quads in enumerate(quads_per_model):
-        rects: List[Tuple[int, int, int]] = []
-        for qidx, quad in enumerate(quads):
-            tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
-            tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
-            rects.append((qidx, tex_w, tex_h))
+    # Two layouts:
+    # - by-model: each model gets its own packed block, then blocks are packed into atlas
+    # - global: all quads are packed together into a single atlas (usually better fill rate)
+    quad_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    model_block_sizes: Dict[int, Tuple[int, int]] = {}
+    model_positions: Dict[int, Tuple[int, int]] = {}
+
+    if layout == "global":
+        rects_all: List[Tuple[int, int, int]] = []
+        rid_to_mq: dict[int, tuple[int, int]] = {}
+        rid = 0
+        for midx, quads in enumerate(quads_per_model):
+            for qidx, quad in enumerate(quads):
+                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
+                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+                rects_all.append((rid, tex_w, tex_h))
+                rid_to_mq[rid] = (midx, qidx)
+                rid += 1
 
         if pot or square:
-            block_w, block_h, positions = _pack_best_bin(
-                rects,
-                square=bool(square),
-            )
+            atlas_w, atlas_h, positions = _pack_best_bin(rects_all, square=bool(square))
         else:
-            block_w, block_h, positions = _pack_rects(rects)
-        for qidx, pos in positions.items():
-            quad_local_positions[(midx, qidx)] = pos
-        model_block_sizes[midx] = (block_w, block_h)
+            atlas_w, atlas_h, positions = _pack_rects(rects_all)
 
-    model_rects = [(midx, sz[0], sz[1]) for midx, sz in model_block_sizes.items()]
-    if pot or square:
-        atlas_w, atlas_h, model_positions = _pack_best_bin(
-            model_rects,
-            square=bool(square),
-        )
+        for rid, (x, y) in positions.items():
+            midx, qidx = rid_to_mq[int(rid)]
+            quad_positions[(midx, qidx)] = (int(x), int(y))
+
+        # In global layout, each model's rect is computed from its quads' extents.
+        for midx, quads in enumerate(quads_per_model):
+            if not quads:
+                model_block_sizes[midx] = (1, 1)
+                model_positions[midx] = (0, 0)
+                continue
+            u_min = None
+            v_min = None
+            u_max = None
+            v_max = None
+            for qidx, quad in enumerate(quads):
+                ox, oy = quad_positions[(midx, qidx)]
+                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
+                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+                u_min = ox if u_min is None else min(u_min, ox)
+                v_min = oy if v_min is None else min(v_min, oy)
+                u_max = (ox + tex_w) if u_max is None else max(u_max, ox + tex_w)
+                v_max = (oy + tex_h) if v_max is None else max(v_max, oy + tex_h)
+            model_positions[midx] = (int(u_min or 0), int(v_min or 0))
+            model_block_sizes[midx] = (int((u_max or 1) - (u_min or 0)), int((v_max or 1) - (v_min or 0)))
+
     else:
-        atlas_w, atlas_h, model_positions = _pack_rects(model_rects)
+        quad_local_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+        for midx, quads in enumerate(quads_per_model):
+            rects: List[Tuple[int, int, int]] = []
+            for qidx, quad in enumerate(quads):
+                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
+                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+                rects.append((qidx, tex_w, tex_h))
+
+            if bool(tight_blocks):
+                block_w, block_h, positions = _pack_rects(rects)
+            else:
+                if pot or square:
+                    block_w, block_h, positions = _pack_best_bin(rects, square=bool(square))
+                else:
+                    block_w, block_h, positions = _pack_rects(rects)
+            for qidx, pos in positions.items():
+                quad_local_positions[(midx, qidx)] = pos
+            model_block_sizes[midx] = (block_w, block_h)
+
+        model_rects = [(midx, sz[0], sz[1]) for midx, sz in model_block_sizes.items()]
+        if pot or square:
+            atlas_w, atlas_h, model_positions = _pack_best_bin(model_rects, square=bool(square))
+        else:
+            atlas_w, atlas_h, model_positions = _pack_rects(model_rects)
+
+        for midx, quads in enumerate(quads_per_model):
+            mx, my = model_positions.get(midx, (0, 0))
+            for qidx, _quad in enumerate(quads):
+                qx, qy = quad_local_positions[(midx, qidx)]
+                quad_positions[(midx, qidx)] = (int(mx + qx), int(my + qy))
 
     if atlas_w == 0 or atlas_h == 0:
         atlas_w = atlas_h = 1
@@ -108,15 +164,12 @@ def build_atlas(
         )
 
         for qidx, quad in enumerate(quads):
-            local_pos = quad_local_positions[(midx, qidx)]
-            qx, qy = local_pos
             tex_w = int(max(1, quad.size_u * texel_scale))
             tex_h = int(max(1, quad.size_v * texel_scale))
             full_w = tex_w + pad * 2
             full_h = tex_h + pad * 2
 
-            ox = mx + qx
-            oy = my + qy
+            ox, oy = quad_positions[(midx, qidx)]
 
             if style == "solid":
                 block = _quad_block_rgba_solid(quad.colors, palette, pad, full_w, full_h)

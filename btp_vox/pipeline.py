@@ -22,6 +22,7 @@ class AtlasOptions:
     layout: str = "by-model"  # or "global"
     square: bool = False
     pot: bool = False
+    tight_blocks: bool = False
     style: str = "baked"  # baked or solid
 
 
@@ -59,6 +60,8 @@ def convert(
         texel_scale=int(opts.atlas.texel_scale),
         square=bool(opts.atlas.square),
         pot=bool(opts.atlas.pot),
+        layout=str(opts.atlas.layout),
+        tight_blocks=bool(opts.atlas.tight_blocks),
         style=str(opts.atlas.style),
     )
 
