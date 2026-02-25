@@ -3,7 +3,7 @@ set -euo pipefail
 
 DIR_IN="/Users/graylian/workspace/VoxPLC"
 DIR_OUT="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
-JOBS=8
+BS="${JOBS:-4}"
 
 mkdir -p "$DIR_OUT"
 
