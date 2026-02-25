@@ -19,7 +19,7 @@ btp_convert_one() {
   stem="${stem%.vox}"
 
   local out_model="$OUT_DIR/${stem}.glb"
-  local out_png="$OUT_DIR/${stem}.png"
+  local out_tex="$OUT_DIR/${stem}.png"
   local out_uv="$OUT_DIR/${stem}_uv.json"
 
 #   --pivot corner 
@@ -27,16 +27,20 @@ btp_convert_one() {
 #   --pivot center
 #   --atlas-layout by-model | global
 #   --format glb | gltf
+#   --atlas-pot
+#   --texture-alpha auto|rgba|rgb
 
 
   local args=(
     "$in_vox"
     "$out_model"
     --uv-json-out "$out_uv"
+    --texture-out "$out_tex"
     --format glb
     --scale 0.02
-    --atlas-pot
     --atlas-layout global
+    --atlas-pot
+    --texture-alpha rgb
     --pivot center
   )
 

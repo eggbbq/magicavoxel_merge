@@ -18,6 +18,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--print-nodes", action="store_true", help="Print VOX scene graph nodes to stderr")
     parser.add_argument("--format", choices=("glb", "gltf"), default="glb", help="Output format")
 
+    parser.add_argument(
+        "--texture-alpha",
+        choices=("auto", "rgba", "rgb"),
+        default="auto",
+        help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha",
+    )
+
     parser.add_argument("--scale", type=float, default=1.0, help="Uniform scale applied to geometry")
     parser.add_argument("--center", action="store_true", help="Center each model at origin")
     parser.add_argument("--center-bounds", action="store_true", help="Center using bounding box midpoint")
@@ -60,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         weld=args.weld,
         flip_v=args.flip_v,
         bake_translation=args.bake_translation,
+        texture_alpha=str(args.texture_alpha),
         atlas=atlas_opts,
     )
 

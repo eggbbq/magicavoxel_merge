@@ -41,6 +41,7 @@ class PipelineOptions:
     weld: bool = False
     flip_v: bool = False
     bake_translation: bool = False
+    texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
 
 
@@ -91,6 +92,7 @@ def convert(
         layout=str(opts.atlas.layout),
         tight_blocks=bool(opts.atlas.tight_blocks),
         style=str(opts.atlas.style),
+        alpha=str(opts.texture_alpha),
     )
     mark("build_atlas")
 

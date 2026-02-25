@@ -43,6 +43,7 @@ def build_atlas(
     layout: str = "by-model",
     tight_blocks: bool = False,
     style: str = "baked",
+    alpha: str = "auto",
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
@@ -52,6 +53,8 @@ def build_atlas(
         raise ValueError("style must be 'baked' or 'solid'")
     if layout not in ("by-model", "global"):
         raise ValueError("layout must be 'by-model' or 'global'")
+    if alpha not in ("auto", "rgba", "rgb"):
+        raise ValueError("alpha must be 'auto', 'rgba', or 'rgb'")
 
     quads_per_model = mesher_result.quads_per_model
 
@@ -231,7 +234,16 @@ def build_atlas(
 
             quad_uvs[(midx, qidx)] = QuadUV(u0=u0, v0=v0, u1=u1, v1=v1)
 
-    img = Image.fromarray(atlas_arr, mode="RGBA")
+    img_rgba = Image.fromarray(atlas_arr, mode="RGBA")
+    if alpha == "rgb":
+        img = img_rgba.convert("RGB")
+    elif alpha == "auto":
+        # If there is no transparency anywhere, strip alpha to reduce file size.
+        has_alpha = bool(np.any(atlas_arr[:, :, 3] != 255))
+        img = img_rgba if has_alpha else img_rgba.convert("RGB")
+    else:
+        img = img_rgba
+
     texture_png = _image_to_bytes(img)
 
     return AtlasBuildResult(
