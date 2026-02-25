@@ -33,13 +33,13 @@ btp_convert_one() {
 #   --uv-flip-v
 
   local args=(
-    --input         "$in_vox"
-    --output        "$out_model"
-    --uv-out        "$out_uv"
+    --input         $in_vox
+    --output        $out_model
+    --uv-out        $out_uv
     
     --tex-pot
     --tex-fmt       rgb
-    --tex-out       "$out_tex"
+    --tex-out       $out_tex
     --tex-layout    global
     
     --scale         0.02
