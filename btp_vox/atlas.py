@@ -546,9 +546,13 @@ def _quad_block_rgba(
 
     # Vectorized palette lookup and texel scaling.
     # `colors` is stored as a (V, U) grid (rows=V, cols=U).
-    idx = colors.astype(np.int32)
-    idx = np.clip(idx - 1, 0, 255)
+    # Palette index 0 is treated as fully transparent.
+    idx0 = colors.astype(np.int32)
+    idx = np.clip(idx0 - 1, 0, 255)
     rgba = palette[idx]  # (V, U, 4)
+    if rgba.size:
+        rgba = rgba.copy()
+        rgba[idx0 == 0, 3] = 0
     if texel_scale != 1:
         rgba = np.repeat(np.repeat(rgba, texel_scale, axis=0), texel_scale, axis=1)
 

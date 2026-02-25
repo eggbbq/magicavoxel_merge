@@ -15,7 +15,7 @@ import numpy as np
 
 from . import atlas as atlas_mod
 from . import uv_export, glb_writer
-from .btp_mesher import MesherResult, build_quads
+from .btp_mesher import MesherResult, Quad, build_quads
 from .voxio import VoxScene, load_scene
 
 
@@ -41,6 +41,8 @@ class PipelineOptions:
     weld: bool = False
     flip_v: bool = False
     cull: str = ""
+    plat_cutout: bool = False
+    plat_cutoff: float = 0.5
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
 
@@ -78,7 +80,10 @@ def convert(
 
     if bool(print_nodes):
         _print_scene_nodes(scene)
-    mesher_result = build_quads(scene)
+    if bool(opts.plat_cutout):
+        mesher_result = _build_plat_cutout_quads(scene)
+    else:
+        mesher_result = build_quads(scene)
 
     cull_letters = str(getattr(opts, "cull", "") or "").strip().lower()
     if cull_letters:
@@ -123,8 +128,8 @@ def convert(
         pot=bool(opts.atlas.pot),
         layout=str(opts.atlas.layout),
         tight_blocks=bool(opts.atlas.tight_blocks),
-        style=str(opts.atlas.style),
-        alpha=str(opts.texture_alpha),
+        style=("baked" if bool(opts.plat_cutout) else str(opts.atlas.style)),
+        alpha=("rgba" if bool(opts.plat_cutout) else str(opts.texture_alpha)),
     )
     mark("build_atlas")
 
@@ -169,6 +174,8 @@ def convert(
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
+            alpha_mode=("MASK" if bool(opts.plat_cutout) else None),
+            alpha_cutoff=(float(opts.plat_cutoff) if bool(opts.plat_cutout) else None),
         )
     else:
         glb_writer.write_scene(
@@ -179,6 +186,8 @@ def convert(
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
+            alpha_mode=("MASK" if bool(opts.plat_cutout) else None),
+            alpha_cutoff=(float(opts.plat_cutoff) if bool(opts.plat_cutout) else None),
         )
 
     mark(f"write_{str(output_format)}")
@@ -273,6 +282,70 @@ def _write_transform_debug(path: str | Path, *, scene: VoxScene, meshes: list[di
 
     prev[str(stage)] = {"models": model_rows, "meshes": mesh_rows}
     p.write_text(json.dumps(prev, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _build_plat_cutout_quads(scene: VoxScene) -> MesherResult:
+    per_model: list[list[Quad]] = []
+
+    for midx, model in enumerate(scene.models):
+        vox = np.asarray(model.voxels)
+        if vox.size == 0:
+            per_model.append([])
+            continue
+
+        sx, sy, sz = (int(model.size[0]), int(model.size[1]), int(model.size[2]))
+        if sx <= 0 or sy <= 0 or sz <= 0:
+            per_model.append([])
+            continue
+
+        filled = vox != 0
+        if not bool(np.any(filled)):
+            per_model.append([])
+            continue
+
+        # For each (x,y), pick the highest z with a voxel.
+        # filled_xyz: (sx,sy,sz)
+        any_xy = np.any(filled, axis=2)  # (sx,sy)
+        z_indices = np.arange(sz, dtype=np.int32)
+        z_masked = np.where(filled, z_indices[None, None, :], -1)
+        top_z = np.max(z_masked, axis=2).astype(np.int32)  # (sx,sy)
+
+        # Build top-down color plate. colors is (V, U) == (sy, sx)
+        xs = np.arange(sx, dtype=np.int32)[:, None]
+        ys = np.arange(sy, dtype=np.int32)[None, :]
+        top_colors_xy = np.where(any_xy, vox[xs, ys, top_z], 0).astype(np.int32)  # (sx,sy)
+        colors_vu = top_colors_xy.T.copy()
+
+        # Place quad at top surface plane: z = (max top_z) + 1
+        z_plane = int(np.max(top_z)) + 1
+        origin = (0, 0, z_plane)
+        size_u = sx
+        size_v = sy
+
+        # axis=2 (Z), normal_sign=+1
+        verts = (
+            (0.0, 0.0, float(z_plane)),
+            (float(size_u), 0.0, float(z_plane)),
+            (float(size_u), float(size_v), float(z_plane)),
+            (0.0, float(size_v), float(z_plane)),
+        )
+        per_model.append(
+            [
+                Quad(
+                    model_index=int(midx),
+                    origin=origin,
+                    size_u=int(size_u),
+                    size_v=int(size_v),
+                    axis=2,
+                    normal_sign=1,
+                    colors=colors_vu,
+                    verts=verts,
+                    normal=(0.0, 0.0, 1.0),
+                )
+            ]
+        )
+
+    return MesherResult(quads_per_model=per_model)
 
 
 def _assemble_meshes(

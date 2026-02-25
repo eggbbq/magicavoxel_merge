@@ -19,6 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scale", type=float, default=1.0, help="Uniform scale applied to geometry")
     parser.add_argument("--pivot", choices=("corner", "bottom_center", "center"), default="corner", help="Model pivot")
     parser.add_argument("--cull", default="", help="Cull faces by letters in MagicaVoxel model space: t=+Z, b=-Z, l=-X, r=+X, f=+Y, k=-Y")
+    parser.add_argument("--plat-cutout", action="store_true", help="Plat cutout mode: one top quad per model + alpha clip")
+    parser.add_argument("--plat-cutoff", type=float, default=0.5, help="Alpha cutoff for --plat-cutout (glTF alphaMode=MASK)")
     
     parser.add_argument("--uv-out", help="Write per-model UV rectangles to this JSON file")
     parser.add_argument("--uv-flip-v", action="store_true", help="Flip V texture coordinate")
@@ -56,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
         pivot=args.pivot,
         flip_v=args.uv_flip_v,
         cull=str(args.cull),
+        plat_cutout=bool(args.plat_cutout),
+        plat_cutoff=float(args.plat_cutoff),
         texture_alpha=str(args.tex_fmt),
         atlas=atlas_opts,
     )

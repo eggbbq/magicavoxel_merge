@@ -232,6 +232,8 @@ python -m btp_vox.cli \
 - `--tex-pad <int>`
 - `--tex-inset <float>`
 - `--tex-texel-scale <int>`
+- `--plat-cutout`：贴片裁切模式（每个 model 输出 1 个顶面四边形 + alpha clip）
+- `--plat-cutoff <float>`：贴片裁切的 alpha cutoff（默认 0.5）
 
 不常用/调试参数：
 

@@ -38,10 +38,10 @@ btp_convert_one() {
     --input         $in_vox
     --output        $out_model
     --uv-out        $out_uv
-    --cull          b
+    --plat-cutout
     
     --tex-pot
-    --tex-fmt       rgb
+    --tex-fmt       rgba
     --tex-out       $out_tex
     --tex-layout    global
     

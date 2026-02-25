@@ -17,6 +17,8 @@ def write_meshes_gltf(
     texture_png: bytes | None,
     texture_path: str | None,
     name_prefix: str | None = None,
+    alpha_mode: str | None = None,
+    alpha_cutoff: float | None = None,
 ) -> None:
     from pygltflib import (
         GLTF2,
@@ -143,6 +145,8 @@ def write_meshes_gltf(
                     metallicFactor=0.0,
                     roughnessFactor=1.0,
                 ),
+                alphaMode=(str(alpha_mode) if alpha_mode else None),
+                alphaCutoff=(float(alpha_cutoff) if alpha_cutoff is not None else None),
                 doubleSided=True,
             )
         ],
@@ -165,6 +169,8 @@ def write_scene(
     texture_png: bytes | None,
     texture_path: str | None,
     name_prefix: str | None = None,
+    alpha_mode: str | None = None,
+    alpha_cutoff: float | None = None,
 ) -> None:
     """Write a node hierarchy to GLB.
 
@@ -293,6 +299,8 @@ def write_scene(
                     metallicFactor=0.0,
                     roughnessFactor=1.0,
                 ),
+                alphaMode=(str(alpha_mode) if alpha_mode else None),
+                alphaCutoff=(float(alpha_cutoff) if alpha_cutoff is not None else None),
                 doubleSided=True,
             )
         ],
@@ -315,6 +323,8 @@ def write_scene_gltf(
     texture_png: bytes | None,
     texture_path: str | None,
     name_prefix: str | None = None,
+    alpha_mode: str | None = None,
+    alpha_cutoff: float | None = None,
 ) -> None:
     from pygltflib import (
         GLTF2,
@@ -446,6 +456,8 @@ def write_scene_gltf(
                     metallicFactor=0.0,
                     roughnessFactor=1.0,
                 ),
+                alphaMode=(str(alpha_mode) if alpha_mode else None),
+                alphaCutoff=(float(alpha_cutoff) if alpha_cutoff is not None else None),
                 doubleSided=True,
             )
         ],
