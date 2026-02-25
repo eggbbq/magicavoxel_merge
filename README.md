@@ -2,12 +2,17 @@
 
 `btp_vox` 是一个将 MagicaVoxel 的 `.vox` 文件转换为 glTF 2.0 的工具。
 
+名称含义：
+
+- `btp`：Block-Topology Preservation（块拓扑保留的体素面片化思路）
+- `vox`：输入来源是 MagicaVoxel 的 `.vox`
+
 目标（面向游戏工作流）：
 
 - 输出 **glTF2**（`.glb` 或 `.gltf + .bin + .png`）
 - 自动生成 **atlas 纹理**（PNG），并为每个模型写出 **UV 信息 JSON**（可选）
 - 支持 **多模型 / 场景树（scene graph）** 的 `.vox`
-- 导出时尽量减少重复 mesh：同一个 `model_id` 只生成一份 mesh，可被多个节点复用
+- 导出按场景树实例输出 mesh（避免丢失 VOX 的 instancing 引用）
 
 ---
 
@@ -71,8 +76,8 @@ python -m btp_vox.cli \
 
 1. 修改脚本顶部：
 
-- `IN_DIR`：输入 `.vox` 所在目录
-- `OUT_DIR`：输出目录
+- `DIR_IN`：输入 `.vox` 所在目录
+- `DIR_OUT`：输出目录
 - `JOBS`：并发数
 
 2. 运行：
@@ -290,13 +295,4 @@ python -m btp_vox.cli --input input.vox --output output.glb --plat-suffix -mycut
 - 用 `--debug-transforms-out` 导出调试数据
 - 检查引擎导入时是否又做了额外缩放
 
----
 
-## 9. 与仓库根 README 的关系
-
-仓库根目录的 `README.md` 主要描述的是 `magicavoxel_merge`（另一个转换入口）。
-
-本文件专注于 `btp_vox`：
-
-- CLI：`python -m btp_vox.cli ...`
-- 脚本：`btp_vox/batch_convert.sh`
