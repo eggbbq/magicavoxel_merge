@@ -32,10 +32,11 @@ btp_convert_one() {
   local args=(
     "$in_vox"
     "$out_model"
-    --format "glb"
-    --scale "0.02"
     --uv-json-out "$out_uv"
+    --format glb
+    --scale 0.02
     --atlas-pot
+    --atlas-layout global
     --pivot center
   )
 
