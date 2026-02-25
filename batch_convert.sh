@@ -1,128 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Batch convert all .vox files in a directory to .glb using magicavoxel_merge.
-#
-# Edit IN_DIR / OUT_DIR / JOBS below, then run:
-#   ./batch_convert.sh
-#
-# Notes:
-# - Uses xargs parallelism (jobs defaults to number of CPU cores).
-# - Output filenames follow input stem: <stem>.glb
-# - External textures are default (writes <stem>.png alongside .glb). Set TEXTURE_OUT=0 to embed textures into .glb
+# Batch convert all .vox files inside IN_DIR into GLB + atlas PNG + UV JSON using btp_vox.
+# Usage: customize IN_DIR/OUT_DIR and run ./btp_vox/batch_convert.sh
 
 IN_DIR="/Users/graylian/workspace/VoxPLC"
 OUT_DIR="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
-# Max parallel jobs. Leave empty to auto-detect CPU cores.
-JOBS="5"
+JOBS="${JOBS:-4}"
 
-if [[ ! -d "$IN_DIR" ]]; then
-  echo "Input dir does not exist: $IN_DIR" >&2
-  exit 2
-fi
+export IN_DIR OUT_DIR JOBS
 
 mkdir -p "$OUT_DIR"
 
-if [[ -z "$JOBS" ]]; then
-  if command -v sysctl >/dev/null 2>&1; then
-    JOBS="$(sysctl -n hw.ncpu)"
-  else
-    JOBS="4"
-  fi
-fi
-
-# Export settings (match test_convert.sh defaults)
-MODE="atlas" # atlas, palette
-SCALE="0.02"
-ATLAS_PAD="0" # atlas padding in texels
-ATLAS_INSET="0" # atlas inset in texels
-ATLAS_STYLE="baked" # baked, solid
-ATLAS_TEXEL_SCALE="1" # texture texel scale
-ATLAS_LAYOUT="by-model" # by-model, by-palette
-CENTER_FLAG="--center-bounds" # center the model --center-bounds --center
-HANDEDNESS="right" # right, left
-AXIS="y_up" # y_up, z_up
-
-# Set TEXTURE_OUT=0 to embed textures into the glb
-TEXTURE_OUT="${TEXTURE_OUT:-1}"
-
-if [[ -z "${HANDEDNESS:-}" ]]; then
-  HANDEDNESS="right"
-fi
-
-if [[ -z "${AXIS:-}" ]]; then
-  AXIS="y_up"
-fi
-
-export OUT_DIR MODE SCALE ATLAS_PAD ATLAS_INSET ATLAS_STYLE ATLAS_TEXEL_SCALE ATLAS_LAYOUT CENTER_FLAG HANDEDNESS AXIS TEXTURE_OUT
-
-convert_one() {
+btp_convert_one() {
   local in_vox="$1"
-  local base
-  base="$(basename "$in_vox")"
-  base="${base%.vox}"
+  local stem
+  stem="$(basename "$in_vox")"
+  stem="${stem%.vox}"
 
-  local out_glb="$OUT_DIR/${base}.glb"
-  local out_uv_json="$OUT_DIR/${base}_uv.json"
+  local out_model="$OUT_DIR/${stem}.glb"
+  local out_png="$OUT_DIR/${stem}.png"
+  local out_uv="$OUT_DIR/${stem}_uv.json"
 
-  if [[ "$TEXTURE_OUT" == "1" ]]; then
-    local out_png="$OUT_DIR/${base}.png"
-    # --cull-mv-z 0 \
-    # --weld \
-    python -m magicavoxel_merge \
-      "$in_vox" "$out_glb" \
-      --axis "$AXIS" \
-      --mode "$MODE" \
-      --scale "$SCALE" \
-      --atlas-pad "$ATLAS_PAD" \
-      --atlas-inset "$ATLAS_INSET" \
-      --atlas-style "$ATLAS_STYLE" \
-      --atlas-texel-scale "$ATLAS_TEXEL_SCALE" \
-      --atlas-layout "$ATLAS_LAYOUT" \
-      --handedness "$HANDEDNESS" \
-      $CENTER_FLAG \
-      --texture-out "$out_png" \
-      --export-uv-offsets "$out_uv_json" \
-      --no-atlas-square \
-      --merge-strategy maxrect
-  else
-    python -m magicavoxel_merge \
-      "$in_vox" "$out_glb" \
-      --axis "$AXIS" \
-      --mode "$MODE" \
-      --scale "$SCALE" \
-      --atlas-pad "$ATLAS_PAD" \
-      --atlas-inset "$ATLAS_INSET" \
-      --atlas-style "$ATLAS_STYLE" \
-      --atlas-texel-scale "$ATLAS_TEXEL_SCALE" \
-      --atlas-layout "$ATLAS_LAYOUT" \
-      --handedness "$HANDEDNESS" \
-      $CENTER_FLAG \
-      --weld \
-      --export-uv-offsets "$out_uv_json" \
-      --no-atlas-square \
-      --merge-strategy maxrect
-  fi
+#   --pivot corner 
+#   --pivot bottom_center
+#   --pivot center
+#   --atlas-layout by-model | global
+#   --format glb | gltf
+
+
+  local args=(
+    "$in_vox"
+    "$out_model"
+    --uv-json-out "$out_uv"
+    --format glb
+    --scale 0.02
+    --atlas-pot
+    --atlas-layout global
+    --pivot center
+  )
+
+  python -m btp_vox.cli "${args[@]}"
 }
 
-export -f convert_one
+export -f btp_convert_one
 
-# Use NUL delimiters to handle spaces in filenames.
-VOX_COUNT="$(find "$IN_DIR" -type f -iname "*.vox" | wc -l | tr -d ' ')"
-if [[ "$VOX_COUNT" == "0" ]]; then
-  echo "No .vox files found under: $IN_DIR" >&2
-  exit 0
-fi
-
-echo "Converting $VOX_COUNT .vox files from '$IN_DIR' -> '$OUT_DIR' (jobs=$JOBS, mode=$MODE, atlas_style=$ATLAS_STYLE)"
-
-find "$IN_DIR" -type f \( -iname "*.vox" \) -print0 \
-  | xargs -0 -n 1 -P "$JOBS" bash -lc 'convert_one "$0"' \
-  || exit $?
-
-# Optional listing
-if [[ "$TEXTURE_OUT" == "1" ]]; then
-  ls -lh "$OUT_DIR"/*.glb "$OUT_DIR"/*.png 2>/dev/null || true
-else
-  ls -lh "$OUT_DIR"/*.glb 2>/dev/null || true
-fi
+find "$IN_DIR" -type f -name "*.vox" -print0 \
+  | xargs -0 -n 1 -P "$JOBS" bash -lc 'btp_convert_one "$0"'

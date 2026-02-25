@@ -7,7 +7,7 @@ from typing import Iterable
 
 import numpy as np
 
-from magicavoxel_merge.glb import write_glb_scene
+from .glb_internal import write_glb_scene
 
 
 def write_meshes_gltf(

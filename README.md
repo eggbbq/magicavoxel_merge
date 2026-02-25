@@ -1,568 +1,262 @@
-# MagicaVoxelMegre 使用说明（MagicaVoxel → GLB）
-废话: 该程序完全有windsurf编写。起因是我最近正在制作体素风格的游戏。目前最好用的体素建模软件依然是MagicaVoxel。
-但是MagicaVoxel 不提供模型导出优化，很难直接用于游戏资源。在我陆陆续续尝试了无数的体素网格优化工具之后, 我花了很多时间去给开源作者测试bug， 提出修复建议，问题始终得不到很好的解决。
-于是我就决定用windsurf帮我编写一个工具，事实证明windsurf工作得很出色，它只花费了几个小时（其中大部分时间花费在我逐步拆解需求，和测试软件），并且它做得非常出色，我从头到位并没有编写一句代码。
+# btp_vox 使用文档（MagicaVoxel .vox → glTF2 / GLB）
 
-大纲: 该程序只导出glb(gltf2.0 的二进制文件)，因为我是做游戏的，gltf2.0 是事实上的标准。OBJ格式因为它有缺陷，所以就不管它。cocos creator 3x 完美的支持gltf导入。Unity 默认不支持，但是只需要下载一个插件即可玩么支持gltf文件导入。FBX由于生成麻烦所以也放弃了。实在需要OBJ/FBX 借助Blender 转换即可。
+`btp_vox` 是一个将 MagicaVoxel 的 `.vox` 文件转换为 glTF 2.0 的工具。
 
+目标（面向游戏工作流）：
 
-本工程用于将 MagicaVoxel 的 `.vox` 文件导出为 glTF 2.0 `.glb`，并提供：
-
-- `palette` / `atlas` 两种贴图策略
-- `atlas-style baked`（烘焙型 atlas：尽量少面数）
-- 坐标轴与左右手系转换（适配 Cocos Creator / Blender 等）
-- 可选顶点焊接（weld）
-- 批量转换脚本与 Blender 无界面重拓扑脚本
+- 输出 **glTF2**（`.glb` 或 `.gltf + .bin + .png`）
+- 自动生成 **atlas 纹理**（PNG），并为每个模型写出 **UV 信息 JSON**（可选）
+- 支持 **多模型 / 场景树（scene graph）** 的 `.vox`
+- 导出时尽量减少重复 mesh：同一个 `model_id` 只生成一份 mesh，可被多个节点复用
 
 ---
 
-## 1. 快速开始
+## 1. 安装 / 运行方式
 
-### 1.1 单文件转换
-
-在工程根目录运行：
+在仓库根目录运行（示例）：
 
 ```bash
-python -m magicavoxel_merge input.vox output.glb
+python -m btp_vox.cli input.vox output.glb
 ```
 
-### 1.3 一条完整调用示例（atlas + baked + by-model，推荐）
+说明：
 
-下面是一条包含常用参数的完整命令，你可以直接复制后按需改动：
+- `btp_vox` 是本仓库中的一个 Python 包模块
+- 不需要额外的安装步骤时，直接用 `python -m ...` 调用即可
+
+---
+
+## 2. 快速开始
+
+### 2.1 单文件导出（GLB）
 
 ```bash
-python -m magicavoxel_merge \
+python -m btp_vox.cli \
+  input.vox \
+  output.glb \
+  --format glb \
+  --scale 0.02 \
+  --pivot center \
+  --atlas-layout global \
+  --atlas-pot
+```
+
+### 2.2 单文件导出（glTF：外置 .bin + .png）
+
+```bash
+python -m btp_vox.cli \
+  input.vox \
+  output.gltf \
+  --format gltf \
+  --scale 0.02 \
+  --pivot center \
+  --atlas-layout global \
+  --atlas-pot
+```
+
+说明：
+
+- `--format gltf` 会写出：
+  - `output.gltf`
+  - `output.bin`
+  - `output.png`（atlas 纹理）
+
+### 2.3 批量转换（推荐）
+
+使用仓库内脚本：`btp_vox/batch_convert.sh`
+
+1. 修改脚本顶部：
+
+- `IN_DIR`：输入 `.vox` 所在目录
+- `OUT_DIR`：输出目录
+- `JOBS`：并发数
+
+2. 运行：
+
+```bash
+./btp_vox/batch_convert.sh
+```
+
+---
+
+## 3. 输出内容说明
+
+### 3.1 输出文件
+
+根据 `--format`：
+
+- `--format glb`
+  - 输出：`*.glb`
+- `--format gltf`
+  - 输出：`*.gltf + *.bin + *.png`
+
+如果指定 `--uv-json-out`：
+
+- 会额外输出一个 JSON，记录每个模型在 atlas 中的 UV 区域（便于外部工具调试）
+
+### 3.2 导出层级结构（节点树）
+
+当前导出遵循以下结构（满足引擎侧更直观的层级需求）：
+
+- 顶层：多个“父节点”（对应 `.vox` 场景中的节点）
+- 每个父节点下：一个或多个“mesh 子节点”（挂 mesh）
+
+伪结构示例：
+
+```text
+<Scene Roots>
+|__ ParentNodeA
+|    |__ MeshChild1
+|__ ParentNodeB
+     |__ MeshChild2
+```
+
+#### 父节点命名规则
+
+父节点优先使用你在 MagicaVoxel 里设置的节点名称：
+
+- 若 `nSHP` 节点本身有自定义名：使用该名字
+- 若 `nSHP` 节点名是默认值（如 `shp_3`），则向上查找最近的 `nTRN` 祖先：
+  - 若该 `nTRN` 有自定义名：使用该名字
+- 如果仍然没有任何自定义名：才会显示为 `shp_<id>` 风格
+
+#### Mesh 子节点命名规则
+
+Mesh 子节点名称使用 `.vox` 的 `model` 名称（即 `scene.models[model_id].name`）。
+
+---
+
+## 4. 坐标、缩放、Pivot
+
+### 4.1 `--scale`
+
+`--scale` 是**统一缩放系数**：
+
+- mesh 顶点会乘以 `scale`
+- 节点 `translation` 也会乘以 `scale`
+
+因此你可以把 `0.02` 作为常见的“体素到米（或引擎单位）”的缩放。
+
+### 4.2 `--pivot`
+
+可选：
+
+- `corner`
+- `bottom_center`
+- `center`
+
+说明：
+
+- 该选项会改变 mesh 的局部原点（通过对顶点做平移实现）
+- 导出的节点层级仍保持正确的世界坐标关系（以当前实现为准）
+
+---
+
+## 5. Atlas / 纹理相关参数
+
+### 5.1 `--atlas-layout`
+
+- `global`
+  - 将所有模型的图块全局一起打包
+- `by-model`
+  - 先模型内部打包，再把每个模型块打到总 atlas
+
+### 5.2 `--atlas-pot`
+
+强制 atlas 宽高为 2 的幂（power-of-two），利于部分引擎纹理压缩与 mipmap。
+
+### 5.3 `--atlas-pad` / `--atlas-inset`
+
+- `--atlas-pad <int>`：图块间 padding（texel）
+- `--atlas-inset <float>`：UV 内缩，降低串色风险
+
+如果你看到贴图边缘有“串色/闪烁”，建议增大这两个值。
+
+---
+
+## 6. 调试与排查
+
+### 6.1 打印 VOX 场景树
+
+```bash
+python -m btp_vox.cli input.vox output.glb --print-nodes
+```
+
+会把 scene graph 节点信息打印到 stderr，便于排查：
+
+- 节点命名是否读取正确
+- 是否存在多模型引用、缺失模型等
+
+### 6.2 导出变换调试 JSON
+
+```bash
+python -m btp_vox.cli \
   input.vox output.glb \
-  --mode atlas \
-  --atlas-style baked \
-  --atlas-layout by-model \
-  --merge-strategy maxrect \
-  --atlas-texel-scale 1 \
-  --atlas-pad 0 \
-  --atlas-inset 0 \
-  --baked-dedup \
-  --cull-mv-z 0 \
-  --no-atlas-square \
-  --axis y_up \
-  --handedness left \
-  --scale 0.02 \
-  --center \
-  --weld \
+  --debug-transforms-out transforms.json
 ```
 
-如果你希望导出外置 PNG（而不是内嵌在 glb 中），加：
-
-```bash
---texture-out output.png
-```
-
-如果你希望恢复旧行为（贴图内嵌在 glb 中），加：
-
-```bash
---embed-texture
-```
-
-### 1.2 批量转换（推荐）
-
-编辑根目录的 `batch_convert.sh`，设置 `IN_DIR / OUT_DIR / JOBS` 和导出参数，然后运行：
-
-```bash
-./batch_convert.sh
-```
-
-脚本会自动并行处理目录下所有 `.vox`。
+用于在导出前/后坐标系转换阶段输出变换数据，排查坐标问题。
 
 ---
 
-## 2. 导出模式说明：`palette` vs `atlas`
+## 7. CLI 参数速查
 
-### 2.1 `--mode palette`（调色板模式）
+必填参数：
 
-特点：
+- `input`：输入 `.vox`
+- `output`：输出 `.glb` 或 `.gltf`
 
-- 纹理为 **1D 调色板**：`256 x 1`（一条线）
-- 每个面通过 UV 采样对应颜色
-- 纹理非常小，适合纯色/颜色索引工作流
+常用参数：
 
-示例：
+- `--format glb|gltf`：输出格式
+- `--scale <float>`：统一缩放
+- `--pivot corner|bottom_center|center`：pivot 模式
+- `--flip-v`：翻转 UV 的 V
+- `--uv-json-out <path>`：输出 UV JSON
+- `--atlas-layout by-model|global`
+- `--atlas-pot`
+- `--atlas-pad <int>`
+- `--atlas-inset <float>`
+- `--atlas-texel-scale <int>`
 
-```bash
-python -m magicavoxel_merge \
-  input.vox output_palette.glb \
-  --mode palette \
-  --axis y_up \
-  --handedness left \
-  --scale 0.02 \
-  --center \
-  --weld
-```
+不常用/调试参数：
 
-### 2.2 `--mode atlas`（图集模式）
-
-特点：
-
-- 自动生成 atlas 图集纹理
-- 可选择 `solid` 或 `baked` atlas 风格
-
-示例：
-
-```bash
-python -m magicavoxel_merge \
-  input.vox output_atlas.glb \
-  --mode atlas \
-  --atlas-style baked \
-  --atlas-texel-scale 1
-```
+- `--print-nodes`
+- `--debug-transforms-out <path>`
 
 ---
 
-## 3. Atlas 风格：`solid` vs `baked`（重点）
+## 8. 常见问题
 
-### 3.1 `--atlas-style solid`
+### 8.1 父节点为什么显示成 `shp_XX`？
 
-- 每个合并后的 quad 区域填充 **单一颜色**
-- 合并通常会受到“颜色变化”影响：颜色越碎，越难合并 → 面数更高
+说明该节点在 VOX 里没有有效的自定义名（或者名字写在 `nTRN` 上但没有对应关系）。
 
-```bash
---atlas-style solid
-```
+建议：
 
-### 3.2 `--atlas-style baked`（烘焙型 atlas，推荐）
+- 在 MagicaVoxel 的 Scene Graph 中给对象/组设置名称
+- 重新导出并使用 `--print-nodes` 检查节点名
 
-- 合并几何时 **忽略颜色**：同平面/同朝向会尽量合并成更大的四边面
-- 颜色细节 **烘焙进纹理像素**
-- 通常能显著降低面数（尤其在颜色变化很碎的模型上）
+### 8.2 调整 `--scale` 后位置不对？
 
-```bash
---atlas-style baked
-```
+当前导出规则是：
 
-### 3.3 `--atlas-texel-scale`
+- 顶点和节点 translation 都会乘 `scale`
 
-控制每个 voxel 对应的纹理像素密度：
+因此在 `--scale` 改变时，整体应当等比例变化，不应出现“越远误差越大”。
 
-- `1`：最省纹理（通常也够用）
-- `2/4`：更清晰，但 atlas 更大
+如果出现异常：
 
-```bash
---atlas-texel-scale 1
-```
-
-### 3.4 `--atlas-pad` / `--atlas-inset`
-
-用于减少接缝、闪烁、串色：
-
-- `--atlas-pad`：每个 chart 周围额外 padding（像素）
-- `--atlas-inset`：UV 向内收，减少 minification 时采到边缘的风险
-
-推荐起步值：
-
-```bash
---atlas-pad 4 --atlas-inset 2
-```
-
-### 3.5 `--atlas-layout`
-
-- `global`：全局打包（所有模型的 charts 混合打包）
-- `by-model`：先每个模型内部打包，再把模型块打包到总图集（更稳定、也更符合按模型组织）
-
-推荐：
-
-```bash
---atlas-layout by-model
-```
-
-### 3.6 `--merge-strategy`
-
-控制网格合并策略：
-
-```bash
---merge-strategy greedy|maxrect
-```
-
-- `greedy`：默认策略，速度更快
-- `maxrect`：更激进的矩形覆盖策略，通常 quad 分布更均匀（可能更慢）
-
-该选项同时适用于 `palette` 与 `atlas` 两种模式。
+- 用 `--debug-transforms-out` 导出调试数据
+- 检查引擎导入时是否又做了额外缩放
 
 ---
 
-### 3.7 `--cull-mv-faces`
+## 9. 与仓库根 README 的关系
 
-在 MagicaVoxel 坐标系下剔除多个朝向面：
+仓库根目录的 `README.md` 主要描述的是 `magicavoxel_merge`（另一个转换入口）。
 
-```bash
---cull-mv-faces top,bottom
-```
+本文件专注于 `btp_vox`：
 
-支持的值：
-
-- `top`（等价于 `+z`）
-- `bottom`（等价于 `-z`）
-- `+x` / `-x` / `+y` / `-y` / `+z` / `-z`
-
-你也可以按 MagicaVoxel 的 `z` 平面裁剪底面：
-
-```bash
---cull-mv-z 0
-```
-
-该裁剪使用 MagicaVoxel 的局部坐标来判断，并且发生在 `--center` 之前，因此无论是否使用 `--center` 都会保持一致。
-
-当你传入更大的阈值（例如 `--cull-mv-z 10`），会剔除更高处、且满足 `z <= 10` 的底面。
-
-在 `atlas` 模式下，会同步减少 atlas 图块（不生成/不打包被剔除面的图块）。
-
-如果你只想按朝向剔除而不关心阈值，使用 `--cull-mv-faces bottom` 即可。
-
-在 `atlas` 模式下，该选项会同时剔除对应面的图块生成与打包，从而让 atlas 贴图自动变小。
-
-在 `atlas-style baked` 下，如果多个 quad 的纹理区块内容完全一致，会自动复用同一个图块并只打包一次，从而进一步减少 atlas 面积。
-
-你也可以通过开关控制该行为：
-
-```bash
---baked-dedup
---no-baked-dedup
-```
-
-默认开启（等价于 `--baked-dedup`）。
-
-如果你希望贴图保持 2 的幂但不强制正方形，可加：
-
-```bash
---no-atlas-square
-```
-
-在 `atlas-layout by-model` 下，打包会尽量避免出现单方向过度增长的长条 atlas，从而提高填充率（不旋转图块）。
-
-如果你想撤回到默认行为，删除该参数或改回：
-
-```bash
---merge-strategy greedy
-```
-
----
-
-## 4. 坐标轴 / 左右手系（适配引擎）
-
-### 4.1 `--axis`
-
-- `y_up`：导出为 glTF 常用 Y-up（推荐）
-- `identity`：不做轴转换（调试用途）
-
-```bash
---axis y_up
-```
-
-### 4.2 `--handedness`
-
-- `right`：右手系
-- `left`：左手系
-
-```bash
---handedness left
-```
-
-如果你发现模型方向/镜像异常，优先检查 `--axis` 与 `--handedness` 组合。
-
----
-
-## 5. 尺寸与居中
-
-### 5.1 `--scale`
-
-针对 Cocos Creator 常用：
-
-```bash
---scale 0.02
-```
-
-### 5.2 `--center` / `--center-bounds`
-
-- `--center`：按体素尺寸中心居中
-- `--center-bounds`：按几何 bounds 居中
-
-两者互斥。
-
----
-
-## 6. 顶点焊接（`--weld`）与法线
-
-### 6.1 `--weld` 做什么
-
-`--weld` 用于合并重复顶点，降低顶点数。
-
-### 6.2 硬边与平滑问题
-
-本工程的焊接逻辑会将合并 key 设为：
-
-- `position + normal + uv`
-
-因此：
-
-- 不会跨硬边（不同 normal）错误合并
-- 不会把 voxel 的硬边“焊平滑”
-
-推荐在大多数情况下开启：
-
-```bash
---weld
-```
-
----
-
-## 7. 外置贴图输出（可选）
-
-默认贴图外置（写出与 `.glb` 同名的 `.png`，并在 glb 内用相对路径引用）。
-
-如果要自定义外置 PNG 的输出位置：
-
-```bash
---texture-out /path/to/output.png
-```
-
-如果要把贴图内嵌回 `.glb`：
-
-```bash
---embed-texture
-```
-
-在 `batch_convert.sh` 里可以用环境变量控制：
-
-```bash
-TEXTURE_OUT=1 ./batch_convert.sh
-```
-
-脚本会把纹理输出为 `OUT_DIR/<stem>.png`。
-
----
-
-## 8. 批量转换脚本：`batch_convert.sh`
-
-### 9.1 你需要配置的变量
-
-打开 `batch_convert.sh`，编辑：
-
-- `IN_DIR`：输入目录（包含 `.vox`）
-- `OUT_DIR`：输出目录（写入 `.glb` 和可选 `.png`）
-- `JOBS`：并行数量
-
-以及导出参数：
-
-- `MODE`：`atlas` / `palette`
-- `ATLAS_STYLE`：`baked` / `solid`
-- `ATLAS_TEXEL_SCALE`
-- `ATLAS_PAD` / `ATLAS_INSET`
-- `ATLAS_LAYOUT`
-- `AXIS` / `HANDEDNESS`
-
-### 9.2 脚本运行时输出
-
-- 若没有 `.vox`：会提示 `No .vox files found...`
-- 若有 `.vox`：会提示转换数量与关键模式信息
-
-
-## 10. 附：GLB 重心着色工具
-
-仓库根目录新增了一个独立脚本 `glb_shrink_barycentric.py`，用于在现有 `.glb` 上重新计算“裂缝”用的重心权重并写入顶点颜色（`COLOR_0`）。它的流程是：
-
-1. 读取 glTF/GLB（使用 `pygltflib`）。
-2. 按平面将三角面分组，找到同一平面下的外轮廓顶点。
-3. 将外轮廓顶点向平面质心做一次缩放（`--shrink` 控制缩放比例）。
-4. 计算缩点在原三角形内的 barycentric，并把结果写入顶点颜色（`RGB`），`A` 设为 1。
-5. 输出新的 `.glb` 文件。
-
-### 10.1 依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-确保安装了 `numpy` 与 `pygltflib`（`requirements.txt` 已包含）。
-
-### 10.2 使用示例
-
-```bash
-python glb_shrink_barycentric.py \
-  /path/to/input.glb \
-  /path/to/output.glb \
-  --shrink 0.85
-```
-
-- `--shrink`：外轮廓顶点收缩比例，取值 (0,1)。默认 0.85（越小收缩越明显）。
-- `--normal-eps` / `--plane-eps`：平面合并的量化精度（通常不需要修改）。
-
-生成的输出 glb 会在 `COLOR_0` 中携带新的 barycentric 数据，可以直接在渲染端读取 `color.rgb` 做裂缝/描边效果。
-
-### 10.3 一键执行脚本
-
-如果不想每次都手动输入参数，可运行根目录的 `run_glb_barycentric.sh`。脚本里已经声明了输入/输出路径以及缩放参数，直接编辑文件顶部变量即可：
-
-```bash
-chmod +x run_glb_barycentric.sh
-./run_glb_barycentric.sh
-```
-
-脚本会自动调用 `glb_shrink_barycentric.py`，并使用你在文件内设置的参数。
-
-
-## 9. 常见问题排查
-
-### 10.1 脚本“没有输出/看起来没导出”
-
-- 检查 `IN_DIR` 下是否真的有 `.vox`
-- 脚本会显示 `.vox` 数量；若为 0，会提示 `No .vox files found...`
-
-### 10.2 palette 模式颜色不对
-
-- 当前 palette 贴图为 `256x1`（一条线），UV 也按 1D 采样
-- 如果仍不对，优先确认引擎是否正确加载了 glb 内嵌纹理或外置纹理
-
-### 10.3 法线变平滑
-
-- 如果你开启 `--weld`，焊接不会跨法线合并（已包含 normal 在 key）
-- 若你自己在引擎端重新计算法线或启用平滑组，也会导致平滑效果
-
-### 10.4 Atlas 接缝/闪烁
-
-- 增大 `--atlas-pad`
-- 增大 `--atlas-inset`
-- 若纹理太小，可提高 `--atlas-texel-scale`
-
----
-
-## 10. 参数速查表
-
-本章节按实际 CLI 参数逐项列出：所有可选值 + 默认值 + 作用说明。
-
-### 11.1 位置参数
-
-- `input`
-  - 含义：输入 `.vox` 文件路径
-- `output`
-  - 含义：输出 `.glb` 文件路径
-
-### 11.2 通用参数
-
-- `--mode palette|atlas`（默认：`palette`）
-  - 含义：选择贴图/导出模式
-  - `palette`：256x1 调色板纹理
-  - `atlas`：生成 atlas 图集纹理
-
-- `--merge-strategy greedy|maxrect`（默认：`greedy`）
-  - 含义：quad 合并策略
-  - `greedy`：更快
-  - `maxrect`：更激进，通常 quad 更规整（可能更慢）
-
-- `--scale <float>`（默认：`1.0`）
-  - 含义：导出缩放
-
-- `--axis y_up|identity`（默认：`y_up`）
-  - 含义：坐标轴转换
-  - `y_up`：输出为 glTF 常用 Y-up（推荐）
-  - `identity`：不做轴转换（调试用途）
-
-- `--handedness right|left`（默认：`right`）
-  - 含义：输出左右手系
-
-- `--center` / `--center-bounds`（默认：都不启用）
-  - 含义：将模型平移到原点附近
-  - 注意：两者互斥，只能二选一
-
-- `--weld`（默认：关闭）
-  - 含义：焊接顶点（减少重复顶点）
-
-- `--flip-v`（默认：关闭）
-  - 含义：翻转 UV 的 V 方向（某些引擎/贴图约定需要）
-
-- `--texture-out <path>`（默认：不导出外置纹理）
-  - 含义：导出外置 PNG 贴图文件
-
-- `--preserve-transforms` / `--no-preserve-transforms`（默认：开启 `--preserve-transforms`）
-  - 含义：是否保留 `.vox` 场景树中的模型平移/层级变换信息
-
-### 11.3 MV 坐标系裁剪
-
-- `--cull-mv-faces <csv>`（默认：不裁剪）
-  - 含义：在 MagicaVoxel 坐标系下按“朝向”剔除面
-  - 取值：
-    - `top`（等价 `+z`）
-    - `bottom`（等价 `-z`）
-    - `+x` / `-x` / `+y` / `-y` / `+z` / `-z`
-  - 示例：`--cull-mv-faces bottom`
-
-- `--cull-mv-z <float>` / `--cull-mv-floor <float>`（默认：不裁剪）
-  - 含义：按 MagicaVoxel 的 `z <= 阈值` 剔除底面（`-z` 方向）
-  - 坐标系：MagicaVoxel `.vox` 只保存“模型局部体素 + 场景 translation”，没有绝对“世界地面”概念；因此在 `--preserve-transforms` 开启时，本工具会扫描所有模型的 `translation.z + 模型局部最小占用 z`，以体素数量加权方式推断出最低/最大众数的 `ground_z`，并且只对底部接近该地面的模型生效（抬高的小模型不会被裁）；关闭时按模型局部坐标裁剪
-  - 特性：裁剪发生在 `--center/--center-bounds` 之前，因此无论是否使用 center 都保持一致；在 `atlas` 模式下会同步减少 atlas 图块；`<float>` 参数表示相对于检测到的地面层 (`ground_z + plane`) 的阈值，而非绝对 MV 原点
-  - 使用建议：在批量导出/流水线场景中，若希望只 cull 真正“贴地”的模型，请在 VOX 场景中确保需要裁剪的物体位于同一地面层（或在导出前人为对齐）；若某些模型不应裁剪，可在 MagicaVoxel 中把它们整体抬高（translation.z 调大）、将其放在更高平台，或直接关闭 `--cull-mv-floor`
-  - 示例：`--cull-mv-z 0`
-
-### 11.4 atlas 模式参数（仅 `--mode atlas` 生效）
-
-- `--atlas-style solid|baked`（默认：`solid`）
-  - 含义：atlas 风格
-  - `solid`：每个合并后的 quad 用单一颜色填充
-  - `baked`：将颜色烘焙进纹理像素，合并几何时尽量不受颜色影响（更少面数）
-
-- `--atlas-texel-scale <int>`（默认：`1`）
-  - 含义：每个 voxel 对应的纹理像素密度（越大越清晰，但 atlas 越大）
-
-- `--atlas-pad <int>`（默认：`2`）
-  - 含义：每个图块周围额外 padding（像素）
-
-- `--atlas-inset <float>`（默认：`1.5`）
-  - 含义：UV inset（避免采样到边缘外侧造成串色/接缝）
-
-- `--atlas-layout global|by-model`（默认：`global`）
-  - 含义：atlas 的打包布局
-  - `global`：所有模型的图块全局打包
-  - `by-model`：先每个模型内部打包，再把“模型块”打到总 atlas
-
-- `--atlas-square` / `--no-atlas-square`（默认：开启 `--atlas-square`）
-  - 含义：是否强制 atlas 更倾向正方形
-  - 说明：你需要 pow2 但不需要正方形时，建议 `--no-atlas-square`
-
-- `--baked-dedup` / `--no-baked-dedup`（默认：开启 `--baked-dedup`）
-  - 含义：仅在 `--atlas-style baked` 下生效
-  - `--baked-dedup`：相同的纹理区块只打包/烘焙一次，其他 quad 复用同一块（减少 atlas 面积）
-  - `--no-baked-dedup`：关闭 baked 纹理块去重
-
----
-
-## 11. 推荐组合（直接复制）
-
-### 12.1 Cocos Creator：最少面数（推荐）
-
-```bash
-python -m magicavoxel_merge \
-  input.vox output.glb \
-  --mode atlas \
-  --merge-strategy maxrect \
-  --atlas-style baked \
-  --atlas-texel-scale 1 \
-  --atlas-pad 4 \
-  --atlas-inset 2 \
-  --atlas-layout by-model \
-  --axis y_up \
-  --handedness left \
-  --scale 0.02 \
-  --center \
-  --weld
-```
-
-### 12.2 
-
-```bash
-python -m magicavoxel_merge \
-  input.vox output.glb \
-  --mode atlas \
-  --merge-strategy maxrect \
-  --atlas-style baked \
-  --scale 0.02 \
-  --axis y_up \
-  --handedness left \
-  --center \
-  --weld
-```
+- CLI：`python -m btp_vox.cli ...`
+- 脚本：`btp_vox/batch_convert.sh`

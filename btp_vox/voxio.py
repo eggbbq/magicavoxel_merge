@@ -10,7 +10,7 @@ import struct
 
 import numpy as np
 
-from magicavoxel_merge.vox import load_vox as _load_vox
+from .vox import load_vox as _load_vox
 
 
 @dataclass(slots=True)
