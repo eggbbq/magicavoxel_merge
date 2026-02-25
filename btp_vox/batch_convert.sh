@@ -35,7 +35,6 @@ btp_convert_one() {
     --scale "0.02"
     --uv-json-out "$out_uv"
     --atlas-pot
-    --print-nodes
     --pivot center
   )
 
