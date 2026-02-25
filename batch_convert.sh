@@ -1,60 +1,88 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Batch convert all .vox files inside IN_DIR into GLB + atlas PNG + UV JSON using btp_vox.
-# Usage: customize IN_DIR/OUT_DIR and run ./btp_vox/batch_convert.sh
+DIR_IN="/Users/graylian/workspace/VoxPLC"
+DIR_OUT="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
+JOBS=8
 
-IN_DIR="/Users/graylian/workspace/VoxPLC"
-OUT_DIR="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
-JOBS="${JOBS:-4}"
+mkdir -p "$DIR_OUT"
 
-export IN_DIR OUT_DIR JOBS
-
-mkdir -p "$OUT_DIR"
-
-btp_convert_one() {
+btp_convert_one_plat() {
   local in_vox="$1"
-  local stem
-  stem="$(basename "$in_vox")"
-  stem="${stem%.vox}"
+  local base stem
 
-  local out_model="$OUT_DIR/${stem}.glb"
-  local out_tex="$OUT_DIR/${stem}.png"
-  local out_uv="$OUT_DIR/${stem}_uv.json"
+  base="$(basename "$in_vox")"
+  stem="${base%.vox}"
 
-#   --pivot corner 
-#   --pivot bottom_center
-#   --pivot center
-#   --cull tblr
-#   --tex-layout by-model | global
-#   --format glb | gltf
-#   --tex-pot
-#   --tex-square
-#   --tex-fmt auto|rgba|rgb
-#   --uv-flip-v
-#   --plat-top-cutout
-#   --plat-suffix -cutout | plat-t | plat-f
+  local out_model="$DIR_OUT/${stem}.glb"
+  local out_tex="$DIR_OUT/${stem}.png"
+  local out_uv="$DIR_OUT/${stem}_uv.json"
 
   local args=(
-    --input         $in_vox
-    --output        $out_model
-    --uv-out        $out_uv
-    --cull          b
+    --input           $in_vox
+    --output          $out_model
+    --uv-out          $out_uv
+    --cull            b
+    --plat-top-cutout
 
     --tex-pot
-    --tex-fmt       rgba
-    --tex-out       $out_tex
-    --tex-layout    global
-    
-    --scale         0.02
-    --pivot         center
-    --format        glb
+    --tex-fmt         rgba
+    --tex-out         $out_tex
+    --tex-layout      global
+
+    --scale           0.02
+    --pivot           center
+    --format          glb
   )
 
   BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"
 }
 
-export -f btp_convert_one
+btp_convert_one_normal() {
+  local in_vox="$1"
+  local base stem
 
-find "$IN_DIR" -type f -name "*.vox" -print0 \
+  base="$(basename "$in_vox")"
+  stem="${base%.vox}"
+
+  local out_model="$DIR_OUT/${stem}.glb"
+  local out_tex="$DIR_OUT/${stem}.png"
+  local out_uv="$DIR_OUT/${stem}_uv.json"
+
+  local args=(
+    --input           $in_vox
+    --output          $out_model
+    --uv-out          $out_uv
+    --cull            b
+
+    --tex-pot
+    --tex-fmt         rgb
+    --tex-out         $out_tex
+    --tex-layout      global
+
+    --scale           0.02
+    --pivot           center
+    --format          glb
+  )
+
+  BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"
+}
+
+btp_convert_one() {
+  local in_vox="$1"
+  local base
+  base="$(basename "$in_vox")"
+  if [[ "$base" == *"-plat.vox" ]]; then
+    btp_convert_one_plat "$in_vox"
+  else
+    btp_convert_one_normal "$in_vox"
+  fi
+}
+
+export -f btp_convert_one
+export -f btp_convert_one_plat
+export -f btp_convert_one_normal
+export DIR_IN DIR_OUT
+
+find "$DIR_IN" -type f -name "*.vox" -print0 \
   | xargs -0 -n 1 -P "$JOBS" bash -lc 'btp_convert_one "$0"'
