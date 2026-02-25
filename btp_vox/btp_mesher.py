@@ -56,24 +56,38 @@ def build_quads(scene: VoxScene) -> MesherResult:
             offset[axis] = 1
 
             for cursor[axis] in range(dims[axis] + 1):
-                for cursor[v_axis] in range(dims[v_axis]):
-                    for cursor[u_axis] in range(dims[u_axis]):
-                        # Convert to padded-grid coordinates (+1).
-                        x = int(cursor[0]) + 1
-                        y = int(cursor[1]) + 1
-                        z = int(cursor[2]) + 1
-                        a = int(voxels_p[x - int(offset[0]), y - int(offset[1]), z - int(offset[2])])
-                        b = int(voxels_p[x, y, z])
+                # Vectorized slice sampling for this plane.
+                # We need a/b samples on either side of the plane along `axis`.
+                c = int(cursor[axis])
+                if axis == 0:
+                    # Plane normal to X, mask axes are (Y,Z)
+                    a_plane = voxels_p[c, 1 : sy + 1, 1 : sz + 1]
+                    b_plane = voxels_p[c + 1, 1 : sy + 1, 1 : sz + 1]
+                    # shape: (sy, sz) == (dims[u_axis], dims[v_axis])
+                elif axis == 1:
+                    # Plane normal to Y, mask axes are (Z,X)
+                    a_plane = voxels_p[1 : sx + 1, c, 1 : sz + 1].T
+                    b_plane = voxels_p[1 : sx + 1, c + 1, 1 : sz + 1].T
+                    # shape: (sz, sx) == (dims[u_axis], dims[v_axis])
+                else:
+                    # Plane normal to Z, mask axes are (X,Y)
+                    a_plane = voxels_p[1 : sx + 1, 1 : sy + 1, c]
+                    b_plane = voxels_p[1 : sx + 1, 1 : sy + 1, c + 1]
+                    # shape: (sx, sy) == (dims[u_axis], dims[v_axis])
 
-                        if (a != 0) == (b != 0):
-                            mask[cursor[u_axis], cursor[v_axis]] = 0
-                            color_plane[cursor[u_axis], cursor[v_axis]] = 0
-                        elif a != 0:
-                            mask[cursor[u_axis], cursor[v_axis]] = 1
-                            color_plane[cursor[u_axis], cursor[v_axis]] = int(a)
-                        else:
-                            mask[cursor[u_axis], cursor[v_axis]] = -1
-                            color_plane[cursor[u_axis], cursor[v_axis]] = int(b)
+                a_filled = a_plane != 0
+                b_filled = b_plane != 0
+
+                m = np.zeros_like(mask, dtype=np.int32)
+                same = a_filled == b_filled
+                m[~same & a_filled] = 1
+                m[~same & ~a_filled] = -1
+                mask[:, :] = m
+
+                cp = np.zeros_like(color_plane, dtype=np.int32)
+                cp[m == 1] = a_plane[m == 1]
+                cp[m == -1] = b_plane[m == -1]
+                color_plane[:, :] = cp
 
                 u = 0
                 while u < dims[u_axis]:

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
+import os
 from PIL import Image
+import sys
 
 from .btp_mesher import MesherResult
 from .voxio import VoxScene
@@ -44,6 +46,8 @@ def build_atlas(
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
+    timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
+
     if style not in ("baked", "solid"):
         raise ValueError("style must be 'baked' or 'solid'")
     if layout not in ("by-model", "global"):
@@ -70,17 +74,25 @@ def build_atlas(
                 rid_to_mq[rid] = (midx, qidx)
                 rid += 1
 
+        if timings_enabled:
+            sys.stderr.write(f"[btp_vox] atlas layout=global rects={len(rects_all)} pot={bool(pot)} square={bool(square)}\n")
+
         # NOTE: For large scenes, MaxRects search over many POT bins becomes extremely slow.
         # Use a fast shelf pack, then optionally expand to POT/square. This trades some
         # fill efficiency for dramatically better runtime.
         use_fast_pack = len(rects_all) >= 512
         if pot or square:
             if use_fast_pack:
-                atlas_w, atlas_h, positions = _pack_rects(rects_all)
+                atlas_w, atlas_h, positions = _pack_rects_best(rects_all, pot=bool(pot), square=bool(square))
             else:
                 atlas_w, atlas_h, positions = _pack_best_bin(rects_all, square=bool(square))
         else:
             atlas_w, atlas_h, positions = _pack_rects(rects_all)
+
+        if timings_enabled:
+            sys.stderr.write(
+                f"[btp_vox] atlas pack=global fast={bool(use_fast_pack)} size={int(atlas_w)}x{int(atlas_h)}\n"
+            )
 
         for rid, (x, y) in positions.items():
             midx, qidx = rid_to_mq[int(rid)]
@@ -109,6 +121,13 @@ def build_atlas(
 
     else:
         quad_local_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+
+        if timings_enabled:
+            quad_count = sum(len(quads) for quads in quads_per_model)
+            sys.stderr.write(
+                f"[btp_vox] atlas layout=by-model rects={int(quad_count)} pot={bool(pot)} square={bool(square)} tight_blocks={bool(tight_blocks)}\n"
+            )
+
         for midx, quads in enumerate(quads_per_model):
             rects: List[Tuple[int, int, int]] = []
             for qidx, quad in enumerate(quads):
@@ -122,7 +141,7 @@ def build_atlas(
                 if pot or square:
                     use_fast_pack = len(rects) >= 512
                     if use_fast_pack:
-                        block_w, block_h, positions = _pack_rects(rects)
+                        block_w, block_h, positions = _pack_rects_best(rects, pot=bool(pot), square=bool(square))
                     else:
                         block_w, block_h, positions = _pack_best_bin(rects, square=bool(square))
                 else:
@@ -135,7 +154,7 @@ def build_atlas(
         if pot or square:
             use_fast_pack = len(model_rects) >= 512
             if use_fast_pack:
-                atlas_w, atlas_h, model_positions = _pack_rects(model_rects)
+                atlas_w, atlas_h, model_positions = _pack_rects_best(model_rects, pot=bool(pot), square=bool(square))
             else:
                 atlas_w, atlas_h, model_positions = _pack_best_bin(model_rects, square=bool(square))
         else:
@@ -147,6 +166,11 @@ def build_atlas(
                 qx, qy = quad_local_positions[(midx, qidx)]
                 quad_positions[(midx, qidx)] = (int(mx + qx), int(my + qy))
 
+        if timings_enabled:
+            sys.stderr.write(
+                f"[btp_vox] atlas pack=by-model size={int(atlas_w)}x{int(atlas_h)} models={len(model_rects)}\n"
+            )
+
     if atlas_w == 0 or atlas_h == 0:
         atlas_w = atlas_h = 1
 
@@ -157,6 +181,11 @@ def build_atlas(
         m = max(int(atlas_w), int(atlas_h))
         atlas_w = int(m)
         atlas_h = int(m)
+
+    if timings_enabled:
+        sys.stderr.write(
+            f"[btp_vox] atlas final size={int(atlas_w)}x{int(atlas_h)} pot={bool(pot)} square={bool(square)}\n"
+        )
 
     atlas_arr = np.zeros((atlas_h, atlas_w, 4), dtype=np.uint8)
     quad_uvs: Dict[Tuple[int, int], QuadUV] = {}
@@ -239,6 +268,112 @@ def _pack_rects(rects: List[Tuple[int, int, int]]) -> Tuple[int, int, Dict[int, 
 
     total_h = y + row_h
     return int(max_w), int(total_h), positions
+
+
+def _pack_rects_with_row_width(
+    rects: list[tuple[int, int, int]],
+    *,
+    row_width: int,
+) -> tuple[int, int, Dict[int, tuple[int, int]]]:
+    positions: Dict[int, Tuple[int, int]] = {}
+    if not rects:
+        return 0, 0, positions
+
+    row_width = max(1, int(row_width))
+
+    x = 0
+    y = 0
+    row_h = 0
+    max_w = 0
+
+    for rid, w, h in rects:
+        if x + int(w) > row_width and x != 0:
+            x = 0
+            y += row_h
+            row_h = 0
+        positions[int(rid)] = (int(x), int(y))
+        x += int(w)
+        row_h = max(int(row_h), int(h))
+        max_w = max(int(max_w), int(x))
+
+    total_h = int(y + row_h)
+    return int(max_w), int(total_h), positions
+
+
+def _pack_rects_best(
+    rects: list[tuple[int, int, int]],
+    *,
+    pot: bool,
+    square: bool,
+) -> tuple[int, int, Dict[int, tuple[int, int]]]:
+    """Fast shelf pack, but try multiple widths to reduce POT/square expansion waste."""
+
+    if not rects:
+        return 1, 1, {}
+
+    # Sort by height then width to improve shelf packing stability.
+    rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
+
+    total_area = int(sum(int(w) * int(h) for _, w, h in rects_sorted))
+    max_w = int(max(int(w) for _, w, _ in rects_sorted))
+    max_h = int(max(int(h) for _, _, h in rects_sorted))
+    base = int(np.ceil(np.sqrt(max(1, total_area))))
+
+    # Candidate widths around sqrt(area). Wider makes atlas shorter; narrower makes it taller.
+    # When POT is requested, prefer widths near power-of-two boundaries to reduce expansion waste.
+    candidates: set[int] = {max_w}
+    if pot:
+        # Try a few power-of-two widths around the sqrt(area) estimate.
+        base_pow = 1 << max(1, int(base - 1).bit_length())
+        for k in range(-2, 4):
+            w = int(base_pow) << max(0, k)
+            if w > 0:
+                candidates.add(w)
+        # Also try slightly under/over POT boundaries.
+        for w in list(candidates):
+            candidates.add(int(w * 0.9))
+            candidates.add(int(w * 1.1))
+    else:
+        candidates.update(
+            {
+                base,
+                int(base * 1.25),
+                int(base * 1.5),
+                int(base * 2.0),
+                int(base * 0.75),
+            }
+        )
+    candidates = [w for w in candidates if w >= max_w]
+    candidates.sort()
+
+    best = None
+    for rw in candidates:
+        w0, h0, pos0 = _pack_rects_with_row_width(rects_sorted, row_width=int(rw))
+        if w0 <= 0 or h0 <= 0:
+            continue
+
+        w1 = int(w0)
+        h1 = int(h0)
+        if pot:
+            w1 = _next_pow2(w1)
+            h1 = _next_pow2(h1)
+        if square:
+            m = max(w1, h1)
+            w1 = h1 = int(m)
+
+        area1 = int(w1) * int(h1)
+        aspect = float(max(w1, h1)) / float(max(1, min(w1, h1)))
+        score = float(area1) * (1.0 + max(0.0, aspect - 2.0) * 0.05)
+
+        if best is None or score < best[0]:
+            best = (score, w0, h0, pos0)
+
+    if best is None:
+        return _pack_rects(rects_sorted)
+
+    _score, w_best, h_best, pos_best = best
+    # Return pre-POT size here; caller will POT/square the final atlas.
+    return int(w_best), int(h_best), pos_best
 
 
 def _next_pow2(x: int) -> int:
