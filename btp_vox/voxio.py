@@ -254,6 +254,7 @@ def _parse_scenegraph(
             trn_nodes: dict[int, tuple[int, tuple[float, float, float], tuple[float, float, float, float]]] = {}
             grp_nodes: dict[int, list[int]] = {}
             shp_nodes: dict[int, list[int]] = {}
+            node_names: dict[int, str] = {}
             child_nodes: set[int] = set()
             max_model_id = -1
             all_node_ids: set[int] = set()
@@ -265,7 +266,10 @@ def _parse_scenegraph(
                 if cid == b"nTRN":
                     off = 0
                     node_id, off = _read_i32_from(content, off)
-                    _, off = _read_dict_from(content, off)
+                    node_dict, off = _read_dict_from(content, off)
+                    n = node_dict.get("_name")
+                    if n:
+                        node_names[int(node_id)] = str(n)
                     child_id, off = _read_i32_from(content, off)
                     child_nodes.add(int(child_id))
                     _, off = _read_i32_from(content, off)
@@ -299,7 +303,10 @@ def _parse_scenegraph(
                 elif cid == b"nGRP":
                     off = 0
                     node_id, off = _read_i32_from(content, off)
-                    _, off = _read_dict_from(content, off)
+                    node_dict, off = _read_dict_from(content, off)
+                    n = node_dict.get("_name")
+                    if n:
+                        node_names[int(node_id)] = str(n)
                     nchild, off = _read_i32_from(content, off)
                     children: list[int] = []
                     for _ in range(int(nchild)):
@@ -314,7 +321,10 @@ def _parse_scenegraph(
                 elif cid == b"nSHP":
                     off = 0
                     node_id, off = _read_i32_from(content, off)
-                    _, off = _read_dict_from(content, off)
+                    node_dict, off = _read_dict_from(content, off)
+                    n = node_dict.get("_name")
+                    if n:
+                        node_names[int(node_id)] = str(n)
                     nmodels, off = _read_i32_from(content, off)
                     mids: list[int] = []
                     for _ in range(int(nmodels)):
@@ -377,13 +387,16 @@ def _parse_scenegraph(
                 nodes[nid].model_ids = []
 
             for nid, (child_id, lt, lr) in trn_nodes.items():
-                nodes[nid] = VoxNode(kind="trn", name=f"trn_{nid}", translation=lt, rotation=lr, children=[int(child_id)])
+                name = node_names.get(int(nid)) or f"trn_{nid}"
+                nodes[nid] = VoxNode(kind="trn", name=str(name), translation=lt, rotation=lr, children=[int(child_id)])
 
             for nid, children in grp_nodes.items():
-                nodes[nid] = VoxNode(kind="grp", name=f"grp_{nid}", children=[int(c) for c in children])
+                name = node_names.get(int(nid)) or f"grp_{nid}"
+                nodes[nid] = VoxNode(kind="grp", name=str(name), children=[int(c) for c in children])
 
             for nid, mids in shp_nodes.items():
-                nodes[nid] = VoxNode(kind="shp", name=f"shp_{nid}", model_ids=[int(mid) for mid in mids])
+                name = node_names.get(int(nid)) or f"shp_{nid}"
+                nodes[nid] = VoxNode(kind="shp", name=str(name), model_ids=[int(mid) for mid in mids])
 
             return nodes, [int(r) for r in sorted(roots)], translations, rotations
     except Exception:

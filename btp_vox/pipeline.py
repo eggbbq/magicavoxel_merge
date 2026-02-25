@@ -608,6 +608,40 @@ def _build_scene_nodes_two_level(
         walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
     nodes: list[dict] = []
+
+    # Build a parent link table so we can recover user names often stored on nTRN wrappers.
+    parent_of: list[int | None] = [None] * len(scene.nodes)
+    for pid, pnd in enumerate(scene.nodes):
+        for ch in pnd.children:
+            ci = int(ch)
+            if 0 <= ci < len(parent_of) and parent_of[ci] is None:
+                parent_of[ci] = int(pid)
+
+    def is_auto_name(n: str) -> bool:
+        ns = str(n)
+        return (
+            ns.startswith("shp_")
+            or ns.startswith("trn_")
+            or ns.startswith("grp_")
+            or ns.startswith("node_")
+        )
+
+    def pick_parent_name(shp_id: int) -> str:
+        nd = scene.nodes[shp_id]
+        base = str(nd.name)
+        if not is_auto_name(base):
+            return base
+        cur = parent_of[shp_id]
+        # Prefer nearest TRN ancestor with a custom name.
+        while cur is not None and 0 <= int(cur) < len(scene.nodes):
+            anc = scene.nodes[int(cur)]
+            if anc.kind == "trn":
+                an = str(anc.name)
+                if not is_auto_name(an):
+                    return an
+            cur = parent_of[int(cur)]
+        return base
+
     parent_ids: list[int] = []
     for nid, nd in enumerate(scene.nodes):
         if nd.kind != "shp":
@@ -620,7 +654,7 @@ def _build_scene_nodes_two_level(
         if not model_ids:
             continue
 
-        parent_name = str(nd.name)
+        parent_name = pick_parent_name(int(nid))
 
         parent_id = len(nodes)
         nodes.append(
