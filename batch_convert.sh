@@ -25,6 +25,7 @@ btp_convert_one() {
 #   --pivot corner 
 #   --pivot bottom_center
 #   --pivot center
+#   --cull tblr
 #   --tex-layout by-model | global
 #   --format glb | gltf
 #   --tex-pot
@@ -36,6 +37,7 @@ btp_convert_one() {
     --input         $in_vox
     --output        $out_model
     --uv-out        $out_uv
+    --cull          blrfk
     
     --tex-pot
     --tex-fmt       rgb

@@ -40,6 +40,7 @@ class PipelineOptions:
     center_bounds: bool = False
     weld: bool = False
     flip_v: bool = False
+    cull: str = ""
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
 
@@ -78,6 +79,38 @@ def convert(
     if bool(print_nodes):
         _print_scene_nodes(scene)
     mesher_result = build_quads(scene)
+
+    cull_letters = str(getattr(opts, "cull", "") or "").strip().lower()
+    if cull_letters:
+        allowed = set("tblrfk")
+        bad = sorted({c for c in cull_letters if c not in allowed})
+        if bad:
+            raise ValueError(f"--cull: invalid letters: {''.join(bad)} (allowed: tblrfk)")
+
+        cull_faces: set[tuple[int, int]] = set()
+        if "t" in cull_letters:
+            cull_faces.add((2, 1))
+        if "b" in cull_letters:
+            cull_faces.add((2, -1))
+        if "l" in cull_letters:
+            cull_faces.add((0, -1))
+        if "r" in cull_letters:
+            cull_faces.add((0, 1))
+        if "f" in cull_letters:
+            cull_faces.add((1, 1))
+        if "k" in cull_letters:
+            cull_faces.add((1, -1))
+
+        mesher_result = MesherResult(
+            quads_per_model=[
+                [
+                    q
+                    for q in quads
+                    if (int(q.axis), int(q.normal_sign)) not in cull_faces
+                ]
+                for quads in mesher_result.quads_per_model
+            ]
+        )
     mark("build_quads")
 
     atlas_result = atlas_mod.build_atlas(
