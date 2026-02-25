@@ -1,0 +1,3 @@
+numpy>=1.23,<3
+Pillow>=10,<12
+pygltflib>=1.16,<2
