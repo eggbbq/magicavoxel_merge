@@ -85,7 +85,7 @@ def convert(
         texture_uri = texture_path.name
         texture_png = None
 
-    meshes = _assemble_meshes(
+    meshes, model_to_mesh = _build_model_meshes(
         scene,
         mesher_result,
         atlas_result,
@@ -93,11 +93,13 @@ def convert(
         flip_v=bool(opts.flip_v),
         pivot=str(opts.pivot),
     )
+    nodes, root_node_ids = _build_scene_nodes_two_level(scene, model_to_mesh, scale=float(opts.scale))
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
 
     meshes = _to_y_up_left_handed(meshes)
+    nodes = _to_y_up_left_handed_nodes(nodes)
     if bool(opts.bake_translation):
         meshes = _bake_translation_into_vertices(meshes)
 
@@ -105,17 +107,21 @@ def convert(
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
 
     if str(output_format) == "gltf":
-        glb_writer.write_meshes_gltf(
+        glb_writer.write_scene_gltf(
             output_glb,
             meshes=meshes,
+            nodes=nodes,
+            root_node_ids=root_node_ids,
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
         )
     else:
-        glb_writer.write_meshes(
+        glb_writer.write_scene(
             output_glb,
             meshes=meshes,
+            nodes=nodes,
+            root_node_ids=root_node_ids,
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
@@ -419,6 +425,273 @@ def _assemble_meshes(
         walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
     return meshes
+
+
+def _build_model_meshes(
+    scene: VoxScene,
+    mesher_result: MesherResult,
+    atlas_result: atlas_mod.AtlasBuildResult,
+    *,
+    scale: float,
+    flip_v: bool,
+    pivot: str = "corner",
+) -> tuple[list[dict], dict[int, int]]:
+    if pivot not in ("corner", "bottom_center", "center"):
+        raise ValueError("pivot must be one of: corner, bottom_center, center")
+
+    meshes: list[dict] = []
+    model_to_mesh: dict[int, int] = {}
+
+    for midx, quads in enumerate(mesher_result.quads_per_model):
+        positions: list[tuple[float, float, float]] = []
+        normals: list[tuple[float, float, float]] = []
+        texcoords: list[tuple[float, float]] = []
+        indices: list[int] = []
+
+        for qidx, quad in enumerate(quads):
+            uv_rect = atlas_result.quad_uvs[(midx, qidx)]
+
+            p_arr = np.asarray(quad.verts, dtype=np.float32)
+            p0, p1, _p2, p3 = p_arr
+            edge_u = p1 - p0
+            edge_v = p3 - p0
+            face_normal = np.cross(edge_u, edge_v)
+            tri_order = (0, 1, 2, 0, 2, 3)
+            if float(np.dot(face_normal, np.asarray(quad.normal, dtype=np.float32))) < 0.0:
+                tri_order = (0, 2, 1, 0, 3, 2)
+
+            w_vox = float(quad.size_u) * float(scale)
+            h_vox = float(quad.size_v) * float(scale)
+            e1 = edge_u
+            e3 = edge_v
+            len1 = float(np.linalg.norm(e1))
+            len3 = float(np.linalg.norm(e3))
+            d_keep = abs(len1 - w_vox) + abs(len3 - h_vox)
+            d_swap = abs(len1 - h_vox) + abs(len3 - w_vox)
+            if d_swap < d_keep:
+                u_axis = e3
+                v_axis = e1
+            else:
+                u_axis = e1
+                v_axis = e3
+
+            uu = float(np.dot(u_axis, u_axis)) or 1.0
+            vv = float(np.dot(v_axis, v_axis)) or 1.0
+            u_span = uv_rect.u1 - uv_rect.u0
+            v_span = uv_rect.v1 - uv_rect.v0
+
+            def map_uv(idx: int) -> tuple[float, float]:
+                rel = p_arr[idx] - p0
+                a = float(np.dot(rel, u_axis) / uu)
+                b = float(np.dot(rel, v_axis) / vv)
+                a = 0.0 if a < 0.0 else (1.0 if a > 1.0 else a)
+                b = 0.0 if b < 0.0 else (1.0 if b > 1.0 else b)
+                u = uv_rect.u0 + u_span * a
+                v = uv_rect.v0 + v_span * b
+                if flip_v:
+                    v = 1.0 - v
+                return (float(u), float(v))
+
+            base = len(positions)
+            for vx in quad.verts:
+                positions.append((vx[0] * scale, vx[1] * scale, vx[2] * scale))
+                normals.append(quad.normal)
+            texcoords.extend(map_uv(i) for i in range(4))
+            indices.extend(base + idx for idx in tri_order)
+
+        if not positions:
+            vox = np.asarray(scene.models[midx].voxels)
+            if vox.size:
+                try:
+                    vcnt = int(vox.shape[0])
+                except Exception:
+                    vcnt = int(vox.size)
+                sys.stderr.write(
+                    f"[btp_vox] warning: model has voxels but produced no quads; skipped export. "
+                    f"model_id={midx} name={scene.models[midx].name} voxel_count={vcnt} size={scene.models[midx].size}\n"
+                )
+            continue
+
+        pos_arr = np.asarray(positions, dtype=np.float32)
+        sx, sy, sz = scene.models[midx].size
+        if pivot == "corner":
+            p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
+        elif pivot == "bottom_center":
+            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, 0.0), dtype=np.float32)
+        else:
+            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, float(sz) * 0.5 * scale), dtype=np.float32)
+
+        if pos_arr.size:
+            pos_arr = pos_arr.copy()
+            pos_arr[:, 0] -= float(p[0])
+            pos_arr[:, 1] -= float(p[1])
+            pos_arr[:, 2] -= float(p[2])
+
+        mesh_index = len(meshes)
+        meshes.append(
+            {
+                "name": scene.models[midx].name,
+                "model_id": int(midx),
+                "positions": pos_arr,
+                "normals": np.asarray(normals, dtype=np.float32),
+                "texcoords": np.asarray(texcoords, dtype=np.float32),
+                "indices": np.asarray(indices, dtype=np.uint32),
+            }
+        )
+        model_to_mesh[int(midx)] = int(mesh_index)
+
+    return meshes, model_to_mesh
+
+
+def _build_scene_nodes(scene: VoxScene, model_to_mesh: dict[int, int]) -> tuple[list[dict], list[int]]:
+    nodes: list[dict] = []
+    # Pre-create nodes matching VOX node indices.
+    for nd in scene.nodes:
+        out: dict = {"name": nd.name, "children": list(nd.children)}
+        if nd.kind == "trn":
+            out["translation"] = tuple(float(x) for x in nd.translation)
+            out["rotation"] = tuple(float(x) for x in nd.rotation)
+        nodes.append(out)
+
+    # Attach meshes to shape nodes. Avoid extra nodes unless a shp references multiple models.
+    for nid, nd in enumerate(scene.nodes):
+        if nd.kind != "shp":
+            continue
+        model_ids = [int(x) for x in nd.model_ids]
+        mesh_ids = [model_to_mesh[mid] for mid in model_ids if mid in model_to_mesh]
+        if not mesh_ids:
+            continue
+        if len(mesh_ids) == 1:
+            nodes[nid]["mesh"] = int(mesh_ids[0])
+        else:
+            # Minimal extra nodes: only for multi-model shapes.
+            extra_children: list[int] = []
+            for midx, mesh_id in zip(model_ids, mesh_ids):
+                child_id = len(nodes)
+                extra_children.append(child_id)
+                nodes.append({"name": f"{scene.models[midx].name}__inst", "mesh": int(mesh_id), "children": []})
+            nodes[nid]["children"] = list(nodes[nid].get("children") or []) + extra_children
+
+    return nodes, [int(r) for r in scene.root_node_ids]
+
+
+def _build_scene_nodes_two_level(
+    scene: VoxScene,
+    model_to_mesh: dict[int, int],
+    *,
+    scale: float = 1.0,
+) -> tuple[list[dict], list[int]]:
+    # Flatten VOX scene graph into: shp parent nodes -> mesh child nodes.
+    # This enforces a shallow hierarchy while preserving per-instance world transforms.
+
+    world_t: dict[int, tuple[float, float, float]] = {}
+    world_r: dict[int, tuple[float, float, float, float]] = {}
+
+    def walk(nid: int, parent_t: tuple[float, float, float], parent_r: tuple[float, float, float, float]) -> None:
+        nd = scene.nodes[nid]
+        t = parent_t
+        r = parent_r
+        if nd.kind == "trn":
+            lt = tuple(float(x) for x in nd.translation)
+            lr = tuple(float(x) for x in nd.rotation)
+            # MagicaVoxel nTRN translation is in parent space; do not rotate by parent.
+            t = (t[0] + lt[0], t[1] + lt[1], t[2] + lt[2])
+            r = _quat_norm(_quat_mul(r, lr))
+
+        world_t[nid] = t
+        world_r[nid] = r
+
+        for ch in nd.children:
+            walk(int(ch), t, r)
+
+    for rid in scene.root_node_ids:
+        walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+
+    nodes: list[dict] = []
+    parent_ids: list[int] = []
+    for nid, nd in enumerate(scene.nodes):
+        if nd.kind != "shp":
+            continue
+
+        t0 = world_t.get(nid, (0.0, 0.0, 0.0))
+        t = (t0[0] * float(scale), t0[1] * float(scale), t0[2] * float(scale))
+        r = world_r.get(nid, (0.0, 0.0, 0.0, 1.0))
+        model_ids = [int(x) for x in nd.model_ids]
+        if not model_ids:
+            continue
+
+        parent_name = str(nd.name)
+
+        parent_id = len(nodes)
+        nodes.append(
+            {
+                "name": parent_name,
+                "children": [],
+                "translation": t,
+                "rotation": r,
+            }
+        )
+
+        child_ids: list[int] = []
+        for mid in model_ids:
+            mesh_id = model_to_mesh.get(mid)
+            if mesh_id is None:
+                continue
+
+            child_id = len(nodes)
+            nodes.append(
+                {
+                    "name": str(scene.models[mid].name),
+                    "children": [],
+                    "mesh": int(mesh_id),
+                }
+            )
+            child_ids.append(child_id)
+
+        if not child_ids:
+            # No mesh exported for this shp; drop parent.
+            nodes.pop()
+            continue
+
+        nodes[parent_id]["children"] = child_ids
+        parent_ids.append(parent_id)
+
+    return nodes, parent_ids
+
+
+def _to_y_up_left_handed_nodes(nodes: list[dict]) -> list[dict]:
+    axis_m = np.asarray(
+        [
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    b = axis_m.T
+    bt = b.T
+    h = np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32)
+
+    out: list[dict] = []
+    for nd in nodes:
+        mm = dict(nd)
+
+        tr = mm.get("translation")
+        if tr is not None:
+            t = np.asarray(tr, dtype=np.float32) @ axis_m
+            t[2] *= -1.0
+            mm["translation"] = (float(t[0]), float(t[1]), float(t[2]))
+
+        rot = mm.get("rotation")
+        if rot is not None:
+            rmat = _quat_to_mat3(tuple(rot))
+            rmat = b @ rmat @ bt
+            rmat = h @ rmat @ h
+            mm["rotation"] = _mat3_to_quat(rmat)
+
+        out.append(mm)
+
+    return out
 
 
 def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
