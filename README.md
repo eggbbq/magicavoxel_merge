@@ -67,7 +67,7 @@ python -m btp_vox.cli \
 
 ### 2.3 批量转换（推荐）
 
-使用仓库内脚本：`btp_vox/batch_convert.sh`
+使用仓库内脚本：`batch_convert.sh`
 
 1. 修改脚本顶部：
 
@@ -78,7 +78,7 @@ python -m btp_vox.cli \
 2. 运行：
 
 ```bash
-./btp_vox/batch_convert.sh
+./batch_convert.sh
 ```
 
 ---
