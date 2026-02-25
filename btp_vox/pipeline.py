@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 import json
+import sys
 
 import numpy as np
 
@@ -48,12 +49,17 @@ def convert(
     texture_out: str | None = None,
     uv_json_out: str | None = None,
     debug_transforms_out: str | None = None,
+    print_nodes: bool = False,
+    output_format: str = "glb",
     options: PipelineOptions | None = None,
 ) -> None:
     """Run the Block-Topology Preservation pipeline end-to-end."""
 
     opts = options or PipelineOptions()
     scene = load_scene(input_vox)
+
+    if bool(print_nodes):
+        _print_scene_nodes(scene)
     mesher_result = build_quads(scene)
 
     atlas_result = atlas_mod.build_atlas(
@@ -98,13 +104,22 @@ def convert(
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
 
-    glb_writer.write_meshes(
-        output_glb,
-        meshes=meshes,
-        texture_png=texture_png,
-        texture_path=texture_uri,
-        name_prefix=Path(output_glb).stem,
-    )
+    if str(output_format) == "gltf":
+        glb_writer.write_meshes_gltf(
+            output_glb,
+            meshes=meshes,
+            texture_png=texture_png,
+            texture_path=texture_uri,
+            name_prefix=Path(output_glb).stem,
+        )
+    else:
+        glb_writer.write_meshes(
+            output_glb,
+            meshes=meshes,
+            texture_png=texture_png,
+            texture_path=texture_uri,
+            name_prefix=Path(output_glb).stem,
+        )
 
     if uv_json_out:
         name_counts: dict[str, int] = {}
@@ -119,6 +134,41 @@ def convert(
                 key = name
             rects[key] = rect
         uv_export.write_uv_json(uv_json_out, width=atlas_result.width, height=atlas_result.height, model_rects=rects)
+
+
+def _print_scene_nodes(scene: VoxScene) -> None:
+    sys.stderr.write(f"[btp_vox] scene nodes: count={len(scene.nodes)} roots={scene.root_node_ids}\n")
+    # Flat listing.
+    for nid, nd in enumerate(scene.nodes):
+        sys.stderr.write(
+            f"[btp_vox] node id={nid} kind={nd.kind} name={nd.name} "
+            f"t={tuple(float(x) for x in nd.translation)} "
+            f"r={tuple(float(x) for x in nd.rotation)} "
+            f"children={list(nd.children)} models={list(nd.model_ids)}\n"
+        )
+
+    # Tree traversal from roots.
+    sys.stderr.write("[btp_vox] scene tree:\n")
+    visited: set[int] = set()
+
+    def walk(node_id: int, depth: int) -> None:
+        if node_id in visited:
+            sys.stderr.write(f"[btp_vox] {'  ' * depth}- id={node_id} (cycle)\n")
+            return
+        visited.add(int(node_id))
+        if node_id < 0 or node_id >= len(scene.nodes):
+            sys.stderr.write(f"[btp_vox] {'  ' * depth}- id={node_id} (out_of_range)\n")
+            return
+        nd = scene.nodes[int(node_id)]
+        sys.stderr.write(
+            f"[btp_vox] {'  ' * depth}- id={node_id} kind={nd.kind} name={nd.name} "
+            f"children={list(nd.children)} models={list(nd.model_ids)}\n"
+        )
+        for ch in nd.children:
+            walk(int(ch), depth + 1)
+
+    for rid in scene.root_node_ids:
+        walk(int(rid), 0)
 
 
 def _write_transform_debug(path: str | Path, *, scene: VoxScene, meshes: list[dict], stage: str) -> None:
@@ -171,14 +221,21 @@ def _assemble_meshes(
     flip_v: bool,
     pivot: str = "corner",
 ) -> List[dict]:
+    # IMPORTANT: We assemble meshes per scene-graph shape instance (nSHP), not per model.
+    # A single model_id can be referenced by multiple nSHP nodes (instancing). If we only
+    # export one mesh per model_id, those additional instances disappear.
     meshes: List[dict] = []
 
     if pivot not in ("corner", "bottom_center", "center"):
         raise ValueError("pivot must be one of: corner, bottom_center, center")
 
-    for midx, quads in enumerate(mesher_result.quads_per_model):
-        tx, ty, tz = scene.models[midx].translation
-        rx, ry, rz, rw = scene.models[midx].rotation
+    model_geom_cache: dict[int, dict] = {}
+
+    def build_model_geom(midx: int) -> dict | None:
+        if midx in model_geom_cache:
+            return model_geom_cache[midx]
+
+        quads = mesher_result.quads_per_model[midx]
         positions: list[tuple[float, float, float]] = []
         normals: list[tuple[float, float, float]] = []
         texcoords: list[tuple[float, float]] = []
@@ -188,7 +245,7 @@ def _assemble_meshes(
             uv_rect = atlas_result.quad_uvs[(midx, qidx)]
 
             p_arr = np.asarray(quad.verts, dtype=np.float32)
-            p0, p1, p2, p3 = p_arr
+            p0, p1, _p2, p3 = p_arr
             edge_u = p1 - p0
             edge_v = p3 - p0
             face_normal = np.cross(edge_u, edge_v)
@@ -197,7 +254,6 @@ def _assemble_meshes(
                 tri_order = (0, 2, 1, 0, 3, 2)
 
             # Determine which quad edge corresponds to (size_u, size_v).
-            # This avoids per-face rotated/mirrored atlas sampling.
             w_vox = float(quad.size_u) * float(scale)
             h_vox = float(quad.size_v) * float(scale)
             e1 = edge_u
@@ -231,57 +287,157 @@ def _assemble_meshes(
                 return (float(u), float(v))
 
             base = len(positions)
-
             for vx in quad.verts:
                 positions.append((vx[0] * scale, vx[1] * scale, vx[2] * scale))
                 normals.append(quad.normal)
-
             texcoords.extend(map_uv(i) for i in range(4))
             indices.extend(base + idx for idx in tri_order)
 
         if not positions:
-            continue
+            vox = np.asarray(scene.models[midx].voxels)
+            if vox.size:
+                try:
+                    vcnt = int(vox.shape[0])
+                except Exception:
+                    vcnt = int(vox.size)
+                sys.stderr.write(
+                    f"[btp_vox] warning: model has voxels but produced no quads; skipped export. "
+                    f"model_id={midx} name={scene.models[midx].name} voxel_count={vcnt} size={scene.models[midx].size}\n"
+                )
+            model_geom_cache[midx] = {}
+            return None
 
-        # Pivot handling: shift vertices so chosen pivot is at local origin.
-        # NOTE: MagicaVoxel scene translations are authored in a pivoted space; adding R*p here
-        # double-counts the pivot and causes large offsets. We therefore keep node translation
-        # as the scene-provided translation.
         pos_arr = np.asarray(positions, dtype=np.float32)
         sx, sy, sz = scene.models[midx].size
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         elif pivot == "bottom_center":
-            # MagicaVoxel pivot is defined in model volume space, not occupied-geometry bounds.
             p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, 0.0), dtype=np.float32)
         else:
             p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, float(sz) * 0.5 * scale), dtype=np.float32)
-
         if pos_arr.size:
             pos_arr = pos_arr.copy()
             pos_arr[:, 0] -= float(p[0])
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
 
-        t = np.asarray((float(tx) * scale, float(ty) * scale, float(tz) * scale), dtype=np.float32)
-        r = (float(rx), float(ry), float(rz), float(rw))
-        rp = np.asarray(_quat_rotate_vec(r, (float(p[0]), float(p[1]), float(p[2]))), dtype=np.float32)
+        geom = {
+            "positions": pos_arr,
+            "normals": np.asarray(normals, dtype=np.float32),
+            "texcoords": np.asarray(texcoords, dtype=np.float32),
+            "indices": np.asarray(indices, dtype=np.uint32),
+            "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
+        }
+        model_geom_cache[midx] = geom
+        return geom
 
-        meshes.append(
-            {
-                "name": scene.models[midx].name,
-                "model_id": int(midx),
-                "positions": pos_arr,
-                "normals": np.asarray(normals, dtype=np.float32),
-                "texcoords": np.asarray(texcoords, dtype=np.float32),
-                "indices": np.asarray(indices, dtype=np.uint32),
-                "translation": (float(t[0]), float(t[1]), float(t[2])),
-                "rotation": r,
-                "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
-                "pivot_rp": (float(rp[0]), float(rp[1]), float(rp[2])),
-            }
-        )
+    def merge_geoms(geoms: list[tuple[int, dict]]) -> dict | None:
+        if not geoms:
+            return None
+        pos_list: list[np.ndarray] = []
+        nrm_list: list[np.ndarray] = []
+        uv_list: list[np.ndarray] = []
+        idx_list: list[np.ndarray] = []
+        base = 0
+        for _midx, g in geoms:
+            pos = np.asarray(g["positions"], dtype=np.float32)
+            nrm = np.asarray(g["normals"], dtype=np.float32)
+            uv = np.asarray(g["texcoords"], dtype=np.float32)
+            idx = np.asarray(g["indices"], dtype=np.uint32)
+            pos_list.append(pos)
+            nrm_list.append(nrm)
+            uv_list.append(uv)
+            idx_list.append(idx + np.uint32(base))
+            base += int(pos.shape[0])
+        if base == 0:
+            return None
+        return {
+            "positions": np.vstack(pos_list),
+            "normals": np.vstack(nrm_list),
+            "texcoords": np.vstack(uv_list),
+            "indices": np.concatenate(idx_list),
+        }
+
+    def walk(node_id: int, wt: tuple[float, float, float], wr: tuple[float, float, float, float]) -> None:
+        if node_id < 0 or node_id >= len(scene.nodes):
+            return
+        nd = scene.nodes[int(node_id)]
+        if nd.kind == "trn":
+            lt = nd.translation
+            lr = nd.rotation
+            # MagicaVoxel nTRN translations are authored in parent space; do NOT rotate by parent rotation.
+            nwt = (wt[0] + lt[0], wt[1] + lt[1], wt[2] + lt[2])
+            nwr = _quat_mul(wr, lr)
+            nwr = _quat_norm(nwr)
+            for ch in nd.children:
+                walk(int(ch), nwt, nwr)
+            return
+
+        if nd.kind == "grp":
+            for ch in nd.children:
+                walk(int(ch), wt, wr)
+            return
+
+        if nd.kind == "shp":
+            geoms: list[tuple[int, dict]] = []
+            for mid in nd.model_ids:
+                if 0 <= int(mid) < len(scene.models):
+                    g = build_model_geom(int(mid))
+                    if g is not None:
+                        geoms.append((int(mid), g))
+            merged = merge_geoms(geoms)
+            if merged is None:
+                return
+
+            t = np.asarray((float(wt[0]) * scale, float(wt[1]) * scale, float(wt[2]) * scale), dtype=np.float32)
+            r = (float(wr[0]), float(wr[1]), float(wr[2]), float(wr[3]))
+
+            # Name instances uniquely to avoid editor collapsing duplicates.
+            if len(nd.model_ids) == 1 and 0 <= int(nd.model_ids[0]) < len(scene.models):
+                base_name = scene.models[int(nd.model_ids[0])].name
+            else:
+                base_name = nd.name
+            name = f"{base_name}__{node_id}"
+
+            meshes.append(
+                {
+                    "name": name,
+                    "model_id": int(nd.model_ids[0]) if nd.model_ids else -1,
+                    "positions": merged["positions"],
+                    "normals": merged["normals"],
+                    "texcoords": merged["texcoords"],
+                    "indices": merged["indices"],
+                    "translation": (float(t[0]), float(t[1]), float(t[2])),
+                    "rotation": r,
+                    "pivot_p": (0.0, 0.0, 0.0),
+                    "pivot_rp": (0.0, 0.0, 0.0),
+                }
+            )
+            return
+
+    for rid in scene.root_node_ids:
+        walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
     return meshes
+
+
+def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    ax, ay, az, aw = (float(a[0]), float(a[1]), float(a[2]), float(a[3]))
+    bx, by, bz, bw = (float(b[0]), float(b[1]), float(b[2]), float(b[3]))
+    return (
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+        aw * bw - ax * bx - ay * by - az * bz,
+    )
+
+
+def _quat_norm(q: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    x, y, z, w = (float(q[0]), float(q[1]), float(q[2]), float(q[3]))
+    n = (x * x + y * y + z * z + w * w) ** 0.5
+    if n == 0.0:
+        return (0.0, 0.0, 0.0, 1.0)
+    return (float(x / n), float(y / n), float(z / n), float(w / n))
 
 
 def _quat_rotate_vec(q: tuple[float, float, float, float], v: tuple[float, float, float]) -> tuple[float, float, float]:
@@ -357,51 +513,66 @@ def _mat3_to_quat(m: np.ndarray) -> tuple[float, float, float, float]:
 
 
 def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
-    """Convert from MagicaVoxel coords to Y-up, then mirror Z for left-handed output.
+    """Match magicavoxel_merge's coordinate + normal conversion.
 
-    Axis map used by the main project: (x,y,z) -> (x,z,-y)
-    Left-handed conversion: mirror Y and Z.
+    1) Axis map MV->Y-up: (x,y,z) -> (x,z,-y)
+    2) Left-handed output: mirror Z and flip triangle winding.
     """
 
-    # Basis change MV->Y-up.
-    b = np.asarray([[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, -1.0, 0.0]], dtype=np.float32)
+    # Row-vector transform for axis map: v' = v @ m
+    axis_m = np.asarray(
+        [
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    # Column-vector basis change for rotations: v' = b @ v
+    b = axis_m.T
     bt = b.T
-    # Reflect Y and Z.
-    h = np.asarray([[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32)
+
+    # Handedness flip (mirror Z): v' = h @ v (column vectors)
+    h = np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]], dtype=np.float32)
 
     out: List[dict] = []
-    for m in meshes:
-        mm = dict(m)
+    for mesh in meshes:
+        mm = dict(mesh)
 
         pos = np.asarray(mm["positions"], dtype=np.float32)
         nrm = np.asarray(mm["normals"], dtype=np.float32)
         idx = np.asarray(mm["indices"], dtype=np.uint32)
 
-        # Axis map
-        pos = pos @ bt
-        nrm = nrm @ bt
+        # Axis map (MV->Y-up): (x,y,z)->(x,z,-y)
+        pos = pos @ axis_m
+        nrm = nrm @ axis_m
 
         tr = mm.get("translation")
         if tr is not None:
             t = np.asarray(tr, dtype=np.float32)
-            t = t @ bt
+            t = t @ axis_m
             mm["translation"] = (float(t[0]), float(t[1]), float(t[2]))
 
         rot = mm.get("rotation")
         if rot is not None:
             rmat = _quat_to_mat3(tuple(rot))
+            # Apply axis basis change, then handedness conjugation.
             rmat = b @ rmat @ bt
             rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
 
-        # Mirror Y/Z
-        pos[:, 1] *= -1.0
+        # Mirror Z for left-handed output
         pos[:, 2] *= -1.0
-        nrm[:, 1] *= -1.0
         nrm[:, 2] *= -1.0
         if tr is not None:
             tx, ty, tz = mm["translation"]
-            mm["translation"] = (float(tx), -float(ty), -float(tz))
+            mm["translation"] = (float(tx), float(ty), -float(tz))
+
+        # Flip winding to match the handedness reflection.
+        if idx.size % 3 != 0:
+            raise ValueError("indices length must be multiple of 3")
+        tris = idx.reshape((-1, 3))
+        idx = tris[:, [0, 2, 1]].reshape((-1,)).astype(np.uint32)
 
         mm["positions"] = pos
         mm["normals"] = nrm

@@ -15,6 +15,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--texture-out", help="Write atlas PNG to this path (otherwise embed into GLB)")
     parser.add_argument("--uv-json-out", help="Write per-model UV rectangles to this JSON file")
     parser.add_argument("--debug-transforms-out", help="Write per-model transform diagnostics JSON")
+    parser.add_argument("--print-nodes", action="store_true", help="Print VOX scene graph nodes to stderr")
+    parser.add_argument("--format", choices=("glb", "gltf"), default="glb", help="Output format")
 
     parser.add_argument("--scale", type=float, default=1.0, help="Uniform scale applied to geometry")
     parser.add_argument("--center", action="store_true", help="Center each model at origin")
@@ -67,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
         texture_out=args.texture_out,
         uv_json_out=args.uv_json_out,
         debug_transforms_out=args.debug_transforms_out,
+        print_nodes=bool(args.print_nodes),
+        output_format=str(args.format),
         options=pipeline_opts,
     )
     return 0

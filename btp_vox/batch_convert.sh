@@ -18,7 +18,7 @@ btp_convert_one() {
   stem="$(basename "$in_vox")"
   stem="${stem%.vox}"
 
-  local out_glb="$OUT_DIR/${stem}.glb"
+  local out_gltf="$OUT_DIR/${stem}.glb"
   local out_png="$OUT_DIR/${stem}.png"
   local out_uv="$OUT_DIR/${stem}_uv.json"
 
@@ -30,12 +30,12 @@ btp_convert_one() {
 
   local args=(
     "$in_vox"
-    "$out_glb"
+    "$out_gltf"
+    --format "glb"
     --scale "0.02"
-    --texture-out "$out_png"
     --uv-json-out "$out_uv"
-    --debug-transforms-out "$OUT_DIR/${stem}_xf.json"
     --atlas-pot
+    --print-nodes
     --pivot center
   )
 
