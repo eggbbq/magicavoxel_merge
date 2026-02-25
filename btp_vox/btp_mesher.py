@@ -41,6 +41,10 @@ def build_quads(scene: VoxScene) -> MesherResult:
         dims = (sx, sy, sz)
         model_quads: List[Quad] = []
 
+        # Pad by 1 voxel on all sides so we can sample outside the model bounds
+        # without per-sample bounds checks in Python.
+        voxels_p = np.pad(voxels, 1, mode="constant", constant_values=0)
+
         for axis in range(3):
             u_axis = (axis + 1) % 3
             v_axis = (axis + 2) % 3
@@ -54,8 +58,12 @@ def build_quads(scene: VoxScene) -> MesherResult:
             for cursor[axis] in range(dims[axis] + 1):
                 for cursor[v_axis] in range(dims[v_axis]):
                     for cursor[u_axis] in range(dims[u_axis]):
-                        a = _sample(voxels, cursor[0] - offset[0], cursor[1] - offset[1], cursor[2] - offset[2])
-                        b = _sample(voxels, cursor[0], cursor[1], cursor[2])
+                        # Convert to padded-grid coordinates (+1).
+                        x = int(cursor[0]) + 1
+                        y = int(cursor[1]) + 1
+                        z = int(cursor[2]) + 1
+                        a = int(voxels_p[x - int(offset[0]), y - int(offset[1]), z - int(offset[2])])
+                        b = int(voxels_p[x, y, z])
 
                         if (a != 0) == (b != 0):
                             mask[cursor[u_axis], cursor[v_axis]] = 0

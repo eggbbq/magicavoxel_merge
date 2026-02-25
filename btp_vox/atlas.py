@@ -70,8 +70,15 @@ def build_atlas(
                 rid_to_mq[rid] = (midx, qidx)
                 rid += 1
 
+        # NOTE: For large scenes, MaxRects search over many POT bins becomes extremely slow.
+        # Use a fast shelf pack, then optionally expand to POT/square. This trades some
+        # fill efficiency for dramatically better runtime.
+        use_fast_pack = len(rects_all) >= 512
         if pot or square:
-            atlas_w, atlas_h, positions = _pack_best_bin(rects_all, square=bool(square))
+            if use_fast_pack:
+                atlas_w, atlas_h, positions = _pack_rects(rects_all)
+            else:
+                atlas_w, atlas_h, positions = _pack_best_bin(rects_all, square=bool(square))
         else:
             atlas_w, atlas_h, positions = _pack_rects(rects_all)
 
@@ -113,7 +120,11 @@ def build_atlas(
                 block_w, block_h, positions = _pack_rects(rects)
             else:
                 if pot or square:
-                    block_w, block_h, positions = _pack_best_bin(rects, square=bool(square))
+                    use_fast_pack = len(rects) >= 512
+                    if use_fast_pack:
+                        block_w, block_h, positions = _pack_rects(rects)
+                    else:
+                        block_w, block_h, positions = _pack_best_bin(rects, square=bool(square))
                 else:
                     block_w, block_h, positions = _pack_rects(rects)
             for qidx, pos in positions.items():
@@ -122,7 +133,11 @@ def build_atlas(
 
         model_rects = [(midx, sz[0], sz[1]) for midx, sz in model_block_sizes.items()]
         if pot or square:
-            atlas_w, atlas_h, model_positions = _pack_best_bin(model_rects, square=bool(square))
+            use_fast_pack = len(model_rects) >= 512
+            if use_fast_pack:
+                atlas_w, atlas_h, model_positions = _pack_rects(model_rects)
+            else:
+                atlas_w, atlas_h, model_positions = _pack_best_bin(model_rects, square=bool(square))
         else:
             atlas_w, atlas_h, model_positions = _pack_rects(model_rects)
 
@@ -381,20 +396,16 @@ def _quad_block_rgba(
     texel_scale = max(1, int(texel_scale))
     core_h = full_h - pad * 2
     core_w = full_w - pad * 2
-    core = np.zeros((core_h, core_w, 4), dtype=np.uint8)
 
+    # Vectorized palette lookup and texel scaling.
     # `colors` is stored as a (V, U) grid (rows=V, cols=U).
-    for v in range(int(colors.shape[0])):
-        for u in range(int(colors.shape[1])):
-            color_idx = int(colors[v, u])
-            if color_idx <= 0:
-                continue
-            rgba = palette[max(0, min(255, color_idx - 1))]
-            x0 = u * texel_scale
-            x1 = x0 + texel_scale
-            y0 = v * texel_scale
-            y1 = y0 + texel_scale
-            core[y0:y1, x0:x1, :] = rgba
+    idx = colors.astype(np.int32)
+    idx = np.clip(idx - 1, 0, 255)
+    rgba = palette[idx]  # (V, U, 4)
+    if texel_scale != 1:
+        rgba = np.repeat(np.repeat(rgba, texel_scale, axis=0), texel_scale, axis=1)
+
+    core = rgba[:core_h, :core_w, :].astype(np.uint8, copy=False)
 
     if pad > 0:
         block = np.pad(core, ((pad, pad), (pad, pad), (0, 0)), mode="edge")

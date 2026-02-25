@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import List
 
 import json
+import os
 import sys
+import time
 
 import numpy as np
 
@@ -55,12 +57,28 @@ def convert(
 ) -> None:
     """Run the Block-Topology Preservation pipeline end-to-end."""
 
+    timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
+    t0 = time.perf_counter()
+    last_t = t0
+
+    def mark(stage: str) -> None:
+        nonlocal last_t
+        if not timings_enabled:
+            return
+        now = time.perf_counter()
+        sys.stderr.write(
+            f"[btp_vox] timing {stage}: +{(now - last_t):.3f}s (total {(now - t0):.3f}s)\n"
+        )
+        last_t = now
+
     opts = options or PipelineOptions()
     scene = load_scene(input_vox)
+    mark("load_scene")
 
     if bool(print_nodes):
         _print_scene_nodes(scene)
     mesher_result = build_quads(scene)
+    mark("build_quads")
 
     atlas_result = atlas_mod.build_atlas(
         scene,
@@ -74,6 +92,7 @@ def convert(
         tight_blocks=bool(opts.atlas.tight_blocks),
         style=str(opts.atlas.style),
     )
+    mark("build_atlas")
 
     texture_uri = None
     texture_png: bytes | None = atlas_result.texture_png
@@ -93,15 +112,19 @@ def convert(
         flip_v=bool(opts.flip_v),
         pivot=str(opts.pivot),
     )
+    mark("build_model_meshes")
     nodes, root_node_ids = _build_scene_nodes_two_level(scene, model_to_mesh, scale=float(opts.scale))
+    mark("build_scene_nodes")
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
 
     meshes = _to_y_up_left_handed(meshes)
     nodes = _to_y_up_left_handed_nodes(nodes)
+    mark("axis_convert")
     if bool(opts.bake_translation):
         meshes = _bake_translation_into_vertices(meshes)
+        mark("bake_translation")
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
@@ -127,6 +150,8 @@ def convert(
             name_prefix=Path(output_glb).stem,
         )
 
+    mark(f"write_{str(output_format)}")
+
     if uv_json_out:
         name_counts: dict[str, int] = {}
         rects: dict[str, tuple[float, float, float, float]] = {}
@@ -140,6 +165,7 @@ def convert(
                 key = name
             rects[key] = rect
         uv_export.write_uv_json(uv_json_out, width=atlas_result.width, height=atlas_result.height, model_rects=rects)
+        mark("write_uv_json")
 
 
 def _print_scene_nodes(scene: VoxScene) -> None:

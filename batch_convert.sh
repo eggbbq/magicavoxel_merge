@@ -40,7 +40,7 @@ btp_convert_one() {
     --pivot center
   )
 
-  python -m btp_vox.cli "${args[@]}"
+  BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"
 }
 
 export -f btp_convert_one
