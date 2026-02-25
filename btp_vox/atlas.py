@@ -201,7 +201,7 @@ def build_atlas(
         block_w, block_h = model_block_sizes.get(midx, (1, 1))
         mx, my = block_origin
 
-        # Top-left origin convention (matches the baked atlas array). Use --flip-v in the pipeline
+        # Top-left origin convention (matches the baked atlas array). Use --uv-flip-v in the pipeline
         # if your engine treats v=0 as bottom.
         model_uv[midx] = (
             float(mx) / float(atlas_w),

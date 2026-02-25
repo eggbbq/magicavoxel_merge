@@ -25,23 +25,26 @@ btp_convert_one() {
 #   --pivot corner 
 #   --pivot bottom_center
 #   --pivot center
-#   --atlas-layout by-model | global
+#   --tex-layout by-model | global
 #   --format glb | gltf
-#   --atlas-pot
-#   --texture-alpha auto|rgba|rgb
-
+#   --tex-pot
+#   --tex-square
+#   --tex-fmt auto|rgba|rgb
+#   --uv-flip-v
 
   local args=(
-    "$in_vox"
-    "$out_model"
-    --uv-json-out "$out_uv"
-    --texture-out "$out_tex"
-    --format glb
-    --scale 0.02
-    --atlas-layout global
-    --atlas-pot
-    --texture-alpha rgb
-    --pivot center
+    --input         "$in_vox"
+    --output        "$out_model"
+    --uv-out        "$out_uv"
+    
+    --tex-pot
+    --tex-fmt       rgb
+    --tex-out       "$out_tex"
+    --tex-layout    global
+    
+    --scale         0.02
+    --pivot         center
+    --format        glb
   )
 
   BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"

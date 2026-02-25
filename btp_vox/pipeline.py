@@ -40,7 +40,6 @@ class PipelineOptions:
     center_bounds: bool = False
     weld: bool = False
     flip_v: bool = False
-    bake_translation: bool = False
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
 
@@ -124,9 +123,6 @@ def convert(
     meshes = _to_y_up_left_handed(meshes)
     nodes = _to_y_up_left_handed_nodes(nodes)
     mark("axis_convert")
-    if bool(opts.bake_translation):
-        meshes = _bake_translation_into_vertices(meshes)
-        mark("bake_translation")
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
@@ -919,23 +915,5 @@ def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
 
 
 
-def _bake_translation_into_vertices(meshes: List[dict]) -> List[dict]:
-    out: List[dict] = []
-    for m in meshes:
-        mm = dict(m)
-        tr = mm.get("translation")
-        if tr is None:
-            out.append(mm)
-            continue
-
-        t = np.asarray(tr, dtype=np.float32)
-        pos = np.asarray(mm["positions"], dtype=np.float32)
-        if pos.size:
-            pos = pos.copy()
-            pos[:, 0] += float(t[0])
-            pos[:, 1] += float(t[1])
-            pos[:, 2] += float(t[2])
-        mm["positions"] = pos
-        mm["translation"] = (0.0, 0.0, 0.0)
-        out.append(mm)
-    return out
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

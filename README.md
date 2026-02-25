@@ -16,7 +16,7 @@
 在仓库根目录运行（示例）：
 
 ```bash
-python -m btp_vox.cli input.vox output.glb
+python -m btp_vox.cli --input input.vox --output output.glb
 ```
 
 说明：
@@ -32,30 +32,30 @@ python -m btp_vox.cli input.vox output.glb
 
 ```bash
 python -m btp_vox.cli \
-  input.vox \
-  output.glb \
+  --input input.vox \
+  --output output.glb \
   --format glb \
-  --texture-out output.png \
+  --tex-out output.png \
   --scale 0.02 \
   --pivot center \
-  --atlas-layout global \
-  --atlas-pot \
-  --texture-alpha auto
+  --tex-layout global \
+  --tex-pot \
+  --tex-fmt auto
 ```
 
 ### 2.2 单文件导出（glTF：外置 .bin + .png）
 
 ```bash
 python -m btp_vox.cli \
-  input.vox \
-  output.gltf \
+  --input input.vox \
+  --output output.gltf \
   --format gltf \
-  --texture-out output.png \
+  --tex-out output.png \
   --scale 0.02 \
   --pivot center \
-  --atlas-layout global \
-  --atlas-pot \
-  --texture-alpha auto
+  --tex-layout global \
+  --tex-pot \
+  --tex-fmt auto
 ```
 
 说明：
@@ -94,7 +94,7 @@ python -m btp_vox.cli \
 - `--format gltf`
   - 输出：`*.gltf + *.bin + *.png`
 
-如果指定 `--uv-json-out`：
+如果指定 `--uv-out`：
 
 - 会额外输出一个 JSON，记录每个模型在 atlas 中的 UV 区域（便于外部工具调试）
 
@@ -158,29 +158,29 @@ Mesh 子节点名称使用 `.vox` 的 `model` 名称（即 `scene.models[model_i
 
 ## 5. Atlas / 纹理相关参数
 
-### 5.1 `--atlas-layout`
+### 5.1 `--tex-layout`
 
 - `global`
   - 将所有模型的图块全局一起打包
 - `by-model`
   - 先模型内部打包，再把每个模型块打到总 atlas
 
-### 5.2 `--atlas-pot`
+### 5.2 `--tex-pot`
 
 强制 atlas 宽高为 2 的幂（power-of-two），利于部分引擎纹理压缩与 mipmap。
 
-### 5.4 `--texture-out` / `--texture-alpha`
+### 5.4 `--tex-out` / `--tex-fmt`
 
-- `--texture-out <path>`：将 atlas 纹理写出为外部 PNG 文件（不再内嵌进 `.glb`）。
-- `--texture-alpha auto|rgba|rgb`：控制输出纹理是否包含透明通道。
+- `--tex-out <path>`：将 atlas 纹理写出为外部 PNG 文件（不再内嵌进 `.glb`）。
+- `--tex-fmt auto|rgba|rgb`：控制输出纹理是否包含透明通道。
   - `auto`（默认）：若整张 atlas 没有透明像素则输出 RGB，否则输出 RGBA。
   - `rgba`：强制输出 RGBA。
   - `rgb`：强制输出 RGB（会丢弃透明）。
 
-### 5.3 `--atlas-pad` / `--atlas-inset`
+### 5.3 `--tex-pad` / `--tex-inset`
 
-- `--atlas-pad <int>`：图块间 padding（texel）
-- `--atlas-inset <float>`：UV 内缩，降低串色风险
+- `--tex-pad <int>`：图块间 padding（texel）
+- `--tex-inset <float>`：UV 内缩，降低串色风险
 
 如果你看到贴图边缘有“串色/闪烁”，建议增大这两个值。
 
@@ -191,7 +191,7 @@ Mesh 子节点名称使用 `.vox` 的 `model` 名称（即 `scene.models[model_i
 ### 6.1 打印 VOX 场景树
 
 ```bash
-python -m btp_vox.cli input.vox output.glb --print-nodes
+python -m btp_vox.cli --input input.vox --output output.glb --print-nodes
 ```
 
 会把 scene graph 节点信息打印到 stderr，便于排查：
@@ -203,7 +203,7 @@ python -m btp_vox.cli input.vox output.glb --print-nodes
 
 ```bash
 python -m btp_vox.cli \
-  input.vox output.glb \
+  --input input.vox --output output.glb \
   --debug-transforms-out transforms.json
 ```
 
@@ -223,15 +223,15 @@ python -m btp_vox.cli \
 - `--format glb|gltf`：输出格式
 - `--scale <float>`：统一缩放
 - `--pivot corner|bottom_center|center`：pivot 模式
-- `--flip-v`：翻转 UV 的 V
-- `--uv-json-out <path>`：输出 UV JSON
-- `--texture-out <path>`：输出 atlas PNG 文件
-- `--texture-alpha auto|rgba|rgb`：纹理透明通道控制
-- `--atlas-layout by-model|global`
-- `--atlas-pot`
-- `--atlas-pad <int>`
-- `--atlas-inset <float>`
-- `--atlas-texel-scale <int>`
+- `--uv-flip-v`：翻转 UV 的 V
+- `--uv-out <path>`：输出 UV JSON
+- `--tex-out <path>`：输出 atlas PNG 文件
+- `--tex-fmt auto|rgba|rgb`：纹理透明通道控制
+- `--tex-layout by-model|global`
+- `--tex-pot`
+- `--tex-pad <int>`
+- `--tex-inset <float>`
+- `--tex-texel-scale <int>`
 
 不常用/调试参数：
 
