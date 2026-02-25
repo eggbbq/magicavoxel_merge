@@ -18,7 +18,7 @@ btp_convert_one() {
   stem="$(basename "$in_vox")"
   stem="${stem%.vox}"
 
-  local out_gltf="$OUT_DIR/${stem}.glb"
+  local out_model="$OUT_DIR/${stem}.glb"
   local out_png="$OUT_DIR/${stem}.png"
   local out_uv="$OUT_DIR/${stem}_uv.json"
 
@@ -26,11 +26,12 @@ btp_convert_one() {
 #   --pivot bottom_center
 #   --pivot center
 #   --atlas-layout by-model | global
+#   --format glb | gltf
 
 
   local args=(
     "$in_vox"
-    "$out_gltf"
+    "$out_model"
     --format "glb"
     --scale "0.02"
     --uv-json-out "$out_uv"
