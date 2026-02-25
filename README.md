@@ -215,8 +215,8 @@ python -m btp_vox.cli \
 
 必填参数：
 
-- `input`：输入 `.vox`
-- `output`：输出 `.glb` 或 `.gltf`
+- `--input <path>`：输入 `.vox`
+- `--output <path>`：输出 `.glb` 或 `.gltf`
 
 常用参数：
 
@@ -232,8 +232,32 @@ python -m btp_vox.cli \
 - `--tex-pad <int>`
 - `--tex-inset <float>`
 - `--tex-texel-scale <int>`
-- `--plat-cutout`：贴片裁切模式（每个 model 输出 1 个顶面四边形 + alpha clip）
+- `--plat-top-cutout`：贴片裁切模式（每个 model 输出 1 个顶面四边形 + alpha clip）
 - `--plat-cutoff <float>`：贴片裁切的 alpha cutoff（默认 0.5）
+- `--plat-suffix [str]`：名称以该后缀结尾的 model 自动用贴片裁切方式导出（默认 `-cutout`，也可直接写 `--plat-suffix` 不带参数）
+
+`--plat-suffix` 支持简写：
+
+- `--plat-suffix plat-t`：等价于后缀 `-plat-t`（top +Z cutout）
+- `--plat-suffix plat-f`：等价于后缀 `-plat-f`（front +Y cutout）
+
+特殊后缀：
+
+- `-plat-t`：按 top(+Z) 贴片裁切（单 quad + alpha clip）
+- `-plat-f`：按 front(+Y) 贴片裁切（单 quad + alpha clip）
+
+示例：
+
+```bash
+# 自动识别后缀：-cutout / -plat-t / -plat-f
+python -m btp_vox.cli --input input.vox --output output.glb
+
+# 全局强制所有 model 用贴片裁切（top +Z）
+python -m btp_vox.cli --input input.vox --output output.glb --plat-top-cutout
+
+# 把默认触发后缀从 -cutout 改成 -mycut
+python -m btp_vox.cli --input input.vox --output output.glb --plat-suffix -mycut
+```
 
 不常用/调试参数：
 

@@ -32,16 +32,17 @@ btp_convert_one() {
 #   --tex-square
 #   --tex-fmt auto|rgba|rgb
 #   --uv-flip-v
-#   --plat-cutout
+#   --plat-top-cutout
+#   --plat-suffix -cutout | plat-t | plat-f
 
   local args=(
     --input         $in_vox
     --output        $out_model
     --uv-out        $out_uv
     --cull          b
-    
+
     --tex-pot
-    --tex-fmt       rgb
+    --tex-fmt       rgba
     --tex-out       $out_tex
     --tex-layout    global
     

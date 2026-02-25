@@ -43,6 +43,7 @@ class PipelineOptions:
     cull: str = ""
     plat_cutout: bool = False
     plat_cutoff: float = 0.5
+    plat_suffix: str = "-cutout"
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
 
@@ -80,10 +81,42 @@ def convert(
 
     if bool(print_nodes):
         _print_scene_nodes(scene)
+    plat_suffix = str(getattr(opts, "plat_suffix", "") or "").strip()
+    if plat_suffix in ("plat-t", "-plat-t"):
+        plat_suffix = "-plat-t"
+    elif plat_suffix in ("plat-f", "-plat-f"):
+        plat_suffix = "-plat-f"
+    elif plat_suffix == "cutout":
+        plat_suffix = "-cutout"
+    use_plat_suffix = (not bool(opts.plat_cutout))
     if bool(opts.plat_cutout):
         mesher_result = _build_plat_cutout_quads(scene)
+        any_cutout = True
     else:
         mesher_result = build_quads(scene)
+        any_cutout = False
+        if use_plat_suffix:
+            qpm = list(mesher_result.quads_per_model)
+            replaced = False
+            for midx, m in enumerate(scene.models):
+                name = str(getattr(m, "name", "") or "")
+                mode: str | None = None
+                if name.endswith("-plat-t"):
+                    mode = "t"
+                elif name.endswith("-plat-f"):
+                    mode = "f"
+                elif plat_suffix and name.endswith(plat_suffix):
+                    mode = "f" if plat_suffix.endswith("plat-f") else "t"
+
+                if mode is None:
+                    continue
+
+                qpm[int(midx)] = _build_plat_cutout_quads_for_model(scene, int(midx), mode=mode)
+                replaced = True
+
+            if replaced:
+                mesher_result = MesherResult(quads_per_model=qpm)
+                any_cutout = True
 
     cull_letters = str(getattr(opts, "cull", "") or "").strip().lower()
     if cull_letters:
@@ -128,8 +161,8 @@ def convert(
         pot=bool(opts.atlas.pot),
         layout=str(opts.atlas.layout),
         tight_blocks=bool(opts.atlas.tight_blocks),
-        style=("baked" if bool(opts.plat_cutout) else str(opts.atlas.style)),
-        alpha=("rgba" if bool(opts.plat_cutout) else str(opts.texture_alpha)),
+        style=("baked" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.atlas.style)),
+        alpha=("rgba" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.texture_alpha)),
     )
     mark("build_atlas")
 
@@ -174,8 +207,8 @@ def convert(
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
-            alpha_mode=("MASK" if bool(opts.plat_cutout) else None),
-            alpha_cutoff=(float(opts.plat_cutoff) if bool(opts.plat_cutout) else None),
+            alpha_mode=("MASK" if bool(any_cutout) else None),
+            alpha_cutoff=(float(opts.plat_cutoff) if bool(any_cutout) else None),
         )
     else:
         glb_writer.write_scene(
@@ -186,8 +219,8 @@ def convert(
             texture_png=texture_png,
             texture_path=texture_uri,
             name_prefix=Path(output_glb).stem,
-            alpha_mode=("MASK" if bool(opts.plat_cutout) else None),
-            alpha_cutoff=(float(opts.plat_cutoff) if bool(opts.plat_cutout) else None),
+            alpha_mode=("MASK" if bool(any_cutout) else None),
+            alpha_cutoff=(float(opts.plat_cutoff) if bool(any_cutout) else None),
         )
 
     mark(f"write_{str(output_format)}")
@@ -346,6 +379,86 @@ def _build_plat_cutout_quads(scene: VoxScene) -> MesherResult:
         )
 
     return MesherResult(quads_per_model=per_model)
+
+
+def _build_plat_cutout_quads_for_model(scene: VoxScene, midx: int, *, mode: str = "t") -> list[Quad]:
+    model = scene.models[midx]
+    vox = np.asarray(model.voxels)
+    if vox.size == 0:
+        return []
+
+    sx, sy, sz = (int(model.size[0]), int(model.size[1]), int(model.size[2]))
+    if sx <= 0 or sy <= 0 or sz <= 0:
+        return []
+
+    filled = vox != 0
+    if not bool(np.any(filled)):
+        return []
+
+    if str(mode) == "f":
+        # Front (+Y): project along +Y, build a quad on the Y=max+1 plane spanning XZ.
+        any_xz = np.any(filled, axis=1)  # (sx,sz)
+        y_indices = np.arange(sy, dtype=np.int32)
+        y_masked = np.where(filled, y_indices[None, :, None], -1)
+        front_y = np.max(y_masked, axis=1).astype(np.int32)  # (sx,sz)
+
+        xs = np.arange(sx, dtype=np.int32)[:, None]
+        zs = np.arange(sz, dtype=np.int32)[None, :]
+        front_colors_xz = np.where(any_xz, vox[xs, front_y, zs], 0).astype(np.int32)  # (sx,sz)
+        colors_vu = front_colors_xz.T.copy()  # (sz,sx)
+
+        y_plane = int(np.max(front_y)) + 1
+        origin = (0, y_plane, 0)
+        size_u = sx
+        size_v = sz
+        verts = (
+            (0.0, float(y_plane), 0.0),
+            (float(size_u), float(y_plane), 0.0),
+            (float(size_u), float(y_plane), float(size_v)),
+            (0.0, float(y_plane), float(size_v)),
+        )
+        axis = 1
+        normal_sign = 1
+        normal = (0.0, 1.0, 0.0)
+    else:
+        # Top (+Z): project along +Z, build a quad on the Z=max+1 plane spanning XY.
+        any_xy = np.any(filled, axis=2)  # (sx,sy)
+        z_indices = np.arange(sz, dtype=np.int32)
+        z_masked = np.where(filled, z_indices[None, None, :], -1)
+        top_z = np.max(z_masked, axis=2).astype(np.int32)  # (sx,sy)
+
+        xs = np.arange(sx, dtype=np.int32)[:, None]
+        ys = np.arange(sy, dtype=np.int32)[None, :]
+        top_colors_xy = np.where(any_xy, vox[xs, ys, top_z], 0).astype(np.int32)  # (sx,sy)
+        colors_vu = top_colors_xy.T.copy()  # (sy,sx)
+
+        z_plane = int(np.max(top_z)) + 1
+        origin = (0, 0, z_plane)
+        size_u = sx
+        size_v = sy
+        verts = (
+            (0.0, 0.0, float(z_plane)),
+            (float(size_u), 0.0, float(z_plane)),
+            (float(size_u), float(size_v), float(z_plane)),
+            (0.0, float(size_v), float(z_plane)),
+        )
+        axis = 2
+        normal_sign = 1
+        normal = (0.0, 0.0, 1.0)
+
+    return [
+        Quad(
+            model_index=int(midx),
+            origin=origin,
+            size_u=int(size_u),
+            size_v=int(size_v),
+            axis=int(axis),
+            normal_sign=int(normal_sign),
+            colors=colors_vu,
+            verts=verts,
+            normal=normal,
+        )
+    ]
 
 
 def _assemble_meshes(
