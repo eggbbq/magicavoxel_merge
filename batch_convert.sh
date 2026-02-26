@@ -3,7 +3,7 @@ set -euo pipefail
 
 DIR_IN="/Users/graylian/workspace/VoxPLC"
 DIR_OUT="/Users/graylian/workspace/project_sh/voxel_world/assets/vox"
-BS="${JOBS:-4}"
+JOBS="${JOBS:-4}"
 
 mkdir -p "$DIR_OUT"
 
@@ -22,7 +22,7 @@ btp_convert_one_plat() {
     --input           $in_vox
     --output          $out_model
     --uv-out          $out_uv
-    --cull            b
+    
     --plat-top-cutout
 
     --tex-pot
@@ -49,11 +49,13 @@ btp_convert_one_normal() {
   local out_tex="$DIR_OUT/${stem}.png"
   local out_uv="$DIR_OUT/${stem}_uv.json"
 
+# --cull            b
+
   local args=(
     --input           $in_vox
     --output          $out_model
     --uv-out          $out_uv
-    --cull            b
+    
 
     --tex-pot
     --tex-fmt         rgb
