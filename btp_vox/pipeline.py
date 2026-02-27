@@ -40,6 +40,7 @@ class PipelineOptions:
     center_bounds: bool = False
     weld: bool = False
     flip_v: bool = False
+    export_uv2: bool = False
     cull: str = ""
     plat_cutout: bool = False
     plat_cutoff: float = 0.5
@@ -176,16 +177,17 @@ def convert(
         texture_uri = texture_path.name
         texture_png = None
 
-    meshes, model_to_mesh = _build_model_meshes(
+    meshes = _assemble_meshes(
         scene,
         mesher_result,
         atlas_result,
         scale=float(opts.scale),
         flip_v=bool(opts.flip_v),
         pivot=str(opts.pivot),
+        export_uv2=bool(getattr(opts, "export_uv2", False)),
     )
     mark("build_model_meshes")
-    nodes, root_node_ids = _build_scene_nodes_two_level(scene, model_to_mesh, scale=float(opts.scale))
+    nodes, root_node_ids = _build_scene_nodes_two_level(scene, {m["model_id"]: i for i, m in enumerate(meshes)}, scale=float(opts.scale))
     mark("build_scene_nodes")
 
     if debug_transforms_out:
@@ -469,6 +471,7 @@ def _assemble_meshes(
     scale: float,
     flip_v: bool,
     pivot: str = "corner",
+    export_uv2: bool = False,
 ) -> List[dict]:
     # IMPORTANT: We assemble meshes per scene-graph shape instance (nSHP), not per model.
     # A single model_id can be referenced by multiple nSHP nodes (instancing). If we only
@@ -574,6 +577,7 @@ def _assemble_meshes(
             "positions": pos_arr,
             "normals": np.asarray(normals, dtype=np.float32),
             "texcoords": np.asarray(texcoords, dtype=np.float32),
+            "texcoords1": (np.asarray(texcoords, dtype=np.float32) if bool(export_uv2) else None),
             "indices": np.asarray(indices, dtype=np.uint32),
             "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
         }
@@ -586,12 +590,18 @@ def _assemble_meshes(
         pos_list: list[np.ndarray] = []
         nrm_list: list[np.ndarray] = []
         uv_list: list[np.ndarray] = []
+        uv1_list: list[np.ndarray] = []
+        any_uv1 = False
         idx_list: list[np.ndarray] = []
         base = 0
         for _midx, g in geoms:
             pos = np.asarray(g["positions"], dtype=np.float32)
             nrm = np.asarray(g["normals"], dtype=np.float32)
             uv = np.asarray(g["texcoords"], dtype=np.float32)
+            uv1 = g.get("texcoords1")
+            if uv1 is not None:
+                any_uv1 = True
+                uv1_list.append(np.asarray(uv1, dtype=np.float32))
             idx = np.asarray(g["indices"], dtype=np.uint32)
             pos_list.append(pos)
             nrm_list.append(nrm)
@@ -604,6 +614,7 @@ def _assemble_meshes(
             "positions": np.vstack(pos_list),
             "normals": np.vstack(nrm_list),
             "texcoords": np.vstack(uv_list),
+            "texcoords1": (np.vstack(uv1_list) if any_uv1 else None),
             "indices": np.concatenate(idx_list),
         }
 
@@ -655,6 +666,7 @@ def _assemble_meshes(
                     "positions": merged["positions"],
                     "normals": merged["normals"],
                     "texcoords": merged["texcoords"],
+                    "texcoords1": merged["texcoords1"],
                     "indices": merged["indices"],
                     "translation": (float(t[0]), float(t[1]), float(t[2])),
                     "rotation": r,
@@ -678,6 +690,7 @@ def _build_model_meshes(
     scale: float,
     flip_v: bool,
     pivot: str = "corner",
+    export_uv2: bool = False,
 ) -> tuple[list[dict], dict[int, int]]:
     if pivot not in ("corner", "bottom_center", "center"):
         raise ValueError("pivot must be one of: corner, bottom_center, center")
@@ -778,6 +791,7 @@ def _build_model_meshes(
                 "positions": pos_arr,
                 "normals": np.asarray(normals, dtype=np.float32),
                 "texcoords": np.asarray(texcoords, dtype=np.float32),
+                "texcoords1": (np.asarray(texcoords, dtype=np.float32) if bool(export_uv2) else None),
                 "indices": np.asarray(indices, dtype=np.uint32),
             }
         )

@@ -78,6 +78,9 @@ def write_glb_scene(
         positions = np.asarray(m["positions"], dtype=np.float32)
         normals = np.asarray(m["normals"], dtype=np.float32)
         texcoords = np.asarray(m["texcoords"], dtype=np.float32)
+        texcoords1 = m.get("texcoords1")
+        if texcoords1 is not None:
+            texcoords1 = np.asarray(texcoords1, dtype=np.float32)
         indices = np.asarray(m["indices"], dtype=np.uint32)
         color0 = m.get("color0")
         tangent = m.get("tangent")
@@ -88,6 +91,8 @@ def write_glb_scene(
             raise ValueError("normals must match positions")
         if texcoords.ndim != 2 or texcoords.shape[1] != 2:
             raise ValueError("texcoords must be (N,2)")
+        if texcoords1 is not None and (texcoords1.shape != texcoords.shape):
+            raise ValueError("texcoords1 must be (N,2) to match texcoords")
         if indices.ndim != 1:
             raise ValueError("indices must be (M,)")
 
@@ -121,6 +126,12 @@ def write_glb_scene(
         uv_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=uv_view, componentType=FLOAT, count=int(texcoords.shape[0]), type=ACCESSOR_TYPE_VEC2))
 
+        uv1_accessor_index = None
+        if texcoords1 is not None:
+            uv1_view = add_view(texcoords1.tobytes(), ARRAY_BUFFER)
+            uv1_accessor_index = len(accessors)
+            accessors.append(Accessor(bufferView=uv1_view, componentType=FLOAT, count=int(texcoords1.shape[0]), type=ACCESSOR_TYPE_VEC2))
+
         col_accessor_index = None
         if color0 is not None:
             col_view = add_view(color0.tobytes(), ARRAY_BUFFER)
@@ -138,6 +149,8 @@ def write_glb_scene(
         accessors.append(Accessor(bufferView=idx_view, componentType=UNSIGNED_INT, count=int(indices.shape[0]), type=ACCESSOR_TYPE_SCALAR))
 
         attrs = Attributes(POSITION=pos_accessor_index, NORMAL=nrm_accessor_index, TEXCOORD_0=uv_accessor_index)
+        if uv1_accessor_index is not None:
+            attrs.TEXCOORD_1 = uv1_accessor_index
         if col_accessor_index is not None:
             attrs.COLOR_0 = col_accessor_index
         if tan_accessor_index is not None:

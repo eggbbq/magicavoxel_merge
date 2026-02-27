@@ -229,6 +229,7 @@ python -m btp_vox.cli \
 - `--scale <float>`：统一缩放
 - `--pivot corner|bottom_center|center`：pivot 模式
 - `--uv-flip-v`：翻转 UV 的 V
+- `--uv2`：导出第二套 UV（`TEXCOORD_1`，由 `TEXCOORD_0` 复制，用于 lightmap 烘焙）
 - `--uv-out <path>`：输出 UV JSON
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制

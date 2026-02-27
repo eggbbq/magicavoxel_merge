@@ -88,6 +88,9 @@ def write_meshes_gltf(
         positions = np.asarray(m["positions"], dtype=np.float32)
         normals = np.asarray(m["normals"], dtype=np.float32)
         texcoords = np.asarray(m["texcoords"], dtype=np.float32)
+        texcoords1 = m.get("texcoords1")
+        if texcoords1 is not None:
+            texcoords1 = np.asarray(texcoords1, dtype=np.float32)
         indices = np.asarray(m["indices"], dtype=np.uint32)
 
         pos_view = add_view(positions.tobytes(), ARRAY_BUFFER)
@@ -111,11 +114,19 @@ def write_meshes_gltf(
         uv_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=uv_view, componentType=FLOAT, count=int(texcoords.shape[0]), type=ACCESSOR_TYPE_VEC2))
 
+        uv1_accessor_index = None
+        if texcoords1 is not None:
+            uv1_view = add_view(texcoords1.tobytes(), ARRAY_BUFFER)
+            uv1_accessor_index = len(accessors)
+            accessors.append(Accessor(bufferView=uv1_view, componentType=FLOAT, count=int(texcoords1.shape[0]), type=ACCESSOR_TYPE_VEC2))
+
         idx_view = add_view(indices.tobytes(), ELEMENT_ARRAY_BUFFER)
         idx_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=idx_view, componentType=UNSIGNED_INT, count=int(indices.shape[0]), type=ACCESSOR_TYPE_SCALAR))
 
         attrs = Attributes(POSITION=pos_accessor_index, NORMAL=nrm_accessor_index, TEXCOORD_0=uv_accessor_index)
+        if uv1_accessor_index is not None:
+            attrs.TEXCOORD_1 = uv1_accessor_index
         prim = Primitive(attributes=attrs, indices=idx_accessor_index, material=0)
         mesh_index = len(gltf_meshes)
         gltf_meshes.append(Mesh(primitives=[prim], name=name))
@@ -231,6 +242,9 @@ def write_scene(
         positions = np.asarray(m["positions"], dtype=np.float32)
         normals = np.asarray(m["normals"], dtype=np.float32)
         texcoords = np.asarray(m["texcoords"], dtype=np.float32)
+        texcoords1 = m.get("texcoords1")
+        if texcoords1 is not None:
+            texcoords1 = np.asarray(texcoords1, dtype=np.float32)
         indices = np.asarray(m["indices"], dtype=np.uint32)
 
         pos_view = add_view(positions.tobytes(), ARRAY_BUFFER)
@@ -254,11 +268,26 @@ def write_scene(
         uv_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=uv_view, componentType=FLOAT, count=int(texcoords.shape[0]), type=ACCESSOR_TYPE_VEC2))
 
+        uv1_accessor_index = None
+        if texcoords1 is not None:
+            uv1_view = add_view(texcoords1.tobytes(), ARRAY_BUFFER)
+            uv1_accessor_index = len(accessors)
+            accessors.append(
+                Accessor(
+                    bufferView=uv1_view,
+                    componentType=FLOAT,
+                    count=int(texcoords1.shape[0]),
+                    type=ACCESSOR_TYPE_VEC2,
+                )
+            )
+
         idx_view = add_view(indices.tobytes(), ELEMENT_ARRAY_BUFFER)
         idx_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=idx_view, componentType=UNSIGNED_INT, count=int(indices.shape[0]), type=ACCESSOR_TYPE_SCALAR))
 
         attrs = Attributes(POSITION=pos_accessor_index, NORMAL=nrm_accessor_index, TEXCOORD_0=uv_accessor_index)
+        if uv1_accessor_index is not None:
+            attrs.TEXCOORD_1 = uv1_accessor_index
         prim = Primitive(attributes=attrs, indices=idx_accessor_index, material=0)
         gltf_meshes.append(Mesh(primitives=[prim], name=name))
 
@@ -392,6 +421,9 @@ def write_scene_gltf(
         positions = np.asarray(m["positions"], dtype=np.float32)
         normals = np.asarray(m["normals"], dtype=np.float32)
         texcoords = np.asarray(m["texcoords"], dtype=np.float32)
+        texcoords1 = m.get("texcoords1")
+        if texcoords1 is not None:
+            texcoords1 = np.asarray(texcoords1, dtype=np.float32)
         indices = np.asarray(m["indices"], dtype=np.uint32)
 
         pos_view = add_view(positions.tobytes(), ARRAY_BUFFER)
@@ -415,11 +447,19 @@ def write_scene_gltf(
         uv_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=uv_view, componentType=FLOAT, count=int(texcoords.shape[0]), type=ACCESSOR_TYPE_VEC2))
 
+        uv1_accessor_index = None
+        if texcoords1 is not None:
+            uv1_view = add_view(texcoords1.tobytes(), ARRAY_BUFFER)
+            uv1_accessor_index = len(accessors)
+            accessors.append(Accessor(bufferView=uv1_view, componentType=FLOAT, count=int(texcoords1.shape[0]), type=ACCESSOR_TYPE_VEC2))
+
         idx_view = add_view(indices.tobytes(), ELEMENT_ARRAY_BUFFER)
         idx_accessor_index = len(accessors)
         accessors.append(Accessor(bufferView=idx_view, componentType=UNSIGNED_INT, count=int(indices.shape[0]), type=ACCESSOR_TYPE_SCALAR))
 
         attrs = Attributes(POSITION=pos_accessor_index, NORMAL=nrm_accessor_index, TEXCOORD_0=uv_accessor_index)
+        if uv1_accessor_index is not None:
+            attrs.TEXCOORD_1 = uv1_accessor_index
         prim = Primitive(attributes=attrs, indices=idx_accessor_index, material=0)
         gltf_meshes.append(Mesh(primitives=[prim], name=name))
 

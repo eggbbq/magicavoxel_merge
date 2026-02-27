@@ -22,6 +22,7 @@ btp_convert_one_plat() {
     --input           $in_vox
     --output          $out_model
     --uv-out          $out_uv
+    --uv2
     
     --plat-top-cutout
 
@@ -29,6 +30,7 @@ btp_convert_one_plat() {
     --tex-fmt         rgba
     --tex-out         $out_tex
     --tex-layout      global
+
 
     --scale           0.02
     --pivot           center
@@ -55,7 +57,7 @@ btp_convert_one_normal() {
     --input           $in_vox
     --output          $out_model
     --uv-out          $out_uv
-    
+    --uv2
 
     --tex-pot
     --tex-fmt         rgb
