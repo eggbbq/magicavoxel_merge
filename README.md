@@ -230,6 +230,7 @@ python -m btp_vox.cli \
 - `--pivot corner|bottom_center|center`：pivot 模式
 - `--uv-flip-v`：翻转 UV 的 V
 - `--uv2`：导出第二套 UV（`TEXCOORD_1`，由 `TEXCOORD_0` 复制，用于 lightmap 烘焙）
+- `--uv2-mode copy|lightmap`：UV2 生成方式（默认 copy；lightmap 会生成不重叠的 UV2，用于真正的 lightmap 烘焙）
 - `--uv-out <path>`：输出 UV JSON
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制

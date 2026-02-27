@@ -32,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--uv-out", help="Write per-model UV rectangles to this JSON file")
     parser.add_argument("--uv-flip-v", action="store_true", help="Flip V texture coordinate")
     parser.add_argument("--uv2", action="store_true", help="Export secondary UV set (TEXCOORD_1) by copying TEXCOORD_0 (for lightmap baking)")
+    parser.add_argument("--uv2-mode", choices=("copy", "lightmap"), default="copy", help="How to generate UV2 (TEXCOORD_1): copy duplicates UV0; lightmap generates non-overlapping UVs")
 
     parser.add_argument("--tex-fmt", choices=("auto", "rgba", "rgb"), default="auto", help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha")
     parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB)")
@@ -66,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         pivot=args.pivot,
         flip_v=args.uv_flip_v,
         export_uv2=bool(args.uv2),
+        uv2_mode=str(args.uv2_mode),
         cull=str(args.cull),
         plat_cutout=bool(args.plat_top_cutout),
         plat_cutoff=float(args.plat_cutoff),

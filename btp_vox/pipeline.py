@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
+import math
 import json
 import os
 import sys
@@ -41,6 +42,7 @@ class PipelineOptions:
     weld: bool = False
     flip_v: bool = False
     export_uv2: bool = False
+    uv2_mode: str = "copy"
     cull: str = ""
     plat_cutout: bool = False
     plat_cutoff: float = 0.5
@@ -184,6 +186,7 @@ def convert(
         scale=float(opts.scale),
         flip_v=bool(opts.flip_v),
         pivot=str(opts.pivot),
+        uv2_mode=str(getattr(opts, "uv2_mode", "copy")),
         export_uv2=bool(getattr(opts, "export_uv2", False)),
     )
     mark("build_model_meshes")
@@ -472,6 +475,7 @@ def _assemble_meshes(
     flip_v: bool,
     pivot: str = "corner",
     export_uv2: bool = False,
+    uv2_mode: str = "copy",
 ) -> List[dict]:
     # IMPORTANT: We assemble meshes per scene-graph shape instance (nSHP), not per model.
     # A single model_id can be referenced by multiple nSHP nodes (instancing). If we only
@@ -573,11 +577,37 @@ def _assemble_meshes(
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
 
+        texcoords_arr = np.asarray(texcoords, dtype=np.float32)
+        texcoords1_arr = None
+        if bool(export_uv2):
+            if str(uv2_mode) == "lightmap":
+                quad_count = int(texcoords_arr.shape[0] // 4)
+                grid = int(math.ceil(math.sqrt(float(max(1, quad_count)))))
+                pad = 0.05
+                cell = 1.0 / float(grid)
+                inner = cell * (1.0 - 2.0 * pad)
+                uv1 = np.empty_like(texcoords_arr)
+                for qi in range(quad_count):
+                    gx = int(qi % grid)
+                    gy = int(qi // grid)
+                    x0 = float(gx) * cell + cell * pad
+                    y0 = float(gy) * cell + cell * pad
+                    x1 = x0 + inner
+                    y1 = y0 + inner
+                    base = qi * 4
+                    uv1[base + 0] = (x0, y0)
+                    uv1[base + 1] = (x1, y0)
+                    uv1[base + 2] = (x1, y1)
+                    uv1[base + 3] = (x0, y1)
+                texcoords1_arr = uv1
+            else:
+                texcoords1_arr = texcoords_arr.copy()
+
         geom = {
             "positions": pos_arr,
             "normals": np.asarray(normals, dtype=np.float32),
-            "texcoords": np.asarray(texcoords, dtype=np.float32),
-            "texcoords1": (np.asarray(texcoords, dtype=np.float32) if bool(export_uv2) else None),
+            "texcoords": texcoords_arr,
+            "texcoords1": texcoords1_arr,
             "indices": np.asarray(indices, dtype=np.uint32),
             "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
         }
