@@ -58,6 +58,7 @@ btp_convert_one_normal() {
     --output          $out_model
     --uv-out          $out_uv
     --uv2
+    --character-flat
 
     --tex-pot
     --tex-fmt         rgb

@@ -44,6 +44,9 @@ class PipelineOptions:
     export_uv2: bool = False
     uv2_mode: str = "copy"
     export_vertex_color: bool = False
+    no_merge_nodes: bool = False
+    character_apart: bool = False
+    character_flat: bool = False
     cull: str = ""
     plat_cutout: bool = False
     plat_cutoff: float = 0.5
@@ -192,8 +195,35 @@ def convert(
         export_vertex_color=bool(getattr(opts, "export_vertex_color", False)),
     )
     mark("build_model_meshes")
-    nodes, root_node_ids = _build_scene_nodes_two_level(scene, {m["model_id"]: i for i, m in enumerate(meshes)}, scale=float(opts.scale))
+
+    character_flat = bool(getattr(opts, "character_flat", False))
+    character_apart = bool(getattr(opts, "character_apart", False)) or character_flat
+    no_merge_nodes = bool(getattr(opts, "no_merge_nodes", False)) or character_apart
+
+    if no_merge_nodes:
+        meshes, model_to_mesh = _build_model_meshes(
+            scene,
+            mesher_result,
+            atlas_result,
+            scale=float(opts.scale),
+            flip_v=bool(opts.flip_v),
+            pivot=str(opts.pivot),
+            export_uv2=bool(getattr(opts, "export_uv2", False)),
+            uv2_mode=str(getattr(opts, "uv2_mode", "copy")),
+            export_vertex_color=bool(getattr(opts, "export_vertex_color", False)),
+        )
+        nodes, root_node_ids, meshes = _build_scene_nodes_no_extra(scene, model_to_mesh, meshes, scale=float(opts.scale))
+        if character_apart:
+            nodes, root_node_ids = _collapse_scene_nodes_inplace(scene, nodes, root_node_ids, model_to_mesh)
+            if character_flat:
+                nodes, root_node_ids = _flatten_character_roots(nodes, root_node_ids)
+    else:
+        nodes, root_node_ids = _build_scene_nodes_two_level(scene, {m["model_id"]: i for i, m in enumerate(meshes)}, scale=float(opts.scale))
     mark("build_scene_nodes")
+
+    nodes, root_node_ids = _collapse_auto_wrappers(nodes, root_node_ids)
+
+    nodes = _ensure_mesh_node_names(nodes, meshes)
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
@@ -281,6 +311,127 @@ def _print_scene_nodes(scene: VoxScene) -> None:
 
     for rid in scene.root_node_ids:
         walk(int(rid), 0)
+
+
+def _ensure_mesh_node_names(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    def is_auto_name(n: str) -> bool:
+        ns = str(n or "")
+        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
+
+    out: list[dict] = []
+    for i, nd in enumerate(nodes):
+        mm = dict(nd)
+        mesh_id = mm.get("mesh")
+        if mesh_id is not None:
+            cur = str(mm.get("name") or "")
+            if (not cur) or is_auto_name(cur):
+                try:
+                    mi = int(mesh_id)
+                except Exception:
+                    mi = -1
+                mesh_name = None
+                if 0 <= mi < len(meshes):
+                    mesh_name = meshes[mi].get("name")
+                mm["name"] = str(mesh_name) if mesh_name else f"mesh_{mi if mi >= 0 else i}"
+        out.append(mm)
+    return out
+
+
+def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tuple[list[dict], list[int]]:
+    def is_auto_name(n: str) -> bool:
+        ns = str(n or "")
+        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
+
+    def is_identity_tr(nd: dict) -> bool:
+        t = nd.get("translation")
+        r = nd.get("rotation")
+        if t is None and r is None:
+            return True
+        if t is None:
+            t = (0.0, 0.0, 0.0)
+        if r is None:
+            r = (0.0, 0.0, 0.0, 1.0)
+        return (
+            float(t[0]) == 0.0
+            and float(t[1]) == 0.0
+            and float(t[2]) == 0.0
+            and float(r[0]) == 0.0
+            and float(r[1]) == 0.0
+            and float(r[2]) == 0.0
+            and float(r[3]) == 1.0
+        )
+
+    # Iteratively bypass wrapper nodes by lifting their children to parents/roots.
+    changed = True
+    while changed:
+        changed = False
+
+        parents: list[list[int]] = [[] for _ in range(len(nodes))]
+        for pid, p in enumerate(nodes):
+            for ch in list(p.get("children") or []):
+                ci = int(ch)
+                if 0 <= ci < len(nodes):
+                    parents[ci].append(int(pid))
+
+        # Update roots first.
+        new_roots: list[int] = []
+        for rid in list(root_node_ids):
+            r = int(rid)
+            if not (0 <= r < len(nodes)):
+                continue
+            nd = nodes[r]
+            if nd.get("mesh") is None and is_auto_name(str(nd.get("name") or "")):
+                # Only collapse transform wrappers when they are identity.
+                if is_identity_tr(nd):
+                    new_roots.extend([int(c) for c in list(nd.get("children") or [])])
+                    nd["children"] = []
+                    changed = True
+                    continue
+            new_roots.append(r)
+
+        # Deduplicate roots preserving order.
+        seen_root: set[int] = set()
+        root_node_ids = []
+        for r in new_roots:
+            if r in seen_root:
+                continue
+            seen_root.add(r)
+            root_node_ids.append(int(r))
+
+        # Collapse internal wrappers.
+        for nid, nd in enumerate(nodes):
+            if nd.get("mesh") is not None:
+                continue
+            if not is_auto_name(str(nd.get("name") or "")):
+                continue
+            if not is_identity_tr(nd):
+                continue
+            chs = [int(c) for c in list(nd.get("children") or [])]
+            if not chs:
+                continue
+            # Replace nid with its children in each parent.
+            for pid in parents[nid]:
+                pch = [int(c) for c in list(nodes[pid].get("children") or [])]
+                replaced: list[int] = []
+                for c in pch:
+                    if int(c) == int(nid):
+                        replaced.extend(chs)
+                    else:
+                        replaced.append(int(c))
+                # Dedup within the parent's children.
+                seen: set[int] = set()
+                deduped: list[int] = []
+                for c in replaced:
+                    if c in seen:
+                        continue
+                    seen.add(c)
+                    deduped.append(int(c))
+                nodes[pid]["children"] = deduped
+
+            nd["children"] = []
+            changed = True
+
+    return nodes, root_node_ids
 
 
 def _write_transform_debug(path: str | Path, *, scene: VoxScene, meshes: list[dict], stage: str) -> None:
@@ -723,6 +874,7 @@ def _assemble_meshes(
             )
             return
 
+
     for rid in scene.root_node_ids:
         walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
@@ -738,6 +890,8 @@ def _build_model_meshes(
     flip_v: bool,
     pivot: str = "corner",
     export_uv2: bool = False,
+    uv2_mode: str = "copy",
+    export_vertex_color: bool = False,
 ) -> tuple[list[dict], dict[int, int]]:
     if pivot not in ("corner", "bottom_center", "center"):
         raise ValueError("pivot must be one of: corner, bottom_center, center")
@@ -831,14 +985,49 @@ def _build_model_meshes(
             pos_arr[:, 2] -= float(p[2])
 
         mesh_index = len(meshes)
+
+        texcoords_arr = np.asarray(texcoords, dtype=np.float32)
+        texcoords1_arr = None
+        if bool(export_uv2):
+            if str(uv2_mode) == "lightmap":
+                quad_count = int(pos_arr.shape[0] // 4)
+                if quad_count > 0:
+                    cols = int(math.ceil(math.sqrt(float(quad_count))))
+                    rows = int(math.ceil(float(quad_count) / float(cols)))
+                    cell = 1.0 / float(max(cols, rows))
+                    inner = cell * 0.9
+                    pad = (cell - inner) * 0.5
+                    uv1 = np.zeros((pos_arr.shape[0], 2), dtype=np.float32)
+                    for qi in range(quad_count):
+                        cx = int(qi % cols)
+                        cy = int(qi // cols)
+                        x0 = cx * cell + pad
+                        y0 = cy * cell + pad
+                        x1 = x0 + inner
+                        y1 = y0 + inner
+                        base = qi * 4
+                        uv1[base + 0] = (x0, y0)
+                        uv1[base + 1] = (x1, y0)
+                        uv1[base + 2] = (x1, y1)
+                        uv1[base + 3] = (x0, y1)
+                    texcoords1_arr = uv1
+            else:
+                texcoords1_arr = texcoords_arr.copy()
+
+        color0_arr = None
+        if bool(export_vertex_color):
+            n = int(pos_arr.shape[0])
+            color0_arr = np.ones((n, 4), dtype=np.float32)
+
         meshes.append(
             {
                 "name": scene.models[midx].name,
                 "model_id": int(midx),
                 "positions": pos_arr,
                 "normals": np.asarray(normals, dtype=np.float32),
-                "texcoords": np.asarray(texcoords, dtype=np.float32),
-                "texcoords1": (np.asarray(texcoords, dtype=np.float32) if bool(export_uv2) else None),
+                "texcoords": texcoords_arr,
+                "texcoords1": texcoords1_arr,
+                "color0": color0_arr,
                 "indices": np.asarray(indices, dtype=np.uint32),
             }
         )
@@ -847,13 +1036,14 @@ def _build_model_meshes(
     return meshes, model_to_mesh
 
 
-def _build_scene_nodes(scene: VoxScene, model_to_mesh: dict[int, int]) -> tuple[list[dict], list[int]]:
+def _build_scene_nodes(scene: VoxScene, model_to_mesh: dict[int, int], *, scale: float = 1.0) -> tuple[list[dict], list[int]]:
     nodes: list[dict] = []
     # Pre-create nodes matching VOX node indices.
     for nd in scene.nodes:
         out: dict = {"name": nd.name, "children": list(nd.children)}
         if nd.kind == "trn":
-            out["translation"] = tuple(float(x) for x in nd.translation)
+            t = tuple(float(x) for x in nd.translation)
+            out["translation"] = (t[0] * float(scale), t[1] * float(scale), t[2] * float(scale))
             out["rotation"] = tuple(float(x) for x in nd.rotation)
         nodes.append(out)
 
@@ -877,6 +1067,182 @@ def _build_scene_nodes(scene: VoxScene, model_to_mesh: dict[int, int]) -> tuple[
             nodes[nid]["children"] = list(nodes[nid].get("children") or []) + extra_children
 
     return nodes, [int(r) for r in scene.root_node_ids]
+
+
+def _build_scene_nodes_no_extra(
+    scene: VoxScene,
+    model_to_mesh: dict[int, int],
+    meshes: list[dict],
+    *,
+    scale: float = 1.0,
+) -> tuple[list[dict], list[int], list[dict]]:
+    # Preserve VOX scene graph 1:1 (nTRN/nGRP/nSHP) with no extra nodes.
+    # If an nSHP references multiple models, merge those model meshes into a single mesh
+    # and attach it directly to that nSHP node.
+
+    nodes: list[dict] = []
+    for nd in scene.nodes:
+        out: dict = {"name": nd.name, "children": list(nd.children)}
+        if nd.kind == "trn":
+            t = tuple(float(x) for x in nd.translation)
+            out["translation"] = (t[0] * float(scale), t[1] * float(scale), t[2] * float(scale))
+            out["rotation"] = tuple(float(x) for x in nd.rotation)
+        nodes.append(out)
+
+    def merge_meshes(mesh_ids: list[int]) -> int:
+        pos_list: list[np.ndarray] = []
+        nrm_list: list[np.ndarray] = []
+        uv_list: list[np.ndarray] = []
+        uv1_list: list[np.ndarray] = []
+        col_list: list[np.ndarray] = []
+        any_uv1 = False
+        any_col = False
+        idx_list: list[np.ndarray] = []
+        base = 0
+
+        for mid in mesh_ids:
+            m = meshes[int(mid)]
+            pos = np.asarray(m["positions"], dtype=np.float32)
+            nrm = np.asarray(m["normals"], dtype=np.float32)
+            uv = np.asarray(m["texcoords"], dtype=np.float32)
+            pos_list.append(pos)
+            nrm_list.append(nrm)
+            uv_list.append(uv)
+
+            uv1 = m.get("texcoords1")
+            if uv1 is not None:
+                any_uv1 = True
+                uv1_list.append(np.asarray(uv1, dtype=np.float32))
+
+            col = m.get("color0")
+            if col is not None:
+                any_col = True
+                col_list.append(np.asarray(col, dtype=np.float32))
+
+            idx = np.asarray(m["indices"], dtype=np.uint32)
+            idx_list.append(idx + np.uint32(base))
+            base += int(pos.shape[0])
+
+        merged = {
+            "name": "merged",
+            "model_id": -1,
+            "positions": np.vstack(pos_list) if pos_list else np.zeros((0, 3), dtype=np.float32),
+            "normals": np.vstack(nrm_list) if nrm_list else np.zeros((0, 3), dtype=np.float32),
+            "texcoords": np.vstack(uv_list) if uv_list else np.zeros((0, 2), dtype=np.float32),
+            "texcoords1": (np.vstack(uv1_list) if any_uv1 else None),
+            "color0": (np.vstack(col_list) if any_col else None),
+            "indices": np.concatenate(idx_list) if idx_list else np.zeros((0,), dtype=np.uint32),
+        }
+        new_id = len(meshes)
+        meshes.append(merged)
+        return int(new_id)
+
+    for nid, nd in enumerate(scene.nodes):
+        if nd.kind != "shp":
+            continue
+        model_ids = [int(x) for x in nd.model_ids]
+        mesh_ids = [model_to_mesh[mid] for mid in model_ids if mid in model_to_mesh]
+        if not mesh_ids:
+            continue
+        if len(mesh_ids) == 1:
+            nodes[nid]["mesh"] = int(mesh_ids[0])
+        else:
+            nodes[nid]["mesh"] = int(merge_meshes(mesh_ids))
+
+    return nodes, [int(r) for r in scene.root_node_ids], meshes
+
+
+def _collapse_scene_nodes_inplace(
+    scene: VoxScene,
+    nodes: list[dict],
+    root_node_ids: list[int],
+    model_to_mesh: dict[int, int],
+) -> tuple[list[dict], list[int]]:
+    def is_auto_name(n: str) -> bool:
+        ns = str(n or "")
+        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
+
+    # Rename auto-named shape nodes that carry a mesh to a meaningful model name.
+    for nid, nd in enumerate(scene.nodes):
+        if nd.kind != "shp":
+            continue
+        if nid < 0 or nid >= len(nodes):
+            continue
+        out = nodes[nid]
+        if "mesh" not in out:
+            continue
+        if not is_auto_name(str(out.get("name") or "")):
+            continue
+        model_ids = [int(x) for x in nd.model_ids]
+        if len(model_ids) == 1 and 0 <= model_ids[0] < len(scene.models):
+            out["name"] = str(scene.models[model_ids[0]].name)
+
+    # Collapse wrapper trn/grp nodes that are auto-named and have a single child.
+    # We never create new nodes; we only redirect parent links.
+    changed = True
+    while changed:
+        changed = False
+
+        # Build parent map based on current graph.
+        parents: list[list[int]] = [[] for _ in range(len(nodes))]
+        for pid, p in enumerate(nodes):
+            for ch in list(p.get("children") or []):
+                ci = int(ch)
+                if 0 <= ci < len(nodes):
+                    parents[ci].append(int(pid))
+
+        for nid, nd in enumerate(scene.nodes):
+            if nid < 0 or nid >= len(nodes):
+                continue
+            if nd.kind not in ("trn", "grp"):
+                continue
+            out = nodes[nid]
+            if out.get("mesh") is not None:
+                continue
+            if not is_auto_name(str(out.get("name") or "")):
+                continue
+            children = list(out.get("children") or [])
+            if len(children) != 1:
+                continue
+            child_id = int(children[0])
+            if not (0 <= child_id < len(nodes)):
+                continue
+
+            if nd.kind == "trn":
+                t0 = out.get("translation") or (0.0, 0.0, 0.0)
+                r0 = out.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+                ct0 = nodes[child_id].get("translation") or (0.0, 0.0, 0.0)
+                cr0 = nodes[child_id].get("rotation") or (0.0, 0.0, 0.0, 1.0)
+                rt = _quat_rotate_vec(tuple(float(x) for x in r0), tuple(float(x) for x in ct0))
+                nt = (float(t0[0]) + float(rt[0]), float(t0[1]) + float(rt[1]), float(t0[2]) + float(rt[2]))
+                nr = _quat_norm(_quat_mul(tuple(float(x) for x in r0), tuple(float(x) for x in cr0)))
+                nodes[child_id]["translation"] = nt
+                nodes[child_id]["rotation"] = nr
+
+            # Redirect all parents (and roots) from nid to child_id.
+            for pid in parents[nid]:
+                pch = list(nodes[pid].get("children") or [])
+                nodes[pid]["children"] = [child_id if int(c) == int(nid) else int(c) for c in pch]
+
+            root_node_ids = [child_id if int(r) == int(nid) else int(r) for r in root_node_ids]
+
+            # Detach node.
+            out["children"] = []
+            out.pop("translation", None)
+            out.pop("rotation", None)
+            changed = True
+
+    # Deduplicate root ids while preserving order.
+    seen: set[int] = set()
+    new_roots: list[int] = []
+    for r in root_node_ids:
+        ri = int(r)
+        if ri in seen:
+            continue
+        seen.add(ri)
+        new_roots.append(ri)
+
+    return nodes, new_roots
 
 
 def _build_scene_nodes_two_level(
@@ -1051,6 +1417,12 @@ def _quat_norm(q: tuple[float, float, float, float]) -> tuple[float, float, floa
     return (float(x / n), float(y / n), float(z / n), float(w / n))
 
 
+def _quat_inv(q: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    # For unit quaternions, inverse == conjugate.
+    x, y, z, w = _quat_norm(q)
+    return (-float(x), -float(y), -float(z), float(w))
+
+
 def _quat_rotate_vec(q: tuple[float, float, float, float], v: tuple[float, float, float]) -> tuple[float, float, float]:
     # Rotate vector v by quaternion q.
     x, y, z, w = (float(q[0]), float(q[1]), float(q[2]), float(q[3]))
@@ -1065,6 +1437,92 @@ def _quat_rotate_vec(q: tuple[float, float, float, float], v: tuple[float, float
     ry = iy * w + iw * -y + iz * -x - ix * -z
     rz = iz * w + iw * -z + ix * -y - iy * -x
     return (float(rx), float(ry), float(rz))
+
+
+def _flatten_character_roots(nodes: list[dict], root_node_ids: list[int]) -> tuple[list[dict], list[int]]:
+    def is_auto_name(n: str) -> bool:
+        ns = str(n or "")
+        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
+
+    # Compute world transforms for current node graph (glTF composition rules).
+    world_t: list[tuple[float, float, float] | None] = [None] * len(nodes)
+    world_r: list[tuple[float, float, float, float] | None] = [None] * len(nodes)
+
+    def walk(nid: int, pt: tuple[float, float, float], pr: tuple[float, float, float, float]) -> None:
+        if nid < 0 or nid >= len(nodes):
+            return
+        if world_t[nid] is not None:
+            return
+        nd = nodes[nid]
+        lt = nd.get("translation") or (0.0, 0.0, 0.0)
+        lr = nd.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+        rt = _quat_rotate_vec(tuple(float(x) for x in pr), tuple(float(x) for x in lt))
+        wt = (float(pt[0]) + float(rt[0]), float(pt[1]) + float(rt[1]), float(pt[2]) + float(rt[2]))
+        wr = _quat_norm(_quat_mul(tuple(float(x) for x in pr), tuple(float(x) for x in lr)))
+        world_t[nid] = wt
+        world_r[nid] = wr
+        for ch in list(nd.get("children") or []):
+            walk(int(ch), wt, wr)
+
+    for rid in root_node_ids:
+        walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+
+    # Flatten under each meaningful root node.
+    for rid in list(root_node_ids):
+        r = int(rid)
+        if r < 0 or r >= len(nodes):
+            continue
+        rname = str(nodes[r].get("name") or "")
+        if is_auto_name(rname):
+            continue
+
+        rt = world_t[r] or (0.0, 0.0, 0.0)
+        rr = world_r[r] or (0.0, 0.0, 0.0, 1.0)
+        rri = _quat_inv(rr)
+
+        # Collect all mesh descendants.
+        mesh_desc: list[int] = []
+        seen: set[int] = set()
+
+        def collect(nid: int) -> None:
+            if nid in seen:
+                return
+            seen.add(int(nid))
+            nd = nodes[nid]
+            if nd.get("mesh") is not None:
+                mesh_desc.append(int(nid))
+            for ch in list(nd.get("children") or []):
+                collect(int(ch))
+
+        for ch in list(nodes[r].get("children") or []):
+            collect(int(ch))
+
+        if not mesh_desc:
+            continue
+
+        # Recompute each mesh node's local transform relative to the root, and detach its children.
+        new_children: list[int] = []
+        for mid in mesh_desc:
+            mt = world_t[mid] or (0.0, 0.0, 0.0)
+            mr = world_r[mid] or (0.0, 0.0, 0.0, 1.0)
+
+            mn = str(nodes[mid].get("name") or "")
+            if (not mn) or is_auto_name(mn):
+                mesh_id = nodes[mid].get("mesh")
+                nodes[mid]["name"] = (f"mesh_{int(mesh_id)}" if mesh_id is not None else f"node_{int(mid)}")
+
+            dt = (float(mt[0]) - float(rt[0]), float(mt[1]) - float(rt[1]), float(mt[2]) - float(rt[2]))
+            lt = _quat_rotate_vec(rri, dt)
+            lr = _quat_norm(_quat_mul(rri, mr))
+
+            nodes[mid]["translation"] = (float(lt[0]), float(lt[1]), float(lt[2]))
+            nodes[mid]["rotation"] = (float(lr[0]), float(lr[1]), float(lr[2]), float(lr[3]))
+            nodes[mid]["children"] = []
+            new_children.append(int(mid))
+
+        nodes[r]["children"] = new_children
+
+    return nodes, root_node_ids
 
 
 def _quat_to_mat3(q: tuple[float, float, float, float]) -> np.ndarray:

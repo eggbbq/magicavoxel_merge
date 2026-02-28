@@ -35,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--uv2-mode", choices=("copy", "lightmap"), default="copy", help="How to generate UV2 (TEXCOORD_1): copy duplicates UV0; lightmap generates non-overlapping UVs")
     parser.add_argument("--vertex-color", action="store_true", help="Export vertex colors as COLOR_0 (filled with white)")
 
+    parser.add_argument("--no-merge-nodes", action="store_true", help="Do not flatten/merge VOX node hierarchy; export the original scene graph")
+    parser.add_argument("--character-apart", action="store_true", help="Character export mode: keep parts as separate meshes under the original VOX hierarchy")
+    parser.add_argument("--character-flat", action="store_true", help="In --character-apart mode, flatten each character root so all parts are direct children")
+
     parser.add_argument("--tex-fmt", choices=("auto", "rgba", "rgb"), default="auto", help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha")
     parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB)")
     parser.add_argument("--tex-pad", type=int, default=2, help="Atlas padding in texels")
@@ -70,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
         export_uv2=bool(args.uv2),
         uv2_mode=str(args.uv2_mode),
         export_vertex_color=bool(args.vertex_color),
+        no_merge_nodes=bool(args.no_merge_nodes),
+        character_apart=bool(args.character_apart),
+        character_flat=bool(getattr(args, "character_flat", False)),
         cull=str(args.cull),
         plat_cutout=bool(args.plat_top_cutout),
         plat_cutoff=float(args.plat_cutoff),

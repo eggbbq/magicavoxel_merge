@@ -236,6 +236,9 @@ python -m btp_vox.cli \
 - `--uv2`：导出第二套 UV（`TEXCOORD_1`，由 `TEXCOORD_0` 复制，用于 lightmap 烘焙）
 - `--uv2-mode copy|lightmap`：UV2 生成方式（默认 copy；lightmap 会生成不重叠的 UV2，用于真正的 lightmap 烘焙）
 - `--vertex-color`：导出顶点色通道（`COLOR_0`，默认填充白色，可用于 shader 传递数据）
+- `--no-merge-nodes`：不做“两层节点扁平化”，按 VOX 原始 scene graph（`nTRN/nGRP/nSHP`）导出节点
+- `--character-apart`：角色导出模式：在原始 VOX 层级下保留各部件（各 model）为独立 mesh（等价于启用 `--no-merge-nodes`）。同时会尽量折叠/隐藏 VOX scene graph 中的自动包装节点（如 `trn_*/grp_*/shp_*`），让导出层级更接近 MagicaVoxel 视图结构
+- `--character-flat`：配合 `--character-apart` 使用：以每个角色根节点为单位，把其下所有部件扁平到一层（全部成为该角色节点的直接子节点）
 - `--uv-out <path>`：输出 UV JSON
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制
