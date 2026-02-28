@@ -43,6 +43,7 @@ class PipelineOptions:
     flip_v: bool = False
     export_uv2: bool = False
     uv2_mode: str = "copy"
+    export_vertex_color: bool = False
     cull: str = ""
     plat_cutout: bool = False
     plat_cutoff: float = 0.5
@@ -188,6 +189,7 @@ def convert(
         pivot=str(opts.pivot),
         uv2_mode=str(getattr(opts, "uv2_mode", "copy")),
         export_uv2=bool(getattr(opts, "export_uv2", False)),
+        export_vertex_color=bool(getattr(opts, "export_vertex_color", False)),
     )
     mark("build_model_meshes")
     nodes, root_node_ids = _build_scene_nodes_two_level(scene, {m["model_id"]: i for i, m in enumerate(meshes)}, scale=float(opts.scale))
@@ -476,6 +478,7 @@ def _assemble_meshes(
     pivot: str = "corner",
     export_uv2: bool = False,
     uv2_mode: str = "copy",
+    export_vertex_color: bool = False,
 ) -> List[dict]:
     # IMPORTANT: We assemble meshes per scene-graph shape instance (nSHP), not per model.
     # A single model_id can be referenced by multiple nSHP nodes (instancing). If we only
@@ -603,11 +606,17 @@ def _assemble_meshes(
             else:
                 texcoords1_arr = texcoords_arr.copy()
 
+        color0_arr = None
+        if bool(export_vertex_color):
+            n = int(pos_arr.shape[0])
+            color0_arr = np.ones((n, 4), dtype=np.float32)
+
         geom = {
             "positions": pos_arr,
             "normals": np.asarray(normals, dtype=np.float32),
             "texcoords": texcoords_arr,
             "texcoords1": texcoords1_arr,
+            "color0": color0_arr,
             "indices": np.asarray(indices, dtype=np.uint32),
             "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
         }
@@ -622,6 +631,8 @@ def _assemble_meshes(
         uv_list: list[np.ndarray] = []
         uv1_list: list[np.ndarray] = []
         any_uv1 = False
+        col_list: list[np.ndarray] = []
+        any_col = False
         idx_list: list[np.ndarray] = []
         base = 0
         for _midx, g in geoms:
@@ -632,6 +643,10 @@ def _assemble_meshes(
             if uv1 is not None:
                 any_uv1 = True
                 uv1_list.append(np.asarray(uv1, dtype=np.float32))
+            col = g.get("color0")
+            if col is not None:
+                any_col = True
+                col_list.append(np.asarray(col, dtype=np.float32))
             idx = np.asarray(g["indices"], dtype=np.uint32)
             pos_list.append(pos)
             nrm_list.append(nrm)
@@ -645,6 +660,7 @@ def _assemble_meshes(
             "normals": np.vstack(nrm_list),
             "texcoords": np.vstack(uv_list),
             "texcoords1": (np.vstack(uv1_list) if any_uv1 else None),
+            "color0": (np.vstack(col_list) if any_col else None),
             "indices": np.concatenate(idx_list),
         }
 
@@ -697,6 +713,7 @@ def _assemble_meshes(
                     "normals": merged["normals"],
                     "texcoords": merged["texcoords"],
                     "texcoords1": merged["texcoords1"],
+                    "color0": merged.get("color0"),
                     "indices": merged["indices"],
                     "translation": (float(t[0]), float(t[1]), float(t[2])),
                     "rotation": r,

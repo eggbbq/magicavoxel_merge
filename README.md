@@ -41,6 +41,7 @@ python -m btp_vox.cli \
   --output output.glb \
   --format glb \
   --tex-out output.png \
+  --vertex-color \
   --scale 0.02 \
   --pivot center \
   --tex-layout global \
@@ -56,6 +57,7 @@ python -m btp_vox.cli \
   --output output.gltf \
   --format gltf \
   --tex-out output.png \
+  --vertex-color \
   --scale 0.02 \
   --pivot center \
   --tex-layout global \
@@ -85,6 +87,8 @@ python -m btp_vox.cli \
 ```bash
 ./batch_convert.sh
 ```
+
+提示：如果你的引擎/Shader 需要 `COLOR_0` 顶点色通道（用于传递自定义数据等），请在脚本的参数列表中加入 `--vertex-color`。
 
 ---
 
@@ -231,6 +235,7 @@ python -m btp_vox.cli \
 - `--uv-flip-v`：翻转 UV 的 V
 - `--uv2`：导出第二套 UV（`TEXCOORD_1`，由 `TEXCOORD_0` 复制，用于 lightmap 烘焙）
 - `--uv2-mode copy|lightmap`：UV2 生成方式（默认 copy；lightmap 会生成不重叠的 UV2，用于真正的 lightmap 烘焙）
+- `--vertex-color`：导出顶点色通道（`COLOR_0`，默认填充白色，可用于 shader 传递数据）
 - `--uv-out <path>`：输出 UV JSON
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制
