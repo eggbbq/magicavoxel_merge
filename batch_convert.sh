@@ -14,7 +14,7 @@ btp_convert_one_plat() {
   base="$(basename "$in_vox")"
   stem="${base%.vox}"
 
-  local out_model="$DIR_OUT/${stem}.glb"
+  local out_model="$DIR_OUT/${stem}.gltf"
   local out_tex="$DIR_OUT/${stem}.png"
   local out_uv="$DIR_OUT/${stem}_uv.json"
 
@@ -34,7 +34,7 @@ btp_convert_one_plat() {
 
     --scale           0.02
     --pivot           center
-    --format          glb
+    --format          gltf
   )
 
   BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"
@@ -47,7 +47,7 @@ btp_convert_one_normal() {
   base="$(basename "$in_vox")"
   stem="${base%.vox}"
 
-  local out_model="$DIR_OUT/${stem}.glb"
+  local out_model="$DIR_OUT/${stem}.gltf"
   local out_tex="$DIR_OUT/${stem}.png"
   local out_uv="$DIR_OUT/${stem}_uv.json"
 
@@ -67,7 +67,7 @@ btp_convert_one_normal() {
 
     --scale           0.02
     --pivot           center
-    --format          glb
+    --format          gltf
   )
 
   BTP_VOX_TIMINGS=1 python -m btp_vox.cli "${args[@]}"
