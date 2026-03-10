@@ -1553,6 +1553,31 @@ def _build_scene_nodes_two_level(
 
 
 def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    # Helper function to find half_height in children
+    def find_half_height_in_children(node_idx: int, nodes: list[dict], meshes: list[dict]) -> float | None:
+        """Recursively search for half_height in child nodes"""
+        node = nodes[node_idx]
+        mesh_id = node.get("mesh")
+        
+        # Check current node
+        if mesh_id is not None:
+            try:
+                mi = int(mesh_id)
+                if 0 <= mi < len(meshes):
+                    half_height = meshes[mi].get("half_height")
+                    if half_height is not None:
+                        return float(half_height)
+            except:
+                pass
+        
+        # Check children
+        child_ids = node.get("children", [])
+        for child_id in child_ids:
+            child_half_height = find_half_height_in_children(child_id, nodes, meshes)
+            if child_half_height is not None:
+                return child_half_height
+        
+        return None
     axis_m = np.asarray(
         [
             [1.0, 0.0, 0.0],
@@ -1584,17 +1609,28 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
         
         # For bottom_center: move node down by half_height to compensate for vertex movement
         # Vertices moved up -> node moves down -> visual position stays the same
-        mesh_id = mm.get("mesh")
-        if mesh_id is not None and tr is not None:
-            try:
-                mi = int(mesh_id)
-                if 0 <= mi < len(meshes):
-                    half_height = meshes[mi].get("half_height")
-                    if half_height is not None:
-                        tx, ty, tz = mm["translation"]
-                        mm["translation"] = (float(tx), float(ty) - float(half_height), float(tz))
-            except Exception:
-                pass
+        if tr is not None:
+            # First check if this node has a mesh
+            mesh_id = mm.get("mesh")
+            half_height = None
+            
+            if mesh_id is not None:
+                try:
+                    mi = int(mesh_id)
+                    if 0 <= mi < len(meshes):
+                        half_height = meshes[mi].get("half_height")
+                except:
+                    pass
+            
+            # If no half_height found, search in children
+            if half_height is None:
+                node_idx = len(out)  # Current node index
+                half_height = find_half_height_in_children(node_idx, nodes, meshes)
+            
+            # Apply adjustment if half_height found
+            if half_height is not None:
+                tx, ty, tz = mm["translation"]
+                mm["translation"] = (float(tx), float(ty) - float(half_height), float(tz))
 
         out.append(mm)
 
