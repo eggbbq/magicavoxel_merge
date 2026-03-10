@@ -920,6 +920,11 @@ def _assemble_meshes(
                 # Move vertices up by half-height (pivot at bottom)
                 pos_arr[:, 2] += half_height_for_node
 
+                if _is_plat_t_model(scene, midx):
+                    extra_plat_offset = _compute_plat_base_half_height(scene, midx, scale)
+                    if float(extra_plat_offset):
+                        pos_arr[:, 2] += float(extra_plat_offset)
+
         texcoords_arr = np.asarray(texcoords, dtype=np.float32)
         texcoords1_arr = None
         if bool(export_uv2):
@@ -1665,9 +1670,45 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
 
 
 def _is_plat_t_model(scene: VoxScene, midx: int) -> bool:
-    """Check if a model name ends with -plat-t"""
-    model_name = scene.models[midx].name.lower()
+    model_name = scene.models[midx].name
+    if not isinstance(model_name, str):
+        return False
     return model_name.endswith('-plat-t')
+
+
+def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> float:
+    model_name = scene.models[midx].name
+    if not isinstance(model_name, str) or not model_name.endswith('-plat-t'):
+        return 0.0
+
+    base_name = model_name[:-7]
+    height_vox = 0.0
+
+    for other_model in scene.models:
+        if other_model.name == base_name:
+            base_vox = np.asarray(other_model.voxels)
+            if base_vox.size:
+                try:
+                    z_coords = base_vox[:, 2]
+                except Exception:
+                    z_coords = np.asarray([])
+                if z_coords.size:
+                    height_vox = float(z_coords.max() - z_coords.min() + 1)
+                    break
+            size_z = float(other_model.size[2])
+            if size_z > 0.0:
+                height_vox = size_z
+            break
+
+    if height_vox <= 0.0:
+        size_z = float(scene.models[midx].size[2])
+        if size_z > 0.0:
+            height_vox = size_z
+
+    if height_vox <= 0.0:
+        return 0.0
+
+    return height_vox * float(scale) * 0.5
 
 
 def _apply_ground_alignment(nodes: list[dict], meshes: list[dict]) -> list[dict]:
