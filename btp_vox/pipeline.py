@@ -237,6 +237,11 @@ def convert(
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
 
+    # Apply ground alignment: move all models so the lowest one touches y=0
+    if opts.pivot == "bottom_center":
+        nodes = _apply_ground_alignment(nodes, meshes)
+        mark("ground_alignment")
+
     if str(output_format) == "gltf":
         glb_writer.write_scene_gltf(
             output_glb,
@@ -1635,6 +1640,45 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
         out.append(mm)
 
     return out
+
+
+def _apply_ground_alignment(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    """Apply ground alignment: move all models so the lowest one touches y=0"""
+    
+    # Find the lowest Y position among all models
+    lowest_y = float('inf')
+    
+    for node in nodes:
+        mesh_id = node.get("mesh")
+        if mesh_id is not None:
+            try:
+                mi = int(mesh_id)
+                if 0 <= mi < len(meshes):
+                    mesh = meshes[mi]
+                    translation = node.get("translation")
+                    if translation is not None:
+                        # For bottom_center, the pivot is at the bottom of the model
+                        # So the model's bottom Y is the node's Y translation
+                        model_bottom_y = float(translation[1])
+                        lowest_y = min(lowest_y, model_bottom_y)
+            except:
+                pass
+    
+    # If we found a model and it's not already at y=0
+    if lowest_y != float('inf') and lowest_y > 0:
+        # Calculate how much to move down to make the lowest model touch y=0
+        dy = lowest_y
+        
+        # Apply the same translation to all nodes
+        for node in nodes:
+            translation = node.get("translation")
+            if translation is not None:
+                tx, ty, tz = translation
+                node["translation"] = (float(tx), float(ty) - dy, float(tz))
+        
+        print(f"[INFO] Ground alignment: moved all models down by {dy:.4f} units")
+    
+    return nodes
 
 
 def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
