@@ -882,7 +882,13 @@ def _assemble_meshes(
             return None
 
         pos_arr = np.asarray(positions, dtype=np.float32)
-        if pivot == "corner":
+        
+        # For plat-t models, force top_center pivot
+        effective_pivot = pivot
+        if _is_plat_t_model(scene, midx):
+            effective_pivot = "top_center"
+        
+        if effective_pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         else:
             # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
@@ -890,7 +896,12 @@ def _assemble_meshes(
             bmax = pos_arr.max(axis=0)
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
-            cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
+            
+            if effective_pivot == "top_center":
+                cz = float(bmax[2])  # Pivot at top (max Z)
+            else:  # center or bottom_center
+                cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
+            
             p = np.asarray((cx, cy, cz), dtype=np.float32)
         
         # For bottom_center: calculate half_height and move vertices up
@@ -901,7 +912,7 @@ def _assemble_meshes(
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
             
-            if pivot == "bottom_center":
+            if effective_pivot == "bottom_center":
                 bmin_centered = pos_arr.min(axis=0)
                 bmax_centered = pos_arr.max(axis=0)
                 height = float(bmax_centered[2] - bmin_centered[2])
@@ -1150,7 +1161,13 @@ def _build_model_meshes(
             continue
 
         pos_arr = np.asarray(positions, dtype=np.float32)
-        if pivot == "corner":
+        
+        # For plat-t models, force top_center pivot
+        effective_pivot = pivot
+        if _is_plat_t_model(scene, midx):
+            effective_pivot = "top_center"
+        
+        if effective_pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         else:
             # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
@@ -1158,7 +1175,12 @@ def _build_model_meshes(
             bmax = pos_arr.max(axis=0)
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
-            cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
+            
+            if effective_pivot == "top_center":
+                cz = float(bmax[2])  # Pivot at top (max Z)
+            else:  # center or bottom_center
+                cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
+            
             p = np.asarray((cx, cy, cz), dtype=np.float32)
 
         # For bottom_center: calculate half_height and move vertices up
@@ -1169,7 +1191,7 @@ def _build_model_meshes(
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
             
-            if pivot == "bottom_center":
+            if effective_pivot == "bottom_center":
                 bmin_centered = pos_arr.min(axis=0)
                 bmax_centered = pos_arr.max(axis=0)
                 height = float(bmax_centered[2] - bmin_centered[2])
@@ -1640,6 +1662,12 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
         out.append(mm)
 
     return out
+
+
+def _is_plat_t_model(scene: VoxScene, midx: int) -> bool:
+    """Check if a model name ends with -plat-t"""
+    model_name = scene.models[midx].name.lower()
+    return model_name.endswith('-plat-t')
 
 
 def _apply_ground_alignment(nodes: list[dict], meshes: list[dict]) -> list[dict]:
