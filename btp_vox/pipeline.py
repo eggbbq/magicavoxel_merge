@@ -237,11 +237,6 @@ def convert(
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="post_axis")
 
-    # Apply ground alignment: move all models so the lowest one touches y=0
-    if opts.pivot == "bottom_center":
-        nodes = _apply_ground_alignment(nodes, meshes)
-        mark("ground_alignment")
-
     if str(output_format) == "gltf":
         glb_writer.write_scene_gltf(
             output_glb,
@@ -883,12 +878,13 @@ def _assemble_meshes(
 
         pos_arr = np.asarray(positions, dtype=np.float32)
         
-        # For plat-t models, force top_center pivot
-        effective_pivot = pivot
-        if _is_plat_t_model(scene, midx):
-            effective_pivot = "top_center"
-        
-        if effective_pivot == "corner":
+        requested_pivot = pivot
+        pivot_for_geom = requested_pivot
+        is_plat_t = _is_plat_t_model(scene, midx)
+        if is_plat_t:
+            pivot_for_geom = "top_center"
+
+        if pivot_for_geom == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         else:
             # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
@@ -897,13 +893,13 @@ def _assemble_meshes(
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
             
-            if effective_pivot == "top_center":
+            if pivot_for_geom == "top_center":
                 cz = float(bmax[2])  # Pivot at top (max Z)
             else:  # center or bottom_center
                 cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
             
             p = np.asarray((cx, cy, cz), dtype=np.float32)
-        
+
         # For bottom_center: calculate half_height and move vertices up
         half_height_for_node = None
         if pos_arr.size:
@@ -912,7 +908,7 @@ def _assemble_meshes(
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
             
-            if effective_pivot == "bottom_center":
+            if requested_pivot == "bottom_center":
                 bmin_centered = pos_arr.min(axis=0)
                 bmax_centered = pos_arr.max(axis=0)
                 height = float(bmax_centered[2] - bmin_centered[2])
@@ -920,7 +916,7 @@ def _assemble_meshes(
                 # Move vertices up by half-height (pivot at bottom)
                 pos_arr[:, 2] += half_height_for_node
 
-                if _is_plat_t_model(scene, midx):
+                if is_plat_t:
                     extra_plat_offset = _compute_plat_base_half_height(scene, midx, scale)
                     if float(extra_plat_offset):
                         pos_arr[:, 2] += float(extra_plat_offset)
@@ -1167,12 +1163,13 @@ def _build_model_meshes(
 
         pos_arr = np.asarray(positions, dtype=np.float32)
         
-        # For plat-t models, force top_center pivot
-        effective_pivot = pivot
-        if _is_plat_t_model(scene, midx):
-            effective_pivot = "top_center"
-        
-        if effective_pivot == "corner":
+        requested_pivot = pivot
+        pivot_for_geom = requested_pivot
+        is_plat_t = _is_plat_t_model(scene, midx)
+        if is_plat_t:
+            pivot_for_geom = "top_center"
+
+        if pivot_for_geom == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
         else:
             # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
@@ -1181,7 +1178,7 @@ def _build_model_meshes(
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
             
-            if effective_pivot == "top_center":
+            if pivot_for_geom == "top_center":
                 cz = float(bmax[2])  # Pivot at top (max Z)
             else:  # center or bottom_center
                 cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
@@ -1196,13 +1193,17 @@ def _build_model_meshes(
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
             
-            if effective_pivot == "bottom_center":
+            if requested_pivot == "bottom_center":
                 bmin_centered = pos_arr.min(axis=0)
                 bmax_centered = pos_arr.max(axis=0)
                 height = float(bmax_centered[2] - bmin_centered[2])
                 half_height_for_node = height * 0.5
                 # Move vertices up by half-height (pivot at bottom)
                 pos_arr[:, 2] += half_height_for_node
+                if is_plat_t:
+                    extra_plat_offset = _compute_plat_base_half_height(scene, midx, scale)
+                    if float(extra_plat_offset):
+                        pos_arr[:, 2] += float(extra_plat_offset)
 
         mesh_index = len(meshes)
 
@@ -1709,45 +1710,6 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
         return 0.0
 
     return height_vox * float(scale) * 0.5
-
-
-def _apply_ground_alignment(nodes: list[dict], meshes: list[dict]) -> list[dict]:
-    """Apply ground alignment: move all models so the lowest one touches y=0"""
-    
-    # Find the lowest Y position among all models
-    lowest_y = float('inf')
-    
-    for node in nodes:
-        mesh_id = node.get("mesh")
-        if mesh_id is not None:
-            try:
-                mi = int(mesh_id)
-                if 0 <= mi < len(meshes):
-                    mesh = meshes[mi]
-                    translation = node.get("translation")
-                    if translation is not None:
-                        # For bottom_center, the pivot is at the bottom of the model
-                        # So the model's bottom Y is the node's Y translation
-                        model_bottom_y = float(translation[1])
-                        lowest_y = min(lowest_y, model_bottom_y)
-            except:
-                pass
-    
-    # If we found a model and it's not already at y=0
-    if lowest_y != float('inf') and lowest_y > 0:
-        # Calculate how much to move down to make the lowest model touch y=0
-        dy = lowest_y
-        
-        # Apply the same translation to all nodes
-        for node in nodes:
-            translation = node.get("translation")
-            if translation is not None:
-                tx, ty, tz = translation
-                node["translation"] = (float(tx), float(ty) - dy, float(tz))
-        
-        print(f"[INFO] Ground alignment: moved all models down by {dy:.4f} units")
-    
-    return nodes
 
 
 def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
