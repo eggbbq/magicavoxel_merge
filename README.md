@@ -49,6 +49,22 @@ python -m btp_vox.cli \
   --tex-fmt auto
 ```
 
+#### 2.1.1 角色模型导出（推荐使用 bottom_center）
+
+```bash
+python -m btp_vox.cli \
+  --input character.vox \
+  --output character.glb \
+  --format glb \
+  --tex-out character.png \
+  --vertex-color \
+  --scale 0.02 \
+  --pivot bottom_center \
+  --tex-layout global \
+  --tex-pot \
+  --tex-fmt auto
+```
+
 ### 2.2 单文件导出（glTF：外置 .bin + .png）
 
 ```bash
@@ -154,14 +170,33 @@ Mesh 子节点名称使用 `.vox` 的 `model` 名称（即 `scene.models[model_i
 
 可选：
 
-- `corner`
-- `bottom_center`
-- `center`
+- `corner`：原点在模型角落（默认）
+- `center`：原点在模型几何中心
+- `bottom_center`：原点在模型底部中心（适合角色模型）
 
 说明：
 
-- 该选项会改变 mesh 的局部原点（通过对顶点做平移实现）
-- 导出的节点层级仍保持正确的世界坐标关系（以当前实现为准）
+#### `corner`
+- 原点位于模型的最小坐标点（左下角）
+- 适用于需要精确控制模型边界的情况
+
+#### `center` 
+- 原点位于模型的几何中心（X、Y、Z 轴都居中）
+- 最常用的 pivot 模式，适合大多数场景
+
+#### `bottom_center`
+- 原点位于模型底部中心（X、Z 轴居中，Y 轴在最低点）
+- **特别适合角色模型**，便于地面放置和动画控制
+- 实现原理：
+  1. 顶点向上移动 `half_height`（使 pivot 位于底部）
+  2. 节点向下移动 `half_height`（补偿视觉位置）
+- **保证**：模型视觉位置与 `center` 模式完全一致，只有 pivot 位置不同
+
+#### 技术细节
+- 该选项通过调整 mesh 顶点位置实现 pivot 变更
+- 同时调整节点 translation 以保持视觉位置不变
+- 支持复杂的节点层次结构（包括没有几何体的父节点）
+- 坐标系转换：从 MagicaVoxel Z-up 自动转换为 Unity Y-up
 
 ---
 
@@ -306,4 +341,32 @@ python -m btp_vox.cli --input input.vox --output output.glb --plat-suffix -mycut
 - 用 `--debug-transforms-out` 导出调试数据
 - 检查引擎导入时是否又做了额外缩放
 
+### 8.3 `bottom_center` 模式下模型浮空或位置错误？
 
+**问题现象**：使用 `--pivot bottom_center` 后，模型看起来浮空或位置不正确。
+
+**解决方案**：
+- 确保使用的是最新版本的 btp_vox（已实现完整的 bottom_center 支持）
+- 检查模型是否正确导出：pivot 应该在模型底部中心
+- 如果仍有问题，尝试：
+  1. 对比 `--pivot center` 的输出位置是否正确
+  2. 检查 Unity/引擎导入设置是否正确
+
+**技术说明**：`bottom_center` 模式通过双重调整确保正确性：
+1. 顶点向上移动 `half_height`（pivot 在底部）
+2. 节点向下移动 `half_height`（视觉位置不变）
+
+### 8.4 不同 pivot 模式如何选择？
+
+**`corner`**：
+- 适用于需要精确控制模型边界的场景
+- 如建筑块、道具等需要精确对齐的物体
+
+**`center`**：
+- 最通用的选择，适合大多数场景
+- 如环境物体、静态道具等
+
+**`bottom_center`**：
+- **强烈推荐角色模型使用**
+- 便于地面放置、动画控制、物理模拟
+- 如 NPC、玩家角色、可移动的物体等
