@@ -33,7 +33,7 @@ btp_convert_one_plat() {
 
 
     --scale           0.02
-    --pivot           center
+    --pivot           bottom_center
     --format          gltf
   )
 
@@ -66,7 +66,7 @@ btp_convert_one_normal() {
     --tex-layout      global
 
     --scale           0.02
-    --pivot           center
+    --pivot           bottom_center
     --format          gltf
   )
 

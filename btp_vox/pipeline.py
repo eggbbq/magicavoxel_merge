@@ -227,13 +227,11 @@ def convert(
 
     nodes = _ensure_mesh_node_names(nodes, meshes)
 
-    nodes = _apply_mesh_pivot_translation(nodes, meshes)
-
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
 
     meshes = _to_y_up_left_handed(meshes)
-    nodes = _to_y_up_left_handed_nodes(nodes)
+    nodes = _to_y_up_left_handed_nodes(nodes, meshes)
     mark("axis_convert")
 
     if debug_transforms_out:
@@ -561,7 +559,8 @@ def _collapse_same_name_single_child(nodes: list[dict], root_node_ids: list[int]
     return nodes, root_node_ids
 
 
-def _apply_mesh_pivot_translation(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+def _apply_pivot_compensation(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    """Compensate node translations for pivot changes to maintain world position."""
     out: list[dict] = []
     for nd in nodes:
         mm = dict(nd)
@@ -578,18 +577,17 @@ def _apply_mesh_pivot_translation(nodes: list[dict], meshes: list[dict]) -> list
             out.append(mm)
             continue
 
-        piv = meshes[mi].get("pivot_p")
-        if piv is None:
+        pivot_offset = meshes[mi].get("pivot_offset")
+        if pivot_offset is None:
             out.append(mm)
             continue
 
         tr = mm.get("translation")
         if tr is None:
-            out.append(mm)
-            continue
+            tr = (0.0, 0.0, 0.0)
 
         rot = mm.get("rotation") or (0.0, 0.0, 0.0, 1.0)
-        dp = _quat_rotate_vec(tuple(float(x) for x in rot), (float(piv[0]), float(piv[1]), float(piv[2])))
+        dp = _quat_rotate_vec(tuple(float(x) for x in rot), (float(pivot_offset[0]), float(pivot_offset[1]), float(pivot_offset[2])))
         mm["translation"] = (float(tr[0]) + float(dp[0]), float(tr[1]) + float(dp[1]), float(tr[2]) + float(dp[2]))
         out.append(mm)
     return out
@@ -887,16 +885,24 @@ def _assemble_meshes(
             bmax = pos_arr.max(axis=0)
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
-            if pivot == "bottom_center":
-                cz = float(bmin[2])
-            else:
-                cz = float(bmin[2] + bmax[2]) * 0.5
+            cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
             p = np.asarray((cx, cy, cz), dtype=np.float32)
+        
+        # For bottom_center: calculate half_height and move vertices up
+        half_height_for_node = None
         if pos_arr.size:
             pos_arr = pos_arr.copy()
             pos_arr[:, 0] -= float(p[0])
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
+            
+            if pivot == "bottom_center":
+                bmin_centered = pos_arr.min(axis=0)
+                bmax_centered = pos_arr.max(axis=0)
+                height = float(bmax_centered[2] - bmin_centered[2])
+                half_height_for_node = height * 0.5
+                # Move vertices up by half-height (pivot at bottom)
+                pos_arr[:, 2] += half_height_for_node
 
         texcoords_arr = np.asarray(texcoords, dtype=np.float32)
         texcoords1_arr = None
@@ -938,6 +944,8 @@ def _assemble_meshes(
             "indices": np.asarray(indices, dtype=np.uint32),
             "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
         }
+        if half_height_for_node is not None:
+            geom["half_height"] = half_height_for_node
         model_geom_cache[midx] = geom
         return geom
 
@@ -1145,17 +1153,24 @@ def _build_model_meshes(
             bmax = pos_arr.max(axis=0)
             cx = float(bmin[0] + bmax[0]) * 0.5
             cy = float(bmin[1] + bmax[1]) * 0.5
-            if pivot == "bottom_center":
-                cz = float(bmin[2])
-            else:
-                cz = float(bmin[2] + bmax[2]) * 0.5
+            cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
             p = np.asarray((cx, cy, cz), dtype=np.float32)
 
+        # For bottom_center: calculate half_height and move vertices up
+        half_height_for_node = None
         if pos_arr.size:
             pos_arr = pos_arr.copy()
             pos_arr[:, 0] -= float(p[0])
             pos_arr[:, 1] -= float(p[1])
             pos_arr[:, 2] -= float(p[2])
+            
+            if pivot == "bottom_center":
+                bmin_centered = pos_arr.min(axis=0)
+                bmax_centered = pos_arr.max(axis=0)
+                height = float(bmax_centered[2] - bmin_centered[2])
+                half_height_for_node = height * 0.5
+                # Move vertices up by half-height (pivot at bottom)
+                pos_arr[:, 2] += half_height_for_node
 
         mesh_index = len(meshes)
 
@@ -1192,18 +1207,19 @@ def _build_model_meshes(
             n = int(pos_arr.shape[0])
             color0_arr = np.ones((n, 4), dtype=np.float32)
 
-        meshes.append(
-            {
-                "name": scene.models[midx].name,
-                "model_id": int(midx),
-                "positions": pos_arr,
-                "normals": np.asarray(normals, dtype=np.float32),
-                "texcoords": texcoords_arr,
-                "texcoords1": texcoords1_arr,
-                "color0": color0_arr,
-                "indices": np.asarray(indices, dtype=np.uint32),
-            }
-        )
+        mesh_dict = {
+            "name": scene.models[midx].name,
+            "model_id": int(midx),
+            "positions": pos_arr,
+            "normals": np.asarray(normals, dtype=np.float32),
+            "texcoords": texcoords_arr,
+            "texcoords1": texcoords1_arr,
+            "color0": color0_arr,
+            "indices": np.asarray(indices, dtype=np.uint32),
+        }
+        if half_height_for_node is not None:
+            mesh_dict["half_height"] = half_height_for_node
+        meshes.append(mesh_dict)
         model_to_mesh[int(midx)] = int(mesh_index)
 
     return meshes, model_to_mesh
@@ -1536,7 +1552,7 @@ def _build_scene_nodes_two_level(
     return nodes, parent_ids
 
 
-def _to_y_up_left_handed_nodes(nodes: list[dict]) -> list[dict]:
+def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[dict]:
     axis_m = np.asarray(
         [
             [1.0, 0.0, 0.0],
@@ -1565,6 +1581,20 @@ def _to_y_up_left_handed_nodes(nodes: list[dict]) -> list[dict]:
             rmat = b @ rmat @ bt
             rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
+        
+        # For bottom_center: move node down by half_height to compensate for vertex movement
+        # Vertices moved up -> node moves down -> visual position stays the same
+        mesh_id = mm.get("mesh")
+        if mesh_id is not None and tr is not None:
+            try:
+                mi = int(mesh_id)
+                if 0 <= mi < len(meshes):
+                    half_height = meshes[mi].get("half_height")
+                    if half_height is not None:
+                        tx, ty, tz = mm["translation"]
+                        mm["translation"] = (float(tx), float(ty) - float(half_height), float(tz))
+            except Exception:
+                pass
 
         out.append(mm)
 
