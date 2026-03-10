@@ -239,6 +239,7 @@ python -m btp_vox.cli \
 - `--no-merge-nodes`：不做“两层节点扁平化”，按 VOX 原始 scene graph（`nTRN/nGRP/nSHP`）导出节点
 - `--character-apart`：角色导出模式：在原始 VOX 层级下保留各部件（各 model）为独立 mesh（等价于启用 `--no-merge-nodes`）。同时会尽量折叠/隐藏 VOX scene graph 中的自动包装节点（如 `trn_*/grp_*/shp_*`），让导出层级更接近 MagicaVoxel 视图结构
 - `--character-flat`：配合 `--character-apart` 使用：以每个角色根节点为单位，把其下所有部件扁平到一层（全部成为该角色节点的直接子节点）
+- `--vox-view`：折叠/移除 VOX 自动包装节点（如 `trn_*/grp_*/node_*`），并把变换下推到子节点，使导出层级尽量与 MagicaVoxel 视图一致（`--character-apart/--character-flat` 默认启用该折叠行为）
 - `--uv-out <path>`：输出 UV JSON
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制

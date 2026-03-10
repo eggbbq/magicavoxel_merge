@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-merge-nodes", action="store_true", help="Do not flatten/merge VOX node hierarchy; export the original scene graph")
     parser.add_argument("--character-apart", action="store_true", help="Character export mode: keep parts as separate meshes under the original VOX hierarchy")
     parser.add_argument("--character-flat", action="store_true", help="In --character-apart mode, flatten each character root so all parts are direct children")
+    parser.add_argument("--vox-view", action="store_true", help="Collapse VOX wrapper nodes so exported hierarchy matches MagicaVoxel view")
 
     parser.add_argument("--tex-fmt", choices=("auto", "rgba", "rgb"), default="auto", help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha")
     parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB)")
@@ -57,6 +58,26 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    fields = getattr(PipelineOptions, "__dataclass_fields__", {}) or {}
+    pipe_kwargs: dict = {
+        "scale": args.scale,
+        "pivot": args.pivot,
+        "flip_v": args.uv_flip_v,
+        "export_uv2": bool(args.uv2),
+        "uv2_mode": str(args.uv2_mode),
+        "export_vertex_color": bool(args.vertex_color),
+        "no_merge_nodes": bool(args.no_merge_nodes),
+        "character_apart": bool(args.character_apart),
+        "character_flat": bool(getattr(args, "character_flat", False)),
+        "vox_view": bool(getattr(args, "vox_view", False)),
+        "cull": str(args.cull),
+        "plat_cutout": bool(args.plat_top_cutout),
+        "plat_cutoff": float(args.plat_cutoff),
+        "plat_suffix": str(args.plat_suffix),
+        "texture_alpha": str(args.tex_fmt),
+    }
+    pipe_kwargs = {k: v for k, v in pipe_kwargs.items() if k in fields}
+
     atlas_opts = AtlasOptions(
         pad=args.tex_pad,
         inset=args.tex_inset,
@@ -67,23 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         tight_blocks=args.tex_tight_blocks,
         style=args.tex_style,
     )
-    pipeline_opts = PipelineOptions(
-        scale=args.scale,
-        pivot=args.pivot,
-        flip_v=args.uv_flip_v,
-        export_uv2=bool(args.uv2),
-        uv2_mode=str(args.uv2_mode),
-        export_vertex_color=bool(args.vertex_color),
-        no_merge_nodes=bool(args.no_merge_nodes),
-        character_apart=bool(args.character_apart),
-        character_flat=bool(getattr(args, "character_flat", False)),
-        cull=str(args.cull),
-        plat_cutout=bool(args.plat_top_cutout),
-        plat_cutoff=float(args.plat_cutoff),
-        plat_suffix=str(args.plat_suffix),
-        texture_alpha=str(args.tex_fmt),
-        atlas=atlas_opts,
-    )
+    pipeline_opts = PipelineOptions(**pipe_kwargs, atlas=atlas_opts)
 
     convert(
         args.input,

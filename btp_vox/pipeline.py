@@ -223,7 +223,11 @@ def convert(
 
     nodes, root_node_ids = _collapse_auto_wrappers(nodes, root_node_ids)
 
+    nodes, root_node_ids = _collapse_same_name_single_child(nodes, root_node_ids)
+
     nodes = _ensure_mesh_node_names(nodes, meshes)
+
+    nodes = _apply_mesh_pivot_translation(nodes, meshes)
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
@@ -337,7 +341,7 @@ def _ensure_mesh_node_names(nodes: list[dict], meshes: list[dict]) -> list[dict]
     return out
 
 
-def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tuple[list[dict], list[int]]:
+def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int], *, aggressive: bool = False) -> tuple[list[dict], list[int]]:
     def is_auto_name(n: str) -> bool:
         ns = str(n or "")
         return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
@@ -361,6 +365,18 @@ def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tupl
             and float(r[3]) == 1.0
         )
 
+    def push_tr_to_child(*, parent: dict, child: dict) -> None:
+        pt = parent.get("translation") or (0.0, 0.0, 0.0)
+        pr = parent.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+        ct = child.get("translation") or (0.0, 0.0, 0.0)
+        cr = child.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+
+        rt = _quat_rotate_vec(tuple(float(x) for x in pr), (float(ct[0]), float(ct[1]), float(ct[2])))
+        nt = (float(pt[0]) + float(rt[0]), float(pt[1]) + float(rt[1]), float(pt[2]) + float(rt[2]))
+        nr = _quat_norm(_quat_mul(tuple(float(x) for x in pr), tuple(float(x) for x in cr)))
+        child["translation"] = nt
+        child["rotation"] = nr
+
     # Iteratively bypass wrapper nodes by lifting their children to parents/roots.
     changed = True
     while changed:
@@ -381,10 +397,17 @@ def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tupl
                 continue
             nd = nodes[r]
             if nd.get("mesh") is None and is_auto_name(str(nd.get("name") or "")):
-                # Only collapse transform wrappers when they are identity.
-                if is_identity_tr(nd):
-                    new_roots.extend([int(c) for c in list(nd.get("children") or [])])
+                can_collapse = bool(aggressive) or is_identity_tr(nd)
+                if can_collapse:
+                    chs = [int(c) for c in list(nd.get("children") or [])]
+                    if aggressive and (not is_identity_tr(nd)):
+                        for cid in chs:
+                            if 0 <= cid < len(nodes):
+                                push_tr_to_child(parent=nd, child=nodes[cid])
+                    new_roots.extend(chs)
                     nd["children"] = []
+                    nd.pop("translation", None)
+                    nd.pop("rotation", None)
                     changed = True
                     continue
             new_roots.append(r)
@@ -404,11 +427,17 @@ def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tupl
                 continue
             if not is_auto_name(str(nd.get("name") or "")):
                 continue
-            if not is_identity_tr(nd):
+            if (not aggressive) and (not is_identity_tr(nd)):
                 continue
             chs = [int(c) for c in list(nd.get("children") or [])]
             if not chs:
                 continue
+
+            if aggressive and (not is_identity_tr(nd)):
+                for cid in chs:
+                    if 0 <= cid < len(nodes):
+                        push_tr_to_child(parent=nd, child=nodes[cid])
+
             # Replace nid with its children in each parent.
             for pid in parents[nid]:
                 pch = [int(c) for c in list(nodes[pid].get("children") or [])]
@@ -429,9 +458,141 @@ def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int]) -> tupl
                 nodes[pid]["children"] = deduped
 
             nd["children"] = []
+            nd.pop("translation", None)
+            nd.pop("rotation", None)
             changed = True
 
     return nodes, root_node_ids
+
+
+def _collapse_same_name_single_child(nodes: list[dict], root_node_ids: list[int]) -> tuple[list[dict], list[int]]:
+    def is_auto_name(n: str) -> bool:
+        ns = str(n or "")
+        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
+
+    def is_identity_tr(nd: dict) -> bool:
+        t = nd.get("translation")
+        r = nd.get("rotation")
+        tt = (0.0, 0.0, 0.0) if t is None else tuple(float(x) for x in t)
+        rr = (0.0, 0.0, 0.0, 1.0) if r is None else tuple(float(x) for x in r)
+        return tt == (0.0, 0.0, 0.0) and rr == (0.0, 0.0, 0.0, 1.0)
+
+    def push_tr_to_child(*, parent: dict, child: dict) -> None:
+        pt = parent.get("translation") or (0.0, 0.0, 0.0)
+        pr = parent.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+        ct = child.get("translation") or (0.0, 0.0, 0.0)
+        cr = child.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+
+        rt = _quat_rotate_vec(tuple(float(x) for x in pr), (float(ct[0]), float(ct[1]), float(ct[2])))
+        nt = (float(pt[0]) + float(rt[0]), float(pt[1]) + float(rt[1]), float(pt[2]) + float(rt[2]))
+        nr = _quat_norm(_quat_mul(tuple(float(x) for x in pr), tuple(float(x) for x in cr)))
+        child["translation"] = nt
+        child["rotation"] = nr
+
+    changed = True
+    while changed:
+        changed = False
+
+        # Build parent pointers.
+        parents: dict[int, set[int]] = {}
+        for pid, pnd in enumerate(nodes):
+            for cid in list(pnd.get("children") or []):
+                try:
+                    cii = int(cid)
+                except Exception:
+                    continue
+                if 0 <= cii < len(nodes):
+                    parents.setdefault(cii, set()).add(pid)
+
+        # Collapse any parent node that only wraps a single child and duplicates the name.
+        for pid, pnd in enumerate(nodes):
+            if pnd.get("mesh") is not None:
+                continue
+
+            chs = [int(c) for c in list(pnd.get("children") or []) if isinstance(c, (int, str))]
+            if len(chs) != 1:
+                continue
+            cid = int(chs[0])
+            if not (0 <= cid < len(nodes)):
+                continue
+
+            cnd = nodes[cid]
+
+            pn = str(pnd.get("name") or "")
+            cn = str(cnd.get("name") or "")
+            if not cn:
+                continue
+
+            # Cases:
+            # 1) exact same meaningful name (tent1 -> tent1)
+            # 2) parent is auto/empty but child has a meaningful name
+            same_name = bool(pn) and (pn == cn)
+            parent_unhelpful = (not pn) or is_auto_name(pn)
+            child_meaningful = not is_auto_name(cn)
+            if (not same_name) and (not (parent_unhelpful and child_meaningful)):
+                continue
+
+            if not is_identity_tr(pnd):
+                push_tr_to_child(parent=pnd, child=cnd)
+
+            # Rewire roots
+            root_node_ids = [cid if int(rid) == pid else int(rid) for rid in root_node_ids]
+
+            # Rewire all parents
+            for gpid in list(parents.get(pid, set())):
+                gp = nodes[gpid]
+                new_children: list[int] = []
+                for x in list(gp.get("children") or []):
+                    try:
+                        xi = int(x)
+                    except Exception:
+                        continue
+                    if xi == pid:
+                        new_children.append(cid)
+                    else:
+                        new_children.append(xi)
+                gp["children"] = new_children
+
+            pnd["children"] = []
+            pnd.pop("translation", None)
+            pnd.pop("rotation", None)
+            changed = True
+
+    return nodes, root_node_ids
+
+
+def _apply_mesh_pivot_translation(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    for nd in nodes:
+        mm = dict(nd)
+        mesh_id = mm.get("mesh")
+        if mesh_id is None:
+            out.append(mm)
+            continue
+
+        try:
+            mi = int(mesh_id)
+        except Exception:
+            mi = -1
+        if not (0 <= mi < len(meshes)):
+            out.append(mm)
+            continue
+
+        piv = meshes[mi].get("pivot_p")
+        if piv is None:
+            out.append(mm)
+            continue
+
+        tr = mm.get("translation")
+        if tr is None:
+            out.append(mm)
+            continue
+
+        rot = mm.get("rotation") or (0.0, 0.0, 0.0, 1.0)
+        dp = _quat_rotate_vec(tuple(float(x) for x in rot), (float(piv[0]), float(piv[1]), float(piv[2])))
+        mm["translation"] = (float(tr[0]) + float(dp[0]), float(tr[1]) + float(dp[1]), float(tr[2]) + float(dp[2]))
+        out.append(mm)
+    return out
 
 
 def _write_transform_debug(path: str | Path, *, scene: VoxScene, meshes: list[dict], stage: str) -> None:
@@ -718,13 +879,19 @@ def _assemble_meshes(
             return None
 
         pos_arr = np.asarray(positions, dtype=np.float32)
-        sx, sy, sz = scene.models[midx].size
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
-        elif pivot == "bottom_center":
-            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, 0.0), dtype=np.float32)
         else:
-            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, float(sz) * 0.5 * scale), dtype=np.float32)
+            # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
+            bmin = pos_arr.min(axis=0)
+            bmax = pos_arr.max(axis=0)
+            cx = float(bmin[0] + bmax[0]) * 0.5
+            cy = float(bmin[1] + bmax[1]) * 0.5
+            if pivot == "bottom_center":
+                cz = float(bmin[2])
+            else:
+                cz = float(bmin[2] + bmax[2]) * 0.5
+            p = np.asarray((cx, cy, cz), dtype=np.float32)
         if pos_arr.size:
             pos_arr = pos_arr.copy()
             pos_arr[:, 0] -= float(p[0])
@@ -970,13 +1137,19 @@ def _build_model_meshes(
             continue
 
         pos_arr = np.asarray(positions, dtype=np.float32)
-        sx, sy, sz = scene.models[midx].size
         if pivot == "corner":
             p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
-        elif pivot == "bottom_center":
-            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, 0.0), dtype=np.float32)
         else:
-            p = np.asarray((float(sx) * 0.5 * scale, float(sy) * 0.5 * scale, float(sz) * 0.5 * scale), dtype=np.float32)
+            # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
+            bmin = pos_arr.min(axis=0)
+            bmax = pos_arr.max(axis=0)
+            cx = float(bmin[0] + bmax[0]) * 0.5
+            cy = float(bmin[1] + bmax[1]) * 0.5
+            if pivot == "bottom_center":
+                cz = float(bmin[2])
+            else:
+                cz = float(bmin[2] + bmax[2]) * 0.5
+            p = np.asarray((cx, cy, cz), dtype=np.float32)
 
         if pos_arr.size:
             pos_arr = pos_arr.copy()
