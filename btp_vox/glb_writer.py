@@ -531,7 +531,7 @@ def write_scene_gltf(
                 ),
                 alphaMode=(str(alpha_mode) if alpha_mode else None),
                 alphaCutoff=(float(alpha_cutoff) if alpha_cutoff is not None else None),
-                doubleSided=True,
+                doubleSided=False,
             )
         ],
         nodes=gltf_nodes,
