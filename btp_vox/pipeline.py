@@ -226,6 +226,7 @@ def convert(
     nodes, root_node_ids = _collapse_same_name_single_child(nodes, root_node_ids)
 
     nodes = _ensure_mesh_node_names(nodes, meshes)
+    meshes = _rename_meshes_from_nodes(nodes, meshes)
 
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
@@ -315,10 +316,21 @@ def _print_scene_nodes(scene: VoxScene) -> None:
         walk(int(rid), 0)
 
 
+def _is_auto_node_name(name: str) -> bool:
+    ns = str(name or "")
+    if not ns:
+        return True
+    return (
+        ns.startswith("trn_")
+        or ns.startswith("grp_")
+        or ns.startswith("shp_")
+        or ns.startswith("node_")
+        or ns.startswith("mesh_")
+        or ns.startswith("model_")
+    )
+
+
 def _ensure_mesh_node_names(nodes: list[dict], meshes: list[dict]) -> list[dict]:
-    def is_auto_name(n: str) -> bool:
-        ns = str(n or "")
-        return ns.startswith("trn_") or ns.startswith("grp_") or ns.startswith("shp_") or ns.startswith("node_")
 
     out: list[dict] = []
     for i, nd in enumerate(nodes):
@@ -326,7 +338,7 @@ def _ensure_mesh_node_names(nodes: list[dict], meshes: list[dict]) -> list[dict]
         mesh_id = mm.get("mesh")
         if mesh_id is not None:
             cur = str(mm.get("name") or "")
-            if (not cur) or is_auto_name(cur):
+            if (not cur) or _is_auto_node_name(cur):
                 try:
                     mi = int(mesh_id)
                 except Exception:
@@ -337,6 +349,69 @@ def _ensure_mesh_node_names(nodes: list[dict], meshes: list[dict]) -> list[dict]
                 mm["name"] = str(mesh_name) if mesh_name else f"mesh_{mi if mi >= 0 else i}"
         out.append(mm)
     return out
+
+
+def _rename_meshes_from_nodes(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+    """Rename mesh dictionaries so their names derive from the first referencing node.
+
+    If multiple meshes resolve to the same name, append _{model_id} to keep them unique.
+    """
+
+    parent_of: dict[int, int | None] = {idx: None for idx in range(len(nodes))}
+    for idx, nd in enumerate(nodes):
+        for ch in nd.get("children") or []:
+            try:
+                parent_of[int(ch)] = idx
+            except Exception:
+                continue
+
+    def find_custom_name(node_idx: int) -> str | None:
+        cur: int | None = node_idx
+        while cur is not None:
+            name = str(nodes[cur].get("name") or "").strip()
+            if name and not _is_auto_node_name(name):
+                return name
+            cur = parent_of.get(cur)
+        return None
+
+    mesh_name_from_node: dict[int, str] = {}
+    for idx, nd in enumerate(nodes):
+        mesh_idx = nd.get("mesh")
+        if mesh_idx is None:
+            continue
+        try:
+            mi = int(mesh_idx)
+        except Exception:
+            continue
+        if 0 <= mi < len(meshes) and mi not in mesh_name_from_node:
+            preferred = find_custom_name(idx)
+            if preferred is None:
+                node_name = str(nd.get("name") or "").strip()
+                if node_name and not _is_auto_node_name(node_name):
+                    preferred = node_name
+            if preferred:
+                mesh_name_from_node[mi] = preferred
+
+    used_names: set[str] = set()
+    for idx, mesh in enumerate(meshes):
+        base_name = mesh_name_from_node.get(idx) or str(mesh.get("name") or "")
+        if not base_name:
+            base_name = f"mesh_{idx}"
+
+        final_name = base_name
+        if final_name in used_names:
+            model_id = mesh.get("model_id")
+            suffix = f"_{int(model_id)}" if isinstance(model_id, int) else f"_{idx}"
+            final_name = f"{base_name}{suffix}"
+            counter = 1
+            while final_name in used_names:
+                counter += 1
+                final_name = f"{base_name}{suffix}_{counter}"
+
+        used_names.add(final_name)
+        mesh["name"] = final_name
+
+    return meshes
 
 
 def _collapse_auto_wrappers(nodes: list[dict], root_node_ids: list[int], *, aggressive: bool = False) -> tuple[list[dict], list[int]]:
