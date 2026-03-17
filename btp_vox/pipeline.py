@@ -158,11 +158,18 @@ def convert(
         )
     mark("build_quads")
 
+    # Plat cutout meshes are single quads; remove padding/inset so their UVs span the whole patch.
+    atlas_pad = int(opts.atlas.pad)
+    atlas_inset = float(opts.atlas.inset)
+    if bool(opts.plat_cutout) or bool(any_cutout):
+        atlas_pad = 0
+        atlas_inset = 0.0
+
     atlas_result = atlas_mod.build_atlas(
         scene,
         mesher_result,
-        pad=int(opts.atlas.pad),
-        inset=float(opts.atlas.inset),
+        pad=atlas_pad,
+        inset=atlas_inset,
         texel_scale=int(opts.atlas.texel_scale),
         square=bool(opts.atlas.square),
         pot=bool(opts.atlas.pot),
