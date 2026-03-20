@@ -303,6 +303,7 @@ python -m btp_vox.cli \
 - `--tex-layout by-model|global`
 - `--tex-reuse-subrects`：复用重复子块纹理（小块可映射到大块子区域），减小 atlas 面积（默认开启）
 - `--no-tex-reuse-subrects`：关闭子块复用，回退到每个 quad 独立打包
+- `--tex-compress-solid-quads`：若一个平面的颜色块是单色，则压缩为 `1x1` 像素再参与 atlas 打包
 - `--tex-pot`
 - `--tex-pad <int>`
 - `--tex-inset <float>`

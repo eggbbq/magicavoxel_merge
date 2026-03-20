@@ -39,6 +39,14 @@ class _QuadAnchor:
     off_v: int
 
 
+@dataclass(slots=True)
+class _QuadTexSpec:
+    colors: np.ndarray
+    core_w: int
+    core_h: int
+    sample_scale: int
+
+
 def build_atlas(
     scene: VoxScene,
     mesher_result: MesherResult,
@@ -53,6 +61,7 @@ def build_atlas(
     style: str = "baked",
     alpha: str = "auto",
     reuse_subrects: bool = True,
+    compress_solid_quads: bool = False,
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
@@ -66,9 +75,17 @@ def build_atlas(
         raise ValueError("alpha must be 'auto', 'rgba', or 'rgb'")
 
     quads_per_model = mesher_result.quads_per_model
+    texel_scale_i = int(max(1, int(texel_scale)))
+
+    quad_specs = _build_quad_tex_specs(
+        quads_per_model,
+        texel_scale=texel_scale_i,
+        compress_solid_quads=bool(compress_solid_quads),
+    )
 
     quad_anchors, owner_keys = _build_quad_reuse_map(
         quads_per_model,
+        quad_specs=quad_specs,
         layout=str(layout),
         enable=bool(reuse_subrects),
     )
@@ -77,7 +94,8 @@ def build_atlas(
     if timings_enabled:
         sys.stderr.write(
             f"[btp_vox] atlas reuse_subrects={bool(reuse_subrects)} owners={len(owner_keys)} "
-            f"reused={reused_count} total={all_quad_count}\n"
+            f"reused={reused_count} total={all_quad_count} "
+            f"compress_solid_quads={bool(compress_solid_quads)}\n"
         )
 
     # Two layouts:
@@ -93,9 +111,9 @@ def build_atlas(
         rid_to_owner: dict[int, tuple[int, int]] = {}
         rid = 0
         for midx, qidx in owner_keys:
-            quad = quads_per_model[midx][qidx]
-            tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
-            tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+            spec = quad_specs[(midx, qidx)]
+            tex_w = int(spec.core_w) + pad * 2
+            tex_h = int(spec.core_h) + pad * 2
             rects_all.append((rid, tex_w, tex_h))
             rid_to_owner[rid] = (int(midx), int(qidx))
             rid += 1
@@ -129,8 +147,12 @@ def build_atlas(
                 anchor = quad_anchors[(midx, qidx)]
                 src_key = (int(anchor.src_midx), int(anchor.src_qidx))
                 src_ox, src_oy = owner_block_positions[src_key]
-                off_x = int(anchor.off_u) * int(max(1, texel_scale))
-                off_y = int(anchor.off_v) * int(max(1, texel_scale))
+                src_spec = quad_specs[src_key]
+                src_h, src_w = int(src_spec.colors.shape[0]), int(src_spec.colors.shape[1])
+                px_per_cell_x = int(max(1, int(src_spec.core_w) // max(1, src_w)))
+                px_per_cell_y = int(max(1, int(src_spec.core_h) // max(1, src_h)))
+                off_x = int(anchor.off_u) * int(px_per_cell_x)
+                off_y = int(anchor.off_v) * int(px_per_cell_y)
                 core_x = int(src_ox + pad + off_x)
                 core_y = int(src_oy + pad + off_y)
                 quad_core_positions[(midx, qidx)] = (core_x, core_y)
@@ -150,9 +172,9 @@ def build_atlas(
         for midx, quads in enumerate(quads_per_model):
             rects: List[Tuple[int, int, int]] = []
             for _omidx, qidx in owners_by_model.get(int(midx), []):
-                quad = quads[qidx]
-                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
-                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+                spec = quad_specs[(midx, qidx)]
+                tex_w = int(spec.core_w) + pad * 2
+                tex_h = int(spec.core_h) + pad * 2
                 rects.append((qidx, tex_w, tex_h))
 
             if bool(tight_blocks):
@@ -190,8 +212,12 @@ def build_atlas(
                 src_block_oy = int(my + src_qy)
                 owner_block_positions[src_key] = (src_block_ox, src_block_oy)
 
-                off_x = int(anchor.off_u) * int(max(1, texel_scale))
-                off_y = int(anchor.off_v) * int(max(1, texel_scale))
+                src_spec = quad_specs[src_key]
+                src_h, src_w = int(src_spec.colors.shape[0]), int(src_spec.colors.shape[1])
+                px_per_cell_x = int(max(1, int(src_spec.core_w) // max(1, src_w)))
+                px_per_cell_y = int(max(1, int(src_spec.core_h) // max(1, src_h)))
+                off_x = int(anchor.off_u) * int(px_per_cell_x)
+                off_y = int(anchor.off_v) * int(px_per_cell_y)
                 core_x = int(src_block_ox + pad + off_x)
                 core_y = int(src_block_oy + pad + off_y)
                 quad_core_positions[(midx, qidx)] = (core_x, core_y)
@@ -224,16 +250,16 @@ def build_atlas(
     palette = scene.palette_rgba
 
     for midx, qidx in owner_keys:
-        quad = quads_per_model[midx][qidx]
-        tex_w = int(max(1, quad.size_u * texel_scale))
-        tex_h = int(max(1, quad.size_v * texel_scale))
+        spec = quad_specs[(midx, qidx)]
+        tex_w = int(spec.core_w)
+        tex_h = int(spec.core_h)
         full_w = tex_w + pad * 2
         full_h = tex_h + pad * 2
         ox, oy = owner_block_positions[(midx, qidx)]
         if style == "solid":
-            block = _quad_block_rgba_solid(quad.colors, palette, pad, full_w, full_h)
+            block = _quad_block_rgba_solid(spec.colors, palette, pad, full_w, full_h)
         else:
-            block = _quad_block_rgba(quad.colors, palette, texel_scale, pad, full_w, full_h)
+            block = _quad_block_rgba(spec.colors, palette, int(spec.sample_scale), pad, full_w, full_h)
         atlas_arr[oy : oy + full_h, ox : ox + full_w, :] = block
 
     for midx, quads in enumerate(quads_per_model):
@@ -242,8 +268,9 @@ def build_atlas(
         u_max: float | None = None
         v_max: float | None = None
         for qidx, quad in enumerate(quads):
-            tex_w = int(max(1, quad.size_u * texel_scale))
-            tex_h = int(max(1, quad.size_v * texel_scale))
+            spec = quad_specs[(midx, qidx)]
+            tex_w = int(spec.core_w)
+            tex_h = int(spec.core_h)
             core_x, core_y = quad_core_positions[(midx, qidx)]
 
             inset_u = min(inset, max(0.0, (tex_w - 1.0) / 2.0))
@@ -299,9 +326,53 @@ def build_atlas(
     )
 
 
+def _build_quad_tex_specs(
+    quads_per_model: list[list],
+    *,
+    texel_scale: int,
+    compress_solid_quads: bool,
+) -> dict[tuple[int, int], _QuadTexSpec]:
+    specs: dict[tuple[int, int], _QuadTexSpec] = {}
+    ts = int(max(1, int(texel_scale)))
+
+    for midx, quads in enumerate(quads_per_model):
+        for qidx, quad in enumerate(quads):
+            key = (int(midx), int(qidx))
+            arr = np.asarray(quad.colors, dtype=np.int32)
+            if arr.ndim != 2:
+                arr = np.asarray(arr, dtype=np.int32).reshape((int(quad.size_v), int(quad.size_u)))
+            arr = np.ascontiguousarray(arr)
+
+            if arr.size == 0:
+                arr = np.zeros((1, 1), dtype=np.int32)
+
+            is_solid = bool(compress_solid_quads) and bool(np.all(arr == arr.flat[0]))
+            if is_solid:
+                colors = np.asarray([[int(arr.flat[0])]], dtype=np.int32)
+                core_w = 1
+                core_h = 1
+                sample_scale = 1
+            else:
+                h, w = int(arr.shape[0]), int(arr.shape[1])
+                colors = arr
+                core_w = int(max(1, w * ts))
+                core_h = int(max(1, h * ts))
+                sample_scale = int(ts)
+
+            specs[key] = _QuadTexSpec(
+                colors=np.ascontiguousarray(colors, dtype=np.int32),
+                core_w=int(core_w),
+                core_h=int(core_h),
+                sample_scale=int(sample_scale),
+            )
+
+    return specs
+
+
 def _build_quad_reuse_map(
     quads_per_model: list[list],
     *,
+    quad_specs: dict[tuple[int, int], _QuadTexSpec],
     layout: str,
     enable: bool,
 ) -> tuple[dict[tuple[int, int], _QuadAnchor], list[tuple[int, int]]]:
@@ -313,12 +384,10 @@ def _build_quad_reuse_map(
     quad_shape: dict[tuple[int, int], tuple[int, int]] = {}
 
     for midx, quads in enumerate(quads_per_model):
-        for qidx, quad in enumerate(quads):
+        for qidx, _quad in enumerate(quads):
             key = (int(midx), int(qidx))
-            arr = np.asarray(quad.colors, dtype=np.int32)
-            if arr.ndim != 2:
-                arr = np.asarray(arr, dtype=np.int32).reshape((int(quad.size_v), int(quad.size_u)))
-            arr = np.ascontiguousarray(arr)
+            spec = quad_specs[key]
+            arr = np.asarray(spec.colors, dtype=np.int32)
             h, w = int(arr.shape[0]), int(arr.shape[1])
             quad_colors[key] = arr
             quad_shape[key] = (h, w)

@@ -52,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tex-tight-blocks", action="store_true", help="Tight-pack per-model blocks (by-model layout)")
     parser.add_argument("--tex-reuse-subrects", dest="tex_reuse_subrects", action="store_true", default=True, help="Reuse repeated sub-rects in atlas to reduce texture area")
     parser.add_argument("--no-tex-reuse-subrects", dest="tex_reuse_subrects", action="store_false", help="Disable sub-rect reuse and keep one packed block per quad")
+    parser.add_argument("--tex-compress-solid-quads", action="store_true", help="Compress single-color quad blocks to 1x1 texel before atlas packing")
 
     return parser
 
@@ -90,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         tight_blocks=args.tex_tight_blocks,
         style=args.tex_style,
         reuse_subrects=bool(getattr(args, "tex_reuse_subrects", True)),
+        compress_solid_quads=bool(getattr(args, "tex_compress_solid_quads", False)),
     )
     pipeline_opts = PipelineOptions(**pipe_kwargs, atlas=atlas_opts)
 

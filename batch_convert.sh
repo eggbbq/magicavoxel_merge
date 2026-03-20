@@ -32,6 +32,7 @@ btp_convert_one_plat() {
     --tex-out         $out_tex
     --tex-layout      global
     --tex-reuse-subrects
+    --tex-compress-solid-quads
 
 
     --scale           0.02
@@ -67,6 +68,7 @@ btp_convert_one_normal() {
     --tex-out         $out_tex
     --tex-layout      global
     --tex-reuse-subrects
+    --tex-compress-solid-quads
 
     --scale           0.02
     --pivot           bottom_center
