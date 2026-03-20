@@ -30,6 +30,7 @@ class AtlasOptions:
     pot: bool = False
     tight_blocks: bool = False
     style: str = "baked"  # baked or solid
+    reuse_subrects: bool = True
 
 
 @dataclass(slots=True)
@@ -177,6 +178,7 @@ def convert(
         tight_blocks=bool(opts.atlas.tight_blocks),
         style=("baked" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.atlas.style)),
         alpha=("rgba" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.texture_alpha)),
+        reuse_subrects=bool(getattr(opts.atlas, "reuse_subrects", True)),
     )
     mark("build_atlas")
 

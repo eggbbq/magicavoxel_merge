@@ -31,6 +31,14 @@ class AtlasBuildResult:
     model_uv_rects: Dict[int, Tuple[float, float, float, float]]
 
 
+@dataclass(slots=True)
+class _QuadAnchor:
+    src_midx: int
+    src_qidx: int
+    off_u: int
+    off_v: int
+
+
 def build_atlas(
     scene: VoxScene,
     mesher_result: MesherResult,
@@ -44,6 +52,7 @@ def build_atlas(
     tight_blocks: bool = False,
     style: str = "baked",
     alpha: str = "auto",
+    reuse_subrects: bool = True,
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
@@ -58,24 +67,38 @@ def build_atlas(
 
     quads_per_model = mesher_result.quads_per_model
 
+    quad_anchors, owner_keys = _build_quad_reuse_map(
+        quads_per_model,
+        layout=str(layout),
+        enable=bool(reuse_subrects),
+    )
+    all_quad_count = int(sum(len(quads) for quads in quads_per_model))
+    reused_count = int(max(0, all_quad_count - len(owner_keys)))
+    if timings_enabled:
+        sys.stderr.write(
+            f"[btp_vox] atlas reuse_subrects={bool(reuse_subrects)} owners={len(owner_keys)} "
+            f"reused={reused_count} total={all_quad_count}\n"
+        )
+
     # Two layouts:
     # - by-model: each model gets its own packed block, then blocks are packed into atlas
     # - global: all quads are packed together into a single atlas (usually better fill rate)
-    quad_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    quad_core_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
     model_block_sizes: Dict[int, Tuple[int, int]] = {}
     model_positions: Dict[int, Tuple[int, int]] = {}
+    owner_block_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
 
     if layout == "global":
         rects_all: List[Tuple[int, int, int]] = []
-        rid_to_mq: dict[int, tuple[int, int]] = {}
+        rid_to_owner: dict[int, tuple[int, int]] = {}
         rid = 0
-        for midx, quads in enumerate(quads_per_model):
-            for qidx, quad in enumerate(quads):
-                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
-                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
-                rects_all.append((rid, tex_w, tex_h))
-                rid_to_mq[rid] = (midx, qidx)
-                rid += 1
+        for midx, qidx in owner_keys:
+            quad = quads_per_model[midx][qidx]
+            tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
+            tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
+            rects_all.append((rid, tex_w, tex_h))
+            rid_to_owner[rid] = (int(midx), int(qidx))
+            rid += 1
 
         if timings_enabled:
             sys.stderr.write(f"[btp_vox] atlas layout=global rects={len(rects_all)} pot={bool(pot)} square={bool(square)}\n")
@@ -98,32 +121,25 @@ def build_atlas(
             )
 
         for rid, (x, y) in positions.items():
-            midx, qidx = rid_to_mq[int(rid)]
-            quad_positions[(midx, qidx)] = (int(x), int(y))
+            src_key = rid_to_owner[int(rid)]
+            owner_block_positions[src_key] = (int(x), int(y))
 
-        # In global layout, each model's rect is computed from its quads' extents.
         for midx, quads in enumerate(quads_per_model):
-            if not quads:
-                model_block_sizes[midx] = (1, 1)
-                model_positions[midx] = (0, 0)
-                continue
-            u_min = None
-            v_min = None
-            u_max = None
-            v_max = None
             for qidx, quad in enumerate(quads):
-                ox, oy = quad_positions[(midx, qidx)]
-                tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
-                tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
-                u_min = ox if u_min is None else min(u_min, ox)
-                v_min = oy if v_min is None else min(v_min, oy)
-                u_max = (ox + tex_w) if u_max is None else max(u_max, ox + tex_w)
-                v_max = (oy + tex_h) if v_max is None else max(v_max, oy + tex_h)
-            model_positions[midx] = (int(u_min or 0), int(v_min or 0))
-            model_block_sizes[midx] = (int((u_max or 1) - (u_min or 0)), int((v_max or 1) - (v_min or 0)))
+                anchor = quad_anchors[(midx, qidx)]
+                src_key = (int(anchor.src_midx), int(anchor.src_qidx))
+                src_ox, src_oy = owner_block_positions[src_key]
+                off_x = int(anchor.off_u) * int(max(1, texel_scale))
+                off_y = int(anchor.off_v) * int(max(1, texel_scale))
+                core_x = int(src_ox + pad + off_x)
+                core_y = int(src_oy + pad + off_y)
+                quad_core_positions[(midx, qidx)] = (core_x, core_y)
 
     else:
         quad_local_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+        owners_by_model: dict[int, list[tuple[int, int]]] = {}
+        for midx, qidx in owner_keys:
+            owners_by_model.setdefault(int(midx), []).append((int(midx), int(qidx)))
 
         if timings_enabled:
             quad_count = sum(len(quads) for quads in quads_per_model)
@@ -133,7 +149,8 @@ def build_atlas(
 
         for midx, quads in enumerate(quads_per_model):
             rects: List[Tuple[int, int, int]] = []
-            for qidx, quad in enumerate(quads):
+            for _omidx, qidx in owners_by_model.get(int(midx), []):
+                quad = quads[qidx]
                 tex_w = int(max(1, quad.size_u * texel_scale)) + pad * 2
                 tex_h = int(max(1, quad.size_v * texel_scale)) + pad * 2
                 rects.append((qidx, tex_w, tex_h))
@@ -166,8 +183,18 @@ def build_atlas(
         for midx, quads in enumerate(quads_per_model):
             mx, my = model_positions.get(midx, (0, 0))
             for qidx, _quad in enumerate(quads):
-                qx, qy = quad_local_positions[(midx, qidx)]
-                quad_positions[(midx, qidx)] = (int(mx + qx), int(my + qy))
+                anchor = quad_anchors[(midx, qidx)]
+                src_key = (int(anchor.src_midx), int(anchor.src_qidx))
+                src_qx, src_qy = quad_local_positions[src_key]
+                src_block_ox = int(mx + src_qx)
+                src_block_oy = int(my + src_qy)
+                owner_block_positions[src_key] = (src_block_ox, src_block_oy)
+
+                off_x = int(anchor.off_u) * int(max(1, texel_scale))
+                off_y = int(anchor.off_v) * int(max(1, texel_scale))
+                core_x = int(src_block_ox + pad + off_x)
+                core_y = int(src_block_oy + pad + off_y)
+                quad_core_positions[(midx, qidx)] = (core_x, core_y)
 
         if timings_enabled:
             sys.stderr.write(
@@ -196,43 +223,60 @@ def build_atlas(
 
     palette = scene.palette_rgba
 
+    for midx, qidx in owner_keys:
+        quad = quads_per_model[midx][qidx]
+        tex_w = int(max(1, quad.size_u * texel_scale))
+        tex_h = int(max(1, quad.size_v * texel_scale))
+        full_w = tex_w + pad * 2
+        full_h = tex_h + pad * 2
+        ox, oy = owner_block_positions[(midx, qidx)]
+        if style == "solid":
+            block = _quad_block_rgba_solid(quad.colors, palette, pad, full_w, full_h)
+        else:
+            block = _quad_block_rgba(quad.colors, palette, texel_scale, pad, full_w, full_h)
+        atlas_arr[oy : oy + full_h, ox : ox + full_w, :] = block
+
     for midx, quads in enumerate(quads_per_model):
-        block_origin = model_positions.get(midx, (0, 0))
-        block_w, block_h = model_block_sizes.get(midx, (1, 1))
-        mx, my = block_origin
-
-        # Top-left origin convention (matches the baked atlas array). Use --uv-flip-v in the pipeline
-        # if your engine treats v=0 as bottom.
-        model_uv[midx] = (
-            float(mx) / float(atlas_w),
-            float(my) / float(atlas_h),
-            float(mx + block_w) / float(atlas_w),
-            float(my + block_h) / float(atlas_h),
-        )
-
+        u_min: float | None = None
+        v_min: float | None = None
+        u_max: float | None = None
+        v_max: float | None = None
         for qidx, quad in enumerate(quads):
             tex_w = int(max(1, quad.size_u * texel_scale))
             tex_h = int(max(1, quad.size_v * texel_scale))
-            full_w = tex_w + pad * 2
-            full_h = tex_h + pad * 2
-
-            ox, oy = quad_positions[(midx, qidx)]
-
-            if style == "solid":
-                block = _quad_block_rgba_solid(quad.colors, palette, pad, full_w, full_h)
-            else:
-                block = _quad_block_rgba(quad.colors, palette, texel_scale, pad, full_w, full_h)
-            atlas_arr[oy : oy + full_h, ox : ox + full_w, :] = block
+            core_x, core_y = quad_core_positions[(midx, qidx)]
 
             inset_u = min(inset, max(0.0, (tex_w - 1.0) / 2.0))
             inset_v = min(inset, max(0.0, (tex_h - 1.0) / 2.0))
 
-            u0 = (ox + pad + inset_u) / float(atlas_w)
-            v0 = (oy + pad + inset_v) / float(atlas_h)
-            u1 = (ox + pad + tex_w - inset_u) / float(atlas_w)
-            v1 = (oy + pad + tex_h - inset_v) / float(atlas_h)
+            u0 = (core_x + inset_u) / float(atlas_w)
+            v0 = (core_y + inset_v) / float(atlas_h)
+            u1 = (core_x + tex_w - inset_u) / float(atlas_w)
+            v1 = (core_y + tex_h - inset_v) / float(atlas_h)
 
             quad_uvs[(midx, qidx)] = QuadUV(u0=u0, v0=v0, u1=u1, v1=v1)
+
+            u_min = float(core_x) if u_min is None else min(u_min, float(core_x))
+            v_min = float(core_y) if v_min is None else min(v_min, float(core_y))
+            u_max = float(core_x + tex_w) if u_max is None else max(u_max, float(core_x + tex_w))
+            v_max = float(core_y + tex_h) if v_max is None else max(v_max, float(core_y + tex_h))
+
+        # Top-left origin convention (matches the baked atlas array). Use --uv-flip-v in the pipeline
+        # if your engine treats v=0 as bottom.
+        if u_min is None or v_min is None or u_max is None or v_max is None:
+            model_uv[midx] = (
+                0.0,
+                0.0,
+                1.0 / float(max(1, atlas_w)),
+                1.0 / float(max(1, atlas_h)),
+            )
+        else:
+            model_uv[midx] = (
+                float(u_min) / float(atlas_w),
+                float(v_min) / float(atlas_h),
+                float(u_max) / float(atlas_w),
+                float(v_max) / float(atlas_h),
+            )
 
     img_rgba = Image.fromarray(atlas_arr, mode="RGBA")
     if alpha == "rgb":
@@ -253,6 +297,127 @@ def build_atlas(
         quad_uvs=quad_uvs,
         model_uv_rects=model_uv,
     )
+
+
+def _build_quad_reuse_map(
+    quads_per_model: list[list],
+    *,
+    layout: str,
+    enable: bool,
+) -> tuple[dict[tuple[int, int], _QuadAnchor], list[tuple[int, int]]]:
+    anchors: dict[tuple[int, int], _QuadAnchor] = {}
+
+    all_keys: list[tuple[int, int]] = []
+    quad_colors: dict[tuple[int, int], np.ndarray] = {}
+    quad_area: dict[tuple[int, int], int] = {}
+    quad_shape: dict[tuple[int, int], tuple[int, int]] = {}
+
+    for midx, quads in enumerate(quads_per_model):
+        for qidx, quad in enumerate(quads):
+            key = (int(midx), int(qidx))
+            arr = np.asarray(quad.colors, dtype=np.int32)
+            if arr.ndim != 2:
+                arr = np.asarray(arr, dtype=np.int32).reshape((int(quad.size_v), int(quad.size_u)))
+            arr = np.ascontiguousarray(arr)
+            h, w = int(arr.shape[0]), int(arr.shape[1])
+            quad_colors[key] = arr
+            quad_shape[key] = (h, w)
+            quad_area[key] = int(h * w)
+            all_keys.append(key)
+
+    if not enable:
+        for key in all_keys:
+            anchors[key] = _QuadAnchor(src_midx=int(key[0]), src_qidx=int(key[1]), off_u=0, off_v=0)
+        return anchors, all_keys
+
+    def process_scope(scope_keys: list[tuple[int, int]]) -> None:
+        order = sorted(
+            scope_keys,
+            key=lambda k: (-int(quad_area[k]), -int(quad_shape[k][0]), -int(quad_shape[k][1]), int(k[0]), int(k[1])),
+        )
+        owners: list[tuple[int, int]] = []
+        exact_owner: dict[tuple[int, int, bytes], tuple[int, int]] = {}
+
+        for key in order:
+            arr = quad_colors[key]
+            h, w = quad_shape[key]
+            sig = (int(h), int(w), arr.tobytes())
+            eq = exact_owner.get(sig)
+            if eq is not None:
+                anchors[key] = _QuadAnchor(src_midx=int(eq[0]), src_qidx=int(eq[1]), off_u=0, off_v=0)
+                continue
+
+            found_src: tuple[int, int] | None = None
+            found_off: tuple[int, int] | None = None
+
+            for owner_key in owners:
+                oh, ow = quad_shape[owner_key]
+                if oh < h or ow < w:
+                    continue
+                off = _find_subrect_offset(quad_colors[owner_key], arr)
+                if off is None:
+                    continue
+                found_src = owner_key
+                found_off = off
+                break
+
+            if found_src is not None and found_off is not None:
+                anchors[key] = _QuadAnchor(
+                    src_midx=int(found_src[0]),
+                    src_qidx=int(found_src[1]),
+                    off_u=int(found_off[0]),
+                    off_v=int(found_off[1]),
+                )
+            else:
+                owners.append(key)
+                exact_owner[sig] = key
+                anchors[key] = _QuadAnchor(src_midx=int(key[0]), src_qidx=int(key[1]), off_u=0, off_v=0)
+
+    if layout == "global":
+        process_scope(all_keys)
+    else:
+        for midx, quads in enumerate(quads_per_model):
+            keys = [(int(midx), int(qidx)) for qidx in range(len(quads))]
+            process_scope(keys)
+
+    owner_keys = [
+        key
+        for key in all_keys
+        if int(anchors[key].src_midx) == int(key[0]) and int(anchors[key].src_qidx) == int(key[1])
+    ]
+    return anchors, owner_keys
+
+
+def _find_subrect_offset(host: np.ndarray, child: np.ndarray) -> tuple[int, int] | None:
+    host = np.asarray(host, dtype=np.int32)
+    child = np.asarray(child, dtype=np.int32)
+
+    if host.ndim != 2 or child.ndim != 2:
+        return None
+
+    host_h, host_w = int(host.shape[0]), int(host.shape[1])
+    child_h, child_w = int(child.shape[0]), int(child.shape[1])
+
+    if child_h > host_h or child_w > host_w:
+        return None
+
+    if child_h == host_h and child_w == host_w:
+        if np.array_equal(host, child):
+            return (0, 0)
+        return None
+
+    try:
+        windows = np.lib.stride_tricks.sliding_window_view(host, (child_h, child_w))
+    except Exception:
+        return None
+
+    matches = np.all(windows == child, axis=(2, 3))
+    found = np.argwhere(matches)
+    if found.size == 0:
+        return None
+
+    off_v, off_u = found[0]
+    return (int(off_u), int(off_v))
 
 
 def _pack_rects(rects: List[Tuple[int, int, int]]) -> Tuple[int, int, Dict[int, Tuple[int, int]]]:

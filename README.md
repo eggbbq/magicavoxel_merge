@@ -301,6 +301,8 @@ python -m btp_vox.cli \
 - `--tex-out <path>`：输出 atlas PNG 文件
 - `--tex-fmt auto|rgba|rgb`：纹理透明通道控制
 - `--tex-layout by-model|global`
+- `--tex-reuse-subrects`：复用重复子块纹理（小块可映射到大块子区域），减小 atlas 面积（默认开启）
+- `--no-tex-reuse-subrects`：关闭子块复用，回退到每个 quad 独立打包
 - `--tex-pot`
 - `--tex-pad <int>`
 - `--tex-inset <float>`

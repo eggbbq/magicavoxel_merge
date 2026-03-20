@@ -31,6 +31,7 @@ btp_convert_one_plat() {
     --tex-fmt         rgba
     --tex-out         $out_tex
     --tex-layout      global
+    --tex-reuse-subrects
 
 
     --scale           0.02
@@ -65,6 +66,7 @@ btp_convert_one_normal() {
     --tex-fmt         rgb
     --tex-out         $out_tex
     --tex-layout      global
+    --tex-reuse-subrects
 
     --scale           0.02
     --pivot           bottom_center
