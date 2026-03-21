@@ -579,8 +579,8 @@ def _build_quad_reuse_map(
 ) -> tuple[dict[tuple[int, int], _QuadAnchor], list[tuple[int, int]]]:
     anchors: dict[tuple[int, int], _QuadAnchor] = {}
     timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
-    subrect_limit = int(os.environ.get("BTP_VOX_REUSE_SUBRECT_LIMIT", "2000"))
-    max_candidates = int(os.environ.get("BTP_VOX_REUSE_MAX_CANDIDATES", "128"))
+    subrect_limit = int(os.environ.get("BTP_VOX_REUSE_SUBRECT_LIMIT", "5000"))
+    max_candidates = int(os.environ.get("BTP_VOX_REUSE_MAX_CANDIDATES", "256"))
 
     all_keys: list[tuple[int, int]] = []
     quad_colors: dict[tuple[int, int], np.ndarray] = {}
