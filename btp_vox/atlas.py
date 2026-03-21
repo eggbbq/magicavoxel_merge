@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Dict, List, Tuple
 
 import numpy as np
 import os
 from PIL import Image
 import sys
+import time
 
 from .btp_mesher import MesherResult
 from .voxio import VoxScene
@@ -62,10 +64,20 @@ def build_atlas(
     alpha: str = "auto",
     reuse_subrects: bool = True,
     compress_solid_quads: bool = False,
+    face_alias_uv_remap: bool = False,
 ) -> AtlasBuildResult:
     """Pack quads into a simple atlas and return texture bytes + UV lookup."""
 
     timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
+    t_mark = time.perf_counter() if timings_enabled else 0.0
+
+    def mark(stage: str) -> None:
+        nonlocal t_mark
+        if not timings_enabled:
+            return
+        now = time.perf_counter()
+        sys.stderr.write(f"[btp_vox] atlas stage {stage}: +{(now - t_mark):.3f}s\n")
+        t_mark = now
 
     if style not in ("baked", "solid"):
         raise ValueError("style must be 'baked' or 'solid'")
@@ -82,20 +94,31 @@ def build_atlas(
         texel_scale=texel_scale_i,
         compress_solid_quads=bool(compress_solid_quads),
     )
+    mark("quad_specs")
+    alias_applied = _apply_face_alias_from_model_name(
+        scene,
+        quads_per_model,
+        quad_specs,
+        remap_uv=bool(face_alias_uv_remap),
+    )
+    mark("face_alias")
 
     quad_anchors, owner_keys = _build_quad_reuse_map(
         quads_per_model,
         quad_specs=quad_specs,
         layout=str(layout),
-        enable=bool(reuse_subrects),
+        enable=bool(reuse_subrects) or bool(alias_applied),
     )
+    mark("reuse_map")
     all_quad_count = int(sum(len(quads) for quads in quads_per_model))
     reused_count = int(max(0, all_quad_count - len(owner_keys)))
     if timings_enabled:
         sys.stderr.write(
             f"[btp_vox] atlas reuse_subrects={bool(reuse_subrects)} owners={len(owner_keys)} "
             f"reused={reused_count} total={all_quad_count} "
-            f"compress_solid_quads={bool(compress_solid_quads)}\n"
+            f"compress_solid_quads={bool(compress_solid_quads)} "
+            f"face_alias_uv_remap={bool(face_alias_uv_remap)} "
+            f"face_alias_applied={int(alias_applied)}\n"
         )
 
     # Two layouts:
@@ -124,7 +147,8 @@ def build_atlas(
         # NOTE: For large scenes, MaxRects search over many POT bins becomes extremely slow.
         # Use a fast shelf pack, then optionally expand to POT/square. This trades some
         # fill efficiency for dramatically better runtime.
-        use_fast_pack = len(rects_all) >= 512
+        fast_pack_threshold = max(1, int(os.environ.get("BTP_VOX_FAST_PACK_THRESHOLD", "128")))
+        use_fast_pack = len(rects_all) >= fast_pack_threshold
         if pot or square:
             if use_fast_pack:
                 atlas_w, atlas_h, positions = _pack_rects_best(rects_all, pot=bool(pot), square=bool(square))
@@ -181,7 +205,8 @@ def build_atlas(
                 block_w, block_h, positions = _pack_rects(rects)
             else:
                 if pot or square:
-                    use_fast_pack = len(rects) >= 512
+                    fast_pack_threshold = max(1, int(os.environ.get("BTP_VOX_FAST_PACK_THRESHOLD", "128")))
+                    use_fast_pack = len(rects) >= fast_pack_threshold
                     if use_fast_pack:
                         block_w, block_h, positions = _pack_rects_best(rects, pot=bool(pot), square=bool(square))
                     else:
@@ -194,7 +219,8 @@ def build_atlas(
 
         model_rects = [(midx, sz[0], sz[1]) for midx, sz in model_block_sizes.items()]
         if pot or square:
-            use_fast_pack = len(model_rects) >= 512
+            fast_pack_threshold = max(1, int(os.environ.get("BTP_VOX_FAST_PACK_THRESHOLD", "128")))
+            use_fast_pack = len(model_rects) >= fast_pack_threshold
             if use_fast_pack:
                 atlas_w, atlas_h, model_positions = _pack_rects_best(model_rects, pot=bool(pot), square=bool(square))
             else:
@@ -226,6 +252,7 @@ def build_atlas(
             sys.stderr.write(
                 f"[btp_vox] atlas pack=by-model size={int(atlas_w)}x{int(atlas_h)} models={len(model_rects)}\n"
             )
+    mark("pack")
 
     if atlas_w == 0 or atlas_h == 0:
         atlas_w = atlas_h = 1
@@ -261,6 +288,7 @@ def build_atlas(
         else:
             block = _quad_block_rgba(spec.colors, palette, int(spec.sample_scale), pad, full_w, full_h)
         atlas_arr[oy : oy + full_h, ox : ox + full_w, :] = block
+    mark("raster")
 
     for midx, quads in enumerate(quads_per_model):
         u_min: float | None = None
@@ -369,6 +397,179 @@ def _build_quad_tex_specs(
     return specs
 
 
+def _apply_face_alias_from_model_name(
+    scene: VoxScene,
+    quads_per_model: list[list],
+    quad_specs: dict[tuple[int, int], _QuadTexSpec],
+    *,
+    remap_uv: bool = False,
+) -> int:
+    """Apply face-texture alias rules encoded in model names.
+
+    Naming rule example:
+      cube@lrfk@tb
+    Means:
+      r,f,k -> l
+      b -> t
+    """
+
+    applied = 0
+    for midx, quads in enumerate(quads_per_model):
+        if midx < 0 or midx >= len(scene.models):
+            continue
+        name = str(getattr(scene.models[midx], "name", "") or "")
+        rules = _parse_face_alias_rules(name)
+        if not rules:
+            continue
+
+        face_to_quad_keys: dict[str, list[tuple[int, int]]] = {}
+        for qidx, quad in enumerate(quads):
+            face = _quad_face_letter(getattr(quad, "axis", None), getattr(quad, "normal_sign", None))
+            if face is None:
+                continue
+            face_to_quad_keys.setdefault(face, []).append((int(midx), int(qidx)))
+
+        # Choose one representative quad per face (largest area first, stable tie-break by qidx).
+        face_rep: dict[str, tuple[int, int]] = {}
+        for face, keys in face_to_quad_keys.items():
+            if not keys:
+                continue
+            keys_sorted = sorted(
+                keys,
+                key=lambda k: (
+                    -int(quad_specs[k].core_w) * int(quad_specs[k].core_h),
+                    int(k[1]),
+                ),
+            )
+            face_rep[face] = keys_sorted[0]
+
+        for src_face, dst_face in rules.items():
+            src_keys = face_to_quad_keys.get(src_face) or []
+            dst_rep = face_rep.get(dst_face)
+            if not src_keys or dst_rep is None:
+                continue
+
+            dst_spec = quad_specs[dst_rep]
+            for key in src_keys:
+                # Remap UV orientation per face so aliases stay visually consistent in Unity
+                # (notably for f/k == +Z/-Z after axis conversion).
+                quad_specs[key] = _alias_spec_from_face(
+                    dst_spec,
+                    src_face=src_face,
+                    dst_face=dst_face,
+                    remap_uv=bool(remap_uv),
+                )
+                applied += 1
+
+    return int(applied)
+
+
+def _alias_spec_from_face(
+    dst_spec: _QuadTexSpec,
+    *,
+    src_face: str,
+    dst_face: str,
+    remap_uv: bool,
+) -> _QuadTexSpec:
+    if (not remap_uv) or (src_face == dst_face):
+        return _QuadTexSpec(
+            colors=dst_spec.colors,
+            core_w=int(dst_spec.core_w),
+            core_h=int(dst_spec.core_h),
+            sample_scale=int(dst_spec.sample_scale),
+        )
+
+    src_arr = np.asarray(dst_spec.colors, dtype=np.int32)
+    canon = _face_local_to_canonical(src_arr, dst_face)
+    remapped = _face_canonical_to_local(canon, src_face)
+    remapped = np.ascontiguousarray(remapped, dtype=np.int32)
+
+    sample_scale = int(max(1, int(dst_spec.sample_scale)))
+    h, w = int(remapped.shape[0]), int(remapped.shape[1])
+    return _QuadTexSpec(
+        colors=remapped,
+        core_w=int(max(1, w * sample_scale)),
+        core_h=int(max(1, h * sample_scale)),
+        sample_scale=sample_scale,
+    )
+
+
+def _face_local_to_canonical(colors: np.ndarray, face: str) -> np.ndarray:
+    # Canonical frame (Unity-oriented):
+    # - side faces keep "up" along +Y and horizontal around the model
+    # - t/b/l use identity to preserve existing authoring behavior
+    if face in ("t", "b", "l"):
+        return colors
+    if face == "r":
+        return np.fliplr(colors)
+    if face == "f":
+        return colors.T
+    if face == "k":
+        return np.fliplr(colors.T)
+    return colors
+
+
+def _face_canonical_to_local(colors: np.ndarray, face: str) -> np.ndarray:
+    if face in ("t", "b", "l"):
+        return colors
+    if face == "r":
+        return np.fliplr(colors)
+    if face == "f":
+        return colors.T
+    if face == "k":
+        return np.fliplr(colors).T
+    return colors
+
+
+def _parse_face_alias_rules(model_name: str) -> dict[str, str]:
+    allowed = set("tblrfk")
+    parts = str(model_name or "").split("@")
+    if len(parts) <= 1:
+        return {}
+
+    out: dict[str, str] = {}
+    for raw in parts[1:]:
+        token = str(raw or "").strip().lower()
+        # Allow readable spellings like "@tb lrfk" (treated as "@tblrfk").
+        token = re.sub(r"\s+", "", token)
+        if len(token) < 2:
+            continue
+        if any(c not in allowed for c in token):
+            continue
+        target = token[0]
+        for src in token[1:]:
+            if src == target:
+                continue
+            if src in out:
+                continue
+            out[src] = target
+    return out
+
+
+def _quad_face_letter(axis: int | None, normal_sign: int | None) -> str | None:
+    try:
+        a = int(axis) if axis is not None else -999
+        s = int(normal_sign) if normal_sign is not None else 0
+    except Exception:
+        return None
+
+    # Keep exactly the same letter convention as --cull (MagicaVoxel model space):
+    # t=+Z, b=-Z, l=-X, r=+X, f=+Y, k=-Y
+    if a == 2 and s > 0:
+        return "t"
+    if a == 2 and s < 0:
+        return "b"
+    if a == 0 and s < 0:
+        return "l"
+    if a == 0 and s > 0:
+        return "r"
+    if a == 1 and s > 0:
+        return "f"
+    if a == 1 and s < 0:
+        return "k"
+    return None
+
+
 def _build_quad_reuse_map(
     quads_per_model: list[list],
     *,
@@ -377,6 +578,9 @@ def _build_quad_reuse_map(
     enable: bool,
 ) -> tuple[dict[tuple[int, int], _QuadAnchor], list[tuple[int, int]]]:
     anchors: dict[tuple[int, int], _QuadAnchor] = {}
+    timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
+    subrect_limit = int(os.environ.get("BTP_VOX_REUSE_SUBRECT_LIMIT", "2000"))
+    max_candidates = int(os.environ.get("BTP_VOX_REUSE_MAX_CANDIDATES", "128"))
 
     all_keys: list[tuple[int, int]] = []
     quad_colors: dict[tuple[int, int], np.ndarray] = {}
@@ -406,6 +610,17 @@ def _build_quad_reuse_map(
         )
         owners: list[tuple[int, int]] = []
         exact_owner: dict[tuple[int, int, bytes], tuple[int, int]] = {}
+        owners_by_value: dict[int, list[tuple[int, int]]] = {}
+        can_subrect = (subrect_limit <= 0) or (len(scope_keys) <= int(subrect_limit))
+        attempts = 0
+
+        def _add_owner(key: tuple[int, int], sig: tuple[int, int, bytes]) -> None:
+            owners.append(key)
+            exact_owner[sig] = key
+            anchors[key] = _QuadAnchor(src_midx=int(key[0]), src_qidx=int(key[1]), off_u=0, off_v=0)
+            vals = np.unique(quad_colors[key].reshape((-1,)))
+            for vv in vals.tolist():
+                owners_by_value.setdefault(int(vv), []).append(key)
 
         for key in order:
             arr = quad_colors[key]
@@ -419,16 +634,29 @@ def _build_quad_reuse_map(
             found_src: tuple[int, int] | None = None
             found_off: tuple[int, int] | None = None
 
-            for owner_key in owners:
-                oh, ow = quad_shape[owner_key]
-                if oh < h or ow < w:
-                    continue
-                off = _find_subrect_offset(quad_colors[owner_key], arr)
-                if off is None:
-                    continue
-                found_src = owner_key
-                found_off = off
-                break
+            if can_subrect and owners:
+                owner_candidates = owners
+                vals, cnts = np.unique(arr.reshape((-1,)), return_counts=True)
+                if vals.size > 0:
+                    anchor_val = int(vals[int(np.argmin(cnts))])
+                    by_val = owners_by_value.get(anchor_val)
+                    if by_val:
+                        owner_candidates = by_val
+
+                if max_candidates > 0 and len(owner_candidates) > max_candidates:
+                    owner_candidates = owner_candidates[: max_candidates]
+
+                for owner_key in owner_candidates:
+                    attempts += 1
+                    oh, ow = quad_shape[owner_key]
+                    if oh < h or ow < w:
+                        continue
+                    off = _find_subrect_offset(quad_colors[owner_key], arr)
+                    if off is None:
+                        continue
+                    found_src = owner_key
+                    found_off = off
+                    break
 
             if found_src is not None and found_off is not None:
                 anchors[key] = _QuadAnchor(
@@ -438,9 +666,13 @@ def _build_quad_reuse_map(
                     off_v=int(found_off[1]),
                 )
             else:
-                owners.append(key)
-                exact_owner[sig] = key
-                anchors[key] = _QuadAnchor(src_midx=int(key[0]), src_qidx=int(key[1]), off_u=0, off_v=0)
+                _add_owner(key, sig)
+
+        if timings_enabled:
+            sys.stderr.write(
+                f"[btp_vox] reuse scope={len(scope_keys)} can_subrect={int(can_subrect)} "
+                f"owners={len(owners)} attempts={int(attempts)} max_candidates={int(max_candidates)}\n"
+            )
 
     if layout == "global":
         process_scope(all_keys)
@@ -475,18 +707,56 @@ def _find_subrect_offset(host: np.ndarray, child: np.ndarray) -> tuple[int, int]
             return (0, 0)
         return None
 
-    try:
-        windows = np.lib.stride_tricks.sliding_window_view(host, (child_h, child_w))
-    except Exception:
+    # Ultra-common path with solid-quad compression: avoid huge sliding windows.
+    if child_h == 1 and child_w == 1:
+        hits = np.argwhere(host == int(child[0, 0]))
+        if hits.size == 0:
+            return None
+        off_v, off_u = hits[0]
+        return (int(off_u), int(off_v))
+
+    # Heuristic: sliding-window can explode memory/time on large hosts.
+    view_h = host_h - child_h + 1
+    view_w = host_w - child_w + 1
+    if view_h <= 0 or view_w <= 0:
+        return None
+    window_ops = int(view_h) * int(view_w) * int(child_h) * int(child_w)
+    if window_ops <= 2_000_000:
+        try:
+            windows = np.lib.stride_tricks.sliding_window_view(host, (child_h, child_w))
+        except Exception:
+            windows = None
+        if windows is not None:
+            matches = np.all(windows == child, axis=(2, 3))
+            found = np.argwhere(matches)
+            if found.size != 0:
+                off_v, off_u = found[0]
+                return (int(off_u), int(off_v))
+            return None
+
+    # Sparse anchor scan fallback: usually much faster for large matrices.
+    vals, cnts = np.unique(child.reshape((-1,)), return_counts=True)
+    anchor_val = int(vals[int(np.argmin(cnts))])
+    anchor_idx = np.argwhere(child == anchor_val)
+    if anchor_idx.size == 0:
+        return None
+    ay, ax = anchor_idx[0]
+
+    hits = np.argwhere(host == anchor_val)
+    if hits.size == 0:
         return None
 
-    matches = np.all(windows == child, axis=(2, 3))
-    found = np.argwhere(matches)
-    if found.size == 0:
-        return None
+    max_v = host_h - child_h
+    max_u = host_w - child_w
+    for hy, hx in hits:
+        off_v = int(hy - ay)
+        off_u = int(hx - ax)
+        if off_v < 0 or off_u < 0 or off_v > max_v or off_u > max_u:
+            continue
+        if np.array_equal(host[off_v : off_v + child_h, off_u : off_u + child_w], child):
+            return (int(off_u), int(off_v))
 
-    off_v, off_u = found[0]
-    return (int(off_u), int(off_v))
+    return None
 
 
 def _pack_rects(rects: List[Tuple[int, int, int]]) -> Tuple[int, int, Dict[int, Tuple[int, int]]]:
@@ -713,8 +983,14 @@ def _pack_best_bin(
         return 1, 1, {}
 
     rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
-    widths = [1 << k for k in range(4, 14)]
-    heights = [1 << k for k in range(4, 14)]
+    total_area = int(sum(int(w) * int(h) for _, w, h in rects_sorted))
+    max_rw = int(max(int(w) for _, w, _ in rects_sorted))
+    max_rh = int(max(int(h) for _, _, h in rects_sorted))
+
+    min_kw = max(4, int(max_rw - 1).bit_length())
+    min_kh = max(4, int(max_rh - 1).bit_length())
+    widths = [1 << k for k in range(min_kw, 14)]
+    heights = [1 << k for k in range(min_kh, 14)]
 
     best_pos = None
     best_w = None
@@ -725,6 +1001,10 @@ def _pack_best_bin(
 
     for w in widths:
         for h in heights:
+            if int(w) < max_rw or int(h) < max_rh:
+                continue
+            if int(w) * int(h) < total_area:
+                continue
             pos = _pack_maxrect(rects_sorted, int(w), int(h))
             if pos is None:
                 continue

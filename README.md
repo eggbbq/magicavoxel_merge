@@ -312,6 +312,15 @@ python -m btp_vox.cli \
 - `--plat-cutoff <float>`：贴片裁切的 alpha cutoff（默认 0.5）
 - `--plat-suffix [str]`：名称以该后缀结尾的 model 自动用贴片裁切方式导出（默认 `-cutout`，也可直接写 `--plat-suffix` 不带参数）
 
+模型名面纹理替代规则（无需额外 CLI 参数）：
+
+- 语法：`模型名@组1@组2...`
+- 每组首字符是“目标面”，后续字符是“被替代面”
+- 面字符：`t b l r f k`（与 `--cull` 一致，按 MagicaVoxel 模型空间：`t=+Z,b=-Z,l=-X,r=+X,f=+Y,k=-Y`）
+- 示例：`cube@lrfk@tb`
+  - `r,f,k -> l`
+  - `b -> t`
+
 `--plat-suffix` 支持简写：
 
 - `--plat-suffix plat-t`：等价于后缀 `-plat-t`（top +Z cutout）

@@ -32,6 +32,7 @@ class AtlasOptions:
     style: str = "baked"  # baked or solid
     reuse_subrects: bool = True
     compress_solid_quads: bool = False
+    face_alias_uv_remap: bool = False
 
 
 @dataclass(slots=True)
@@ -108,7 +109,7 @@ def convert(
             qpm = list(mesher_result.quads_per_model)
             replaced = False
             for midx, m in enumerate(scene.models):
-                name = str(getattr(m, "name", "") or "")
+                name = _base_model_name(str(getattr(m, "name", "") or ""))
                 mode: str | None = None
                 if name.endswith("-plat-t"):
                     mode = "t"
@@ -181,6 +182,7 @@ def convert(
         alpha=("rgba" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.texture_alpha)),
         reuse_subrects=bool(getattr(opts.atlas, "reuse_subrects", True)),
         compress_solid_quads=bool(getattr(opts.atlas, "compress_solid_quads", False)),
+        face_alias_uv_remap=bool(getattr(opts.atlas, "face_alias_uv_remap", False)),
     )
     mark("build_atlas")
 
@@ -1757,14 +1759,14 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
 
 
 def _is_plat_t_model(scene: VoxScene, midx: int) -> bool:
-    model_name = scene.models[midx].name
+    model_name = _base_model_name(scene.models[midx].name)
     if not isinstance(model_name, str):
         return False
     return model_name.endswith('-plat-t')
 
 
 def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> float:
-    model_name = scene.models[midx].name
+    model_name = _base_model_name(scene.models[midx].name)
     if not isinstance(model_name, str) or not model_name.endswith('-plat-t'):
         return 0.0
 
@@ -1796,6 +1798,13 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
         return 0.0
 
     return height_vox * float(scale) * 0.5
+
+
+def _base_model_name(name: str) -> str:
+    s = str(name or "")
+    if "@" in s:
+        return s.split("@", 1)[0]
+    return s
 
 
 def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:

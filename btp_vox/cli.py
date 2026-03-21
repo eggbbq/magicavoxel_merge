@@ -53,6 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tex-reuse-subrects", dest="tex_reuse_subrects", action="store_true", default=True, help="Reuse repeated sub-rects in atlas to reduce texture area")
     parser.add_argument("--no-tex-reuse-subrects", dest="tex_reuse_subrects", action="store_false", help="Disable sub-rect reuse and keep one packed block per quad")
     parser.add_argument("--tex-compress-solid-quads", action="store_true", help="Compress single-color quad blocks to 1x1 texel before atlas packing")
+    parser.add_argument("--face-alias-uv-remap", dest="face_alias_uv_remap", action="store_true", default=False, help="Remap UV orientation when face aliases are applied (fixes Unity +Z/-Z alias mapping)")
+    parser.add_argument("--no-face-alias-uv-remap", dest="face_alias_uv_remap", action="store_false", help="Disable UV remap for face aliases (legacy behavior)")
 
     return parser
 
@@ -92,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         style=args.tex_style,
         reuse_subrects=bool(getattr(args, "tex_reuse_subrects", True)),
         compress_solid_quads=bool(getattr(args, "tex_compress_solid_quads", False)),
+        face_alias_uv_remap=bool(getattr(args, "face_alias_uv_remap", False)),
     )
     pipeline_opts = PipelineOptions(**pipe_kwargs, atlas=atlas_opts)
 
