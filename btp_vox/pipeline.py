@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
@@ -106,6 +107,7 @@ def convert(
         mesher_result = build_quads(scene)
         any_cutout = False
         if use_plat_suffix:
+            plat_f_basis_by_model = _infer_plat_f_basis_by_model(scene)
             qpm = list(mesher_result.quads_per_model)
             replaced = False
             for midx, m in enumerate(scene.models):
@@ -121,7 +123,13 @@ def convert(
                 if mode is None:
                     continue
 
-                qpm[int(midx)] = _build_plat_cutout_quads_for_model(scene, int(midx), mode=mode)
+                basis = (plat_f_basis_by_model.get(int(midx)) if mode == "f" else None)
+                qpm[int(midx)] = _build_plat_cutout_quads_for_model(
+                    scene,
+                    int(midx),
+                    mode=mode,
+                    front_basis=basis,
+                )
                 replaced = True
 
             if replaced:
@@ -786,7 +794,13 @@ def _build_plat_cutout_quads(scene: VoxScene) -> MesherResult:
     return MesherResult(quads_per_model=per_model)
 
 
-def _build_plat_cutout_quads_for_model(scene: VoxScene, midx: int, *, mode: str = "t") -> list[Quad]:
+def _build_plat_cutout_quads_for_model(
+    scene: VoxScene,
+    midx: int,
+    *,
+    mode: str = "t",
+    front_basis: tuple[int, int, int, int, int, int] | None = None,
+) -> list[Quad]:
     model = scene.models[midx]
     vox = np.asarray(model.voxels)
     if vox.size == 0:
@@ -801,6 +815,13 @@ def _build_plat_cutout_quads_for_model(scene: VoxScene, midx: int, *, mode: str 
         return []
 
     if str(mode) == "f":
+        if front_basis is not None and len({int(front_basis[0]), int(front_basis[2]), int(front_basis[4])}) == 3:
+            try:
+                return _build_plat_cutout_quad_with_basis(scene, midx, basis=front_basis)
+            except Exception:
+                # Keep legacy +Y behavior as a safe fallback.
+                pass
+
         # Front (+Y): project along +Y, build a quad on the Y=max+1 plane spanning XZ.
         any_xz = np.any(filled, axis=1)  # (sx,sz)
         y_indices = np.arange(sy, dtype=np.int32)
@@ -862,6 +883,103 @@ def _build_plat_cutout_quads_for_model(scene: VoxScene, midx: int, *, mode: str 
             colors=colors_vu,
             verts=verts,
             normal=normal,
+        )
+    ]
+
+
+def _build_plat_cutout_quad_with_basis(
+    scene: VoxScene,
+    midx: int,
+    *,
+    basis: tuple[int, int, int, int, int, int],
+) -> list[Quad]:
+    model = scene.models[midx]
+    vox = np.asarray(model.voxels)
+    if vox.size == 0:
+        return []
+
+    sx, sy, sz = (int(model.size[0]), int(model.size[1]), int(model.size[2]))
+    dims = (sx, sy, sz)
+    if sx <= 0 or sy <= 0 or sz <= 0:
+        return []
+
+    filled = vox != 0
+    if not bool(np.any(filled)):
+        return []
+
+    u_axis, u_sign, v_axis, v_sign, d_axis, d_sign = (
+        int(basis[0]),
+        int(basis[1]),
+        int(basis[2]),
+        int(basis[3]),
+        int(basis[4]),
+        int(basis[5]),
+    )
+    if any(ax not in (0, 1, 2) for ax in (u_axis, v_axis, d_axis)):
+        return []
+    if any(sg not in (-1, 1) for sg in (u_sign, v_sign, d_sign)):
+        return []
+    if len({u_axis, v_axis, d_axis}) != 3:
+        return []
+
+    size_u = int(dims[u_axis])
+    size_v = int(dims[v_axis])
+    if size_u <= 0 or size_v <= 0:
+        return []
+
+    depth_uv = np.full((size_u, size_v), -1, dtype=np.int32)
+    colors_vu = np.zeros((size_v, size_u), dtype=np.int32)
+
+    for x, y, z in np.argwhere(filled):
+        xi, yi, zi = int(x), int(y), int(z)
+        idx = (xi, yi, zi)
+        u = idx[u_axis] if u_sign > 0 else (dims[u_axis] - 1 - idx[u_axis])
+        v = idx[v_axis] if v_sign > 0 else (dims[v_axis] - 1 - idx[v_axis])
+        d = idx[d_axis] if d_sign > 0 else (dims[d_axis] - 1 - idx[d_axis])
+        if int(d) >= int(depth_uv[u, v]):
+            depth_uv[u, v] = int(d)
+            colors_vu[v, u] = int(vox[xi, yi, zi])
+
+    max_d = int(np.max(depth_uv))
+    if max_d < 0:
+        return []
+    d_plane = int(max_d + 1)
+
+    def basis_to_local_boundary(u_val: float, v_val: float, d_val: float) -> tuple[float, float, float]:
+        out = [0.0, 0.0, 0.0]
+        comps = (
+            (u_axis, u_sign, float(u_val)),
+            (v_axis, v_sign, float(v_val)),
+            (d_axis, d_sign, float(d_val)),
+        )
+        for ax, sg, val in comps:
+            if sg > 0:
+                out[ax] = float(val)
+            else:
+                out[ax] = float(dims[ax]) - float(val)
+        return (float(out[0]), float(out[1]), float(out[2]))
+
+    verts = (
+        basis_to_local_boundary(0.0, 0.0, float(d_plane)),
+        basis_to_local_boundary(float(size_u), 0.0, float(d_plane)),
+        basis_to_local_boundary(float(size_u), float(size_v), float(d_plane)),
+        basis_to_local_boundary(0.0, float(size_v), float(d_plane)),
+    )
+    origin = (int(round(verts[0][0])), int(round(verts[0][1])), int(round(verts[0][2])))
+    normal = [0.0, 0.0, 0.0]
+    normal[d_axis] = float(d_sign)
+
+    return [
+        Quad(
+            model_index=int(midx),
+            origin=origin,
+            size_u=int(size_u),
+            size_v=int(size_v),
+            axis=int(d_axis),
+            normal_sign=int(d_sign),
+            colors=colors_vu,
+            verts=verts,
+            normal=(float(normal[0]), float(normal[1]), float(normal[2])),
         )
     ]
 
@@ -1758,6 +1876,60 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
                 mm["translation"] = (float(tx), float(ty) - float(half_height), float(tz))
 
         out.append(mm)
+
+    return out
+
+
+def _axis_sign_from_vec(v: tuple[float, float, float]) -> tuple[int, int]:
+    arr = np.asarray((float(v[0]), float(v[1]), float(v[2])), dtype=np.float32)
+    idx = int(np.argmax(np.abs(arr)))
+    sign = 1 if float(arr[idx]) >= 0.0 else -1
+    return idx, int(sign)
+
+
+def _infer_plat_f_basis_by_model(scene: VoxScene) -> dict[int, tuple[int, int, int, int, int, int]]:
+    # For front-cutout models, derive local projection basis from scene rotation so
+    # rotated models still cut against world-front (+Y).
+    model_world_rots: dict[int, list[tuple[float, float, float, float]]] = defaultdict(list)
+
+    def walk(node_id: int, wr: tuple[float, float, float, float]) -> None:
+        if node_id < 0 or node_id >= len(scene.nodes):
+            return
+        nd = scene.nodes[int(node_id)]
+        cur_wr = wr
+        if nd.kind == "trn":
+            lr = tuple(float(x) for x in nd.rotation)
+            cur_wr = _quat_norm(_quat_mul(wr, lr))
+        elif nd.kind == "shp":
+            for mid in nd.model_ids:
+                mi = int(mid)
+                if 0 <= mi < len(scene.models):
+                    model_world_rots[mi].append(cur_wr)
+
+        for ch in nd.children:
+            walk(int(ch), cur_wr)
+
+    for rid in scene.root_node_ids:
+        walk(int(rid), (0.0, 0.0, 0.0, 1.0))
+
+    out: dict[int, tuple[int, int, int, int, int, int]] = {}
+    for midx, rots in model_world_rots.items():
+        counts: dict[tuple[int, int, int, int, int, int], int] = {}
+        for wr in rots:
+            ri = _quat_inv(tuple(float(x) for x in wr))
+            u_axis, u_sign = _axis_sign_from_vec(_quat_rotate_vec(ri, (1.0, 0.0, 0.0)))
+            v_axis, v_sign = _axis_sign_from_vec(_quat_rotate_vec(ri, (0.0, 0.0, 1.0)))
+            d_axis, d_sign = _axis_sign_from_vec(_quat_rotate_vec(ri, (0.0, 1.0, 0.0)))
+            if len({u_axis, v_axis, d_axis}) != 3:
+                continue
+            key = (int(u_axis), int(u_sign), int(v_axis), int(v_sign), int(d_axis), int(d_sign))
+            counts[key] = int(counts.get(key, 0) + 1)
+
+        if not counts:
+            continue
+        # Prefer the most common basis for this model (stable tie-break by tuple).
+        best = sorted(counts.items(), key=lambda kv: (-int(kv[1]), kv[0]))[0][0]
+        out[int(midx)] = best
 
     return out
 
