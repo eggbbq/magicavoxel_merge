@@ -911,8 +911,10 @@ def _assemble_meshes(
                 tri_order = (0, 2, 1, 0, 3, 2)
 
             # Determine which quad edge corresponds to (size_u, size_v).
-            w_vox = float(quad.size_u) * float(scale)
-            h_vox = float(quad.size_v) * float(scale)
+            # Compare in model-space voxel units on both sides; mixing scaled/unscaled
+            # units can create near-ties that randomly swap UV axes on some quads.
+            w_vox = float(quad.size_u)
+            h_vox = float(quad.size_v)
             e1 = edge_u
             e3 = edge_v
             len1 = float(np.linalg.norm(e1))
@@ -1197,8 +1199,10 @@ def _build_model_meshes(
             if float(np.dot(face_normal, np.asarray(quad.normal, dtype=np.float32))) < 0.0:
                 tri_order = (0, 2, 1, 0, 3, 2)
 
-            w_vox = float(quad.size_u) * float(scale)
-            h_vox = float(quad.size_v) * float(scale)
+            # Compare in model-space voxel units on both sides; mixing scaled/unscaled
+            # units can create near-ties that randomly swap UV axes on some quads.
+            w_vox = float(quad.size_u)
+            h_vox = float(quad.size_v)
             e1 = edge_u
             e3 = edge_v
             len1 = float(np.linalg.norm(e1))
