@@ -10,7 +10,7 @@ from .pipeline import AtlasOptions, PipelineOptions, convert
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="btp-vox")
     parser.add_argument("--input", required=True, help="Path to MagicaVoxel .vox file")
-    parser.add_argument("--output", required=True, help="Path to output .glb file")
+    parser.add_argument("--output", required=True, help="Path to output .glb or .gltf file")
     
     parser.add_argument("--debug-transforms-out", help="Write per-model transform diagnostics JSON")
     parser.add_argument("--print-nodes", action="store_true", help="Print VOX scene graph nodes to stderr")
@@ -31,17 +31,17 @@ def build_parser() -> argparse.ArgumentParser:
     
     parser.add_argument("--uv-out", help="Write per-model UV rectangles to this JSON file")
     parser.add_argument("--uv-flip-v", action="store_true", help="Flip V texture coordinate")
-    parser.add_argument("--uv2", action="store_true", help="Export secondary UV set (TEXCOORD_1) by copying TEXCOORD_0 (for lightmap baking)")
+    parser.add_argument("--uv2", action="store_true", help="Export secondary UV set (TEXCOORD_1); behavior is controlled by --uv2-mode")
     parser.add_argument("--uv2-mode", choices=("copy", "lightmap"), default="copy", help="How to generate UV2 (TEXCOORD_1): copy duplicates UV0; lightmap generates non-overlapping UVs")
     parser.add_argument("--vertex-color", action="store_true", help="Export vertex colors as COLOR_0 (filled with white)")
 
     parser.add_argument("--no-merge-nodes", action="store_true", help="Do not flatten/merge VOX node hierarchy; export the original scene graph")
     parser.add_argument("--character-apart", action="store_true", help="Character export mode: keep parts as separate meshes under the original VOX hierarchy")
-    parser.add_argument("--character-flat", action="store_true", help="In --character-apart mode, flatten each character root so all parts are direct children")
-    parser.add_argument("--vox-view", action="store_true", help="Collapse VOX wrapper nodes so exported hierarchy matches MagicaVoxel view")
+    parser.add_argument("--character-flat", action="store_true", help="Flatten each character root so all parts are direct children (also enables --character-apart)")
+    parser.add_argument("--vox-view", action="store_true", help="Reserved compatibility flag; current pipeline already collapses wrapper nodes automatically")
 
     parser.add_argument("--tex-fmt", choices=("auto", "rgba", "rgb"), default="auto", help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha")
-    parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB)")
+    parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB or emit next to glTF)")
     parser.add_argument("--tex-pad", type=int, default=2, help="Atlas padding in texels")
     parser.add_argument("--tex-inset", type=float, default=1.0, help="Atlas inset in texels")
     parser.add_argument("--tex-texel-scale", type=int, default=1, help="Texel scale applied to each quad")
