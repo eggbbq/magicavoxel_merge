@@ -58,6 +58,7 @@ def build_atlas(
     texel_scale: int = 1,
     square: bool = False,
     pot: bool = False,
+    fixed_size: tuple[int, int] | None = None,
     layout: str = "by-model",
     tight_blocks: bool = False,
     style: str = "baked",
@@ -85,6 +86,18 @@ def build_atlas(
         raise ValueError("layout must be 'by-model' or 'global'")
     if alpha not in ("auto", "rgba", "rgb"):
         raise ValueError("alpha must be 'auto', 'rgba', or 'rgb'")
+
+    fixed_w: int | None = None
+    fixed_h: int | None = None
+    if fixed_size is not None:
+        fixed_w = int(fixed_size[0])
+        fixed_h = int(fixed_size[1])
+        if fixed_w <= 0 or fixed_h <= 0:
+            raise ValueError("fixed_size must contain positive width and height")
+        if timings_enabled:
+            sys.stderr.write(
+                f"[btp_vox] atlas fixed_size={int(fixed_w)}x{int(fixed_h)} overrides pot={bool(pot)} square={bool(square)}\n"
+            )
 
     quads_per_model = mesher_result.quads_per_model
     texel_scale_i = int(max(1, int(texel_scale)))
@@ -149,7 +162,9 @@ def build_atlas(
         # fill efficiency for dramatically better runtime.
         fast_pack_threshold = max(1, int(os.environ.get("BTP_VOX_FAST_PACK_THRESHOLD", "128")))
         use_fast_pack = len(rects_all) >= fast_pack_threshold
-        if pot or square:
+        if fixed_w is not None and fixed_h is not None:
+            atlas_w, atlas_h, positions = _pack_rects_fixed(rects_all, width=int(fixed_w), height=int(fixed_h))
+        elif pot or square:
             if use_fast_pack:
                 atlas_w, atlas_h, positions = _pack_rects_best(rects_all, pot=bool(pot), square=bool(square))
             else:
@@ -218,7 +233,9 @@ def build_atlas(
             model_block_sizes[midx] = (block_w, block_h)
 
         model_rects = [(midx, sz[0], sz[1]) for midx, sz in model_block_sizes.items()]
-        if pot or square:
+        if fixed_w is not None and fixed_h is not None:
+            atlas_w, atlas_h, model_positions = _pack_rects_fixed(model_rects, width=int(fixed_w), height=int(fixed_h))
+        elif pot or square:
             fast_pack_threshold = max(1, int(os.environ.get("BTP_VOX_FAST_PACK_THRESHOLD", "128")))
             use_fast_pack = len(model_rects) >= fast_pack_threshold
             if use_fast_pack:
@@ -254,16 +271,20 @@ def build_atlas(
             )
     mark("pack")
 
-    if atlas_w == 0 or atlas_h == 0:
-        atlas_w = atlas_h = 1
+    if fixed_w is not None and fixed_h is not None:
+        atlas_w = int(fixed_w)
+        atlas_h = int(fixed_h)
+    else:
+        if atlas_w == 0 or atlas_h == 0:
+            atlas_w = atlas_h = 1
 
-    if pot:
-        atlas_w = _next_pow2(int(atlas_w))
-        atlas_h = _next_pow2(int(atlas_h))
-    if square:
-        m = max(int(atlas_w), int(atlas_h))
-        atlas_w = int(m)
-        atlas_h = int(m)
+        if pot:
+            atlas_w = _next_pow2(int(atlas_w))
+            atlas_h = _next_pow2(int(atlas_h))
+        if square:
+            m = max(int(atlas_w), int(atlas_h))
+            atlas_w = int(m)
+            atlas_h = int(m)
 
     if timings_enabled:
         sys.stderr.write(
@@ -814,6 +835,40 @@ def _pack_rects_with_row_width(
 
     total_h = int(y + row_h)
     return int(max_w), int(total_h), positions
+
+
+def _pack_rects_fixed(
+    rects: list[tuple[int, int, int]],
+    *,
+    width: int,
+    height: int,
+) -> tuple[int, int, Dict[int, tuple[int, int]]]:
+    positions: Dict[int, Tuple[int, int]] = {}
+    width = max(1, int(width))
+    height = max(1, int(height))
+    if not rects:
+        return int(width), int(height), positions
+
+    rects_sorted = sorted(rects, key=lambda t: (t[2], t[1]), reverse=True)
+    max_rw = int(max(int(w) for _, w, _ in rects_sorted))
+    max_rh = int(max(int(h) for _, _, h in rects_sorted))
+    if max_rw > width or max_rh > height:
+        raise ValueError(
+            f"fixed atlas size {int(width)}x{int(height)} is too small; largest rect is {int(max_rw)}x{int(max_rh)}"
+        )
+
+    pos = _pack_maxrect(rects_sorted, int(width), int(height))
+    if pos is not None:
+        return int(width), int(height), pos
+
+    w0, h0, pos0 = _pack_rects_with_row_width(rects_sorted, row_width=int(width))
+    if w0 <= int(width) and h0 <= int(height):
+        return int(width), int(height), pos0
+
+    need_w, need_h, _ = _pack_rects_best(rects_sorted, pot=False, square=False)
+    raise ValueError(
+        f"fixed atlas size {int(width)}x{int(height)} is too small; approximate packed size is {int(need_w)}x{int(need_h)}"
+    )
 
 
 def _pack_rects_best(

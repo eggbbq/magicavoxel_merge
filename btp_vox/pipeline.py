@@ -29,6 +29,7 @@ class AtlasOptions:
     layout: str = "by-model"  # or "global"
     square: bool = False
     pot: bool = False
+    fixed_size: tuple[int, int] | None = None
     tight_blocks: bool = False
     style: str = "baked"  # baked or solid
     reuse_subrects: bool = True
@@ -184,6 +185,7 @@ def convert(
         texel_scale=int(opts.atlas.texel_scale),
         square=bool(opts.atlas.square),
         pot=bool(opts.atlas.pot),
+        fixed_size=getattr(opts.atlas, "fixed_size", None),
         layout=str(opts.atlas.layout),
         tight_blocks=bool(opts.atlas.tight_blocks),
         style=("baked" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.atlas.style)),

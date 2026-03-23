@@ -124,6 +124,7 @@ UV / 顶点数据：
 - `--tex-texel-scale <int>`
 - `--tex-square`
 - `--tex-pot`
+- `--tex-fixed-size <width>x<height>`
 - `--tex-tight-blocks`
 - `--tex-reuse-subrects`
 - `--no-tex-reuse-subrects`

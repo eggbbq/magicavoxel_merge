@@ -7,6 +7,23 @@ import argparse
 from .pipeline import AtlasOptions, PipelineOptions, convert
 
 
+def _parse_tex_fixed_size(value: str) -> tuple[int, int]:
+    text = str(value or "").strip().lower()
+    for sep in ("x", ","):
+        if sep in text:
+            lhs, rhs = text.split(sep, 1)
+            width = int(lhs.strip())
+            height = int(rhs.strip())
+            break
+    else:
+        raise argparse.ArgumentTypeError("texture size must be WIDTHxHEIGHT, for example 256x512")
+
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError("texture size must be positive")
+
+    return (int(width), int(height))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="btp-vox")
     parser.add_argument("--input", required=True, help="Path to MagicaVoxel .vox file")
@@ -49,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tex-layout", choices=("by-model", "global"), default="by-model", help="Atlas layout")
     parser.add_argument("--tex-square", action="store_true", help="Force atlas to be square")
     parser.add_argument("--tex-pot", action="store_true", help="Force atlas dimensions to power-of-two")
+    parser.add_argument("--tex-fixed-size", type=_parse_tex_fixed_size, metavar="WIDTHxHEIGHT", help="Use a fixed atlas size, for example 256x512; overrides --tex-pot/--tex-square for the final atlas size")
     parser.add_argument("--tex-tight-blocks", action="store_true", help="Tight-pack per-model blocks (by-model layout)")
     parser.add_argument("--tex-reuse-subrects", dest="tex_reuse_subrects", action="store_true", default=True, help="Reuse repeated sub-rects in atlas to reduce texture area")
     parser.add_argument("--no-tex-reuse-subrects", dest="tex_reuse_subrects", action="store_false", help="Disable sub-rect reuse and keep one packed block per quad")
@@ -90,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         layout=args.tex_layout,
         square=args.tex_square,
         pot=args.tex_pot,
+        fixed_size=(tuple(args.tex_fixed_size) if args.tex_fixed_size is not None else None),
         tight_blocks=args.tex_tight_blocks,
         style=args.tex_style,
         reuse_subrects=bool(getattr(args, "tex_reuse_subrects", True)),
