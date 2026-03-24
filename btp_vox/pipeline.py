@@ -123,15 +123,7 @@ def convert(
             qpm = list(mesher_result.quads_per_model)
             replaced = False
             for midx, m in enumerate(scene.models):
-                name = _base_model_name(str(getattr(m, "name", "") or ""))
-                mode: str | None = None
-                if name.endswith("-plat-t"):
-                    mode = "t"
-                elif name.endswith("-plat-f"):
-                    mode = "f"
-                elif plat_suffix and name.endswith(plat_suffix):
-                    mode = "f" if plat_suffix.endswith("plat-f") else "t"
-
+                mode = _model_cutout_mode(str(getattr(m, "name", "") or ""), plat_suffix=plat_suffix)
                 if mode is None:
                     continue
 
@@ -246,6 +238,8 @@ def convert(
 
     nodes, root_node_ids = _collapse_same_name_single_child(nodes, root_node_ids)
 
+    nodes, meshes = _sanitize_export_names(nodes, meshes)
+
     nodes = _ensure_mesh_node_names(nodes, meshes)
     meshes = _rename_meshes_from_nodes(nodes, meshes)
 
@@ -290,7 +284,7 @@ def convert(
         name_counts: dict[str, int] = {}
         rects: dict[str, tuple[float, float, float, float]] = {}
         for midx, rect in atlas_result.model_uv_rects.items():
-            name = scene.models[midx].name
+            name = _export_model_name(scene.models[midx].name)
             if name in name_counts:
                 name_counts[name] += 1
                 key = f"{name}_{name_counts[name]}"
@@ -1251,9 +1245,9 @@ def _assemble_meshes(
 
             # Name instances uniquely to avoid editor collapsing duplicates.
             if len(nd.model_ids) == 1 and 0 <= int(nd.model_ids[0]) < len(scene.models):
-                base_name = scene.models[int(nd.model_ids[0])].name
+                base_name = _export_model_name(scene.models[int(nd.model_ids[0])].name)
             else:
-                base_name = nd.name
+                base_name = _export_model_name(nd.name)
             name = f"{base_name}__{node_id}"
 
             meshes.append(
@@ -1451,7 +1445,7 @@ def _build_model_meshes(
             color0_arr = np.ones((n, 4), dtype=np.float32)
 
         mesh_dict = {
-            "name": scene.models[midx].name,
+            "name": _export_model_name(scene.models[midx].name),
             "model_id": int(midx),
             "positions": pos_arr,
             "normals": np.asarray(normals, dtype=np.float32),
@@ -1935,18 +1929,14 @@ def _infer_plat_f_basis_by_model(scene: VoxScene) -> dict[int, tuple[int, int, i
 
 
 def _is_plat_t_model(scene: VoxScene, midx: int) -> bool:
-    model_name = _base_model_name(scene.models[midx].name)
-    if not isinstance(model_name, str):
-        return False
-    return model_name.endswith('-plat-t')
+    return _explicit_plat_t_base_name(scene.models[midx].name) is not None
 
 
 def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> float:
-    model_name = _base_model_name(scene.models[midx].name)
-    if not isinstance(model_name, str) or not model_name.endswith('-plat-t'):
+    base_name = _explicit_plat_t_base_name(scene.models[midx].name)
+    if not isinstance(base_name, str) or not base_name:
         return 0.0
 
-    base_name = model_name[:-7]
     height_vox = 0.0
 
     for other_model in scene.models:
@@ -1977,12 +1967,45 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
 
 
 def _base_model_name(name: str) -> str:
-    base_name, _ = _split_model_name_metadata(name)
+    base_name, _, _ = _split_model_name_metadata(name)
     return base_name
 
 
+def _sanitize_export_names(nodes: list[dict], meshes: list[dict]) -> tuple[list[dict], list[dict]]:
+    out_nodes: list[dict] = []
+    for nd in nodes:
+        mm = dict(nd)
+        if "name" in mm:
+            mm["name"] = _export_model_name(str(mm.get("name") or ""))
+        out_nodes.append(mm)
+
+    out_meshes: list[dict] = []
+    for mesh in meshes:
+        mm = dict(mesh)
+        if "name" in mm:
+            mm["name"] = _export_model_name(str(mm.get("name") or ""))
+        out_meshes.append(mm)
+
+    return out_nodes, out_meshes
+
+
+def _export_model_name(name: str) -> str:
+    raw_name = str(name or "")
+    suffix = ""
+    if "__" in raw_name:
+        head, tail = raw_name.rsplit("__", 1)
+        if tail == "inst" or tail.isdigit():
+            raw_name = head
+            suffix = f"__{tail}"
+    export_name = _strip_legacy_plat_suffix(_base_model_name(raw_name)).strip()
+    if export_name:
+        return f"{export_name}{suffix}"
+    raw_name = raw_name.strip()
+    return f"{raw_name}{suffix}" if raw_name else "model"
+
+
 def _model_cull_faces(name: str) -> set[tuple[int, int]]:
-    _, cull_letters = _split_model_name_metadata(name)
+    _, _, cull_letters = _split_model_name_metadata(name)
     return _cull_faces_from_letters(cull_letters, source=f"model '{name}'")
 
 
@@ -2003,29 +2026,108 @@ def _validate_cull_letters(cull_letters: str, *, source: str) -> str:
     return letters
 
 
-def _split_model_name_metadata(name: str) -> tuple[str, str]:
-    base_name = _model_name_without_face_alias(name)
+def _split_model_name_metadata(name: str) -> tuple[str, list[str], str]:
+    raw_name = str(name or "")
+    no_tail_cull, tail_cull = _strip_hash_cull_suffix(raw_name)
+
+    parts = no_tail_cull.split("@")
+    head = str(parts[0] if parts else "")
+    base_name, head_cull = _strip_hash_cull_suffix(head)
+    meta_tokens = [_normalize_model_meta_token(part) for part in parts[1:]]
+    meta_tokens = [token for token in meta_tokens if token]
+
+    legacy_base_name = _legacy_cull_base_name(base_name)
+    combined_cull = f"{head_cull}{tail_cull}"
+    if not combined_cull and legacy_base_name != base_name:
+        base_name = legacy_base_name
+        combined_cull = _legacy_cull_letters(base_name=head, stripped_base=legacy_base_name)
+
+    cull_letters = _validate_cull_letters(combined_cull, source=f"model '{name}'")
+    return base_name, meta_tokens, cull_letters
+
+
+def _model_cutout_mode(name: str, *, plat_suffix: str = "") -> str | None:
+    base_name, meta_tokens, _ = _split_model_name_metadata(name)
+    for token in meta_tokens:
+        if token == "t":
+            return "t"
+        if token == "f":
+            return "f"
+        if token == "cutout":
+            return "t"
+
+    if base_name.endswith("-plat-t"):
+        return "t"
+    if base_name.endswith("-plat-f"):
+        return "f"
+    if plat_suffix and base_name.endswith(plat_suffix):
+        return "f" if plat_suffix.endswith("plat-f") else "t"
+    return None
+
+
+def _explicit_plat_t_base_name(name: str) -> str | None:
+    base_name, meta_tokens, _ = _split_model_name_metadata(name)
+    for token in meta_tokens:
+        if token == "t":
+            return base_name
+        if token in {"f", "cutout"}:
+            return None
+
+    if base_name.endswith("-plat-t"):
+        return base_name[:-7]
+    return None
+
+
+def _normalize_model_meta_token(token: str) -> str:
+    return re.sub(r"\s+", "", str(token or "").strip().lower())
+
+
+def _strip_legacy_plat_suffix(name: str) -> str:
+    text = str(name or "")
+    while True:
+        stripped = text
+        for suffix in ("-plat-t", "-plat-f", "-cutout"):
+            if stripped.endswith(suffix):
+                stripped = stripped[: -len(suffix)]
+                break
+        if stripped == text:
+            return stripped
+        text = stripped
+
+
+def _strip_hash_cull_suffix(text: str) -> tuple[str, str]:
+    raw = str(text or "")
+    if "#" not in raw:
+        return raw, ""
+    base, suffix = raw.rsplit("#", 1)
+    suffix = _normalize_model_meta_token(suffix)
+    if suffix and suffix.isalpha():
+        return base, suffix
+    return raw, ""
+
+
+def _legacy_cull_base_name(name: str) -> str:
     match = re.match(
         r"^(?:(?P<base>.*)-cull-(?P<letters>[a-z]+)|cull-(?P<letters_only>[a-z]+))$",
-        base_name,
+        str(name or ""),
         flags=re.IGNORECASE,
     )
     if match is None:
-        return base_name, ""
+        return str(name or "")
+    return str(match.group("base") or "")
 
-    cull_letters = _validate_cull_letters(
-        str(match.group("letters") or match.group("letters_only") or ""),
-        source=f"model '{name}'",
+
+def _legacy_cull_letters(*, base_name: str, stripped_base: str) -> str:
+    match = re.match(
+        r"^(?:(?P<base>.*)-cull-(?P<letters>[a-z]+)|cull-(?P<letters_only>[a-z]+))$",
+        str(base_name or ""),
+        flags=re.IGNORECASE,
     )
-    stripped_base = str(match.group("base") or "")
-    return stripped_base, cull_letters
-
-
-def _model_name_without_face_alias(name: str) -> str:
-    s = str(name or "")
-    if "@" in s:
-        return s.split("@", 1)[0]
-    return s
+    if match is None:
+        return ""
+    if str(match.group("base") or "") != str(stripped_base or ""):
+        return ""
+    return str(match.group("letters") or match.group("letters_only") or "")
 
 
 def _quat_mul(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> tuple[float, float, float, float]:

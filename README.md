@@ -72,6 +72,7 @@ JOBS=8 \
 
 - 扫描 `DIR_IN` 下所有 `.vox`
 - 依据文件名是否以 `-plat.vox` 结尾选择不同导出参数
+- 这是仓库内批处理脚本的兼容约定；如果直接给 `.vox` 里的 model 命名，推荐优先使用下文的 `@` / `#` 规则
 - 并行输出 `.gltf + .bin + .png + _uv.json`
 
 ## 导出行为
@@ -141,6 +142,7 @@ cutout：
 - `--plat-top-cutout`：把每个 model 导出成单张裁切四边形
 - `--plat-cutoff <float>`：cutout 的 alpha cutoff
 - `--plat-suffix [suffix]`：名字以该后缀结尾的 model 自动走 cutout；默认后缀是 `-cutout`
+- 如果是通过模型名控制行为，推荐优先使用后文的 `@t` / `@f` / `@cutout`，`--plat-suffix` 更适合兼容旧资源
 
 调试：
 
@@ -149,36 +151,57 @@ cutout：
 
 ## 模型命名约定
 
+推荐规则：
+
+- `@`：用于 plat / cutout 模式
+- `#`：用于局部剔面
+- 旧写法 `-plat-*`、`-cutout`、`-cull-*` 仍可用，但建议新资源不要再继续使用
+
 面纹理复用可以直接写在模型名里：
 
 - 语法：`模型名@组1@组2...`
 - 每组第一个字符是目标面，后续字符表示复用该目标面的面
 - 示例：`cube@lrfk@tb`
+- 注意：`@t`、`@f`、`@cutout` 现在保留给 plat / cutout 命名，不参与 face alias
 
 上面的例子表示：
 
 - `r/f/k` 复用 `l`
 - `b` 复用 `t`
 
-cutout 的常见后缀：
+plat / cutout 推荐命名：
 
-- `-cutout`：走默认 cutout 规则
-- `-plat-t`：按 top 方向导出单张 cutout quad
-- `-plat-f`：按 front 方向导出单张 cutout quad
+- `模型名@cutout`：走默认 cutout 规则
+- `模型名@t`：按 top 方向导出单张 cutout quad
+- `模型名@f`：按 front 方向导出单张 cutout quad
+- 推荐新资源统一使用这套 `@...` 写法，不再推荐继续扩展 `-plat-*` / `-cutout`
 
-按模型名局部剔面也可以直接写在后缀里：
+按模型名局部剔面推荐写成 `#` 后缀：
 
-- 语法：`模型名-cull-<letters>`
-- 示例：`wall-cull-lr`、`roof-plat-t-cull-b`
+- 语法：`模型名#<letters>`
+- 示例：`wall#lr`、`roof@t#b`
 - 字母含义与 `--cull` 相同：`t=+Z b=-Z l=-X r=+X f=+Y k=-Y`
 - 模型名剔面会和全局 `--cull` 叠加，只影响当前 model
+- 推荐新资源统一使用这套 `#...` 写法，不再推荐继续扩展 `-cull-<letters>`
+
+可以组合使用：
+
+- `cube@t@lrfk#b`：按 top cutout 导出，`r/f/k` 复用 `l`，并额外剔除 `b`
+- `tree_1#tblr`：只保留基础模型名 `tree_1`，并剔除 `t/b/l/r`
+- `rock_big@f#k`：按 front cutout 导出，并剔除 `k`
+
+兼容性：
+
+- 旧写法 `-plat-t`、`-plat-f`、`-cutout`、`-cull-<letters>` 仍然可用
+- 导出后的 mesh / node / UV 名称会自动去掉这些规则标记，只保留基础名；例如 `tree_1#tblr` 会导出成 `tree_1`
+- 也就是说，规则字符只参与导出行为控制，不应该成为最终资源名的一部分
 
 ## 已知情况
 
 - `--vox-view` 这个参数目前仍保留在 CLI 里做兼容，但当前版本不会在默认自动 wrapper 折叠之外再增加额外行为；不建议依赖它来区分导出结果。
 - `bottom_center` 只负责把 pivot 放到底部中心并保持模型视觉位置，不会额外把整个场景自动吸附到 `y=0`。
 - 如果模型或场景实例带有旋转，当前导出时 `pivot`（锚点）和节点位置都可能出现偏差。
-- 名称以 `-plat-t` 结尾的模型会走特殊 cutout 处理，这会影响其几何 pivot 计算方式。
+- 名称为 `@t`（或兼容旧写法 `-plat-t`）的模型会走特殊 cutout 处理，这会影响其几何 pivot 计算方式。
 
 ## 排查
 

@@ -544,7 +544,7 @@ def _face_canonical_to_local(colors: np.ndarray, face: str) -> np.ndarray:
 
 def _parse_face_alias_rules(model_name: str) -> dict[str, str]:
     allowed = set("tblrfk")
-    parts = str(model_name or "").split("@")
+    parts = _strip_model_cull_suffix(model_name).split("@")
     if len(parts) <= 1:
         return {}
 
@@ -565,6 +565,16 @@ def _parse_face_alias_rules(model_name: str) -> dict[str, str]:
                 continue
             out[src] = target
     return out
+
+
+def _strip_model_cull_suffix(model_name: str) -> str:
+    text = str(model_name or "")
+    if "#" in text:
+        base, suffix = text.rsplit("#", 1)
+        suffix = re.sub(r"\s+", "", str(suffix or "").strip()).lower()
+        if suffix and suffix.isalpha():
+            text = base
+    return text
 
 
 def _quad_face_letter(axis: int | None, normal_sign: int | None) -> str | None:
