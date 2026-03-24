@@ -10,6 +10,7 @@ from typing import List
 import math
 import json
 import os
+import re
 import sys
 import time
 
@@ -58,6 +59,16 @@ class PipelineOptions:
     plat_suffix: str = "-cutout"
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
+
+
+_CULL_FACE_BY_LETTER: dict[str, tuple[int, int]] = {
+    "t": (2, 1),
+    "b": (2, -1),
+    "l": (0, -1),
+    "r": (0, 1),
+    "f": (1, 1),
+    "k": (1, -1),
+}
 
 
 def convert(
@@ -137,35 +148,22 @@ def convert(
                 mesher_result = MesherResult(quads_per_model=qpm)
                 any_cutout = True
 
-    cull_letters = str(getattr(opts, "cull", "") or "").strip().lower()
-    if cull_letters:
-        allowed = set("tblrfk")
-        bad = sorted({c for c in cull_letters if c not in allowed})
-        if bad:
-            raise ValueError(f"--cull: invalid letters: {''.join(bad)} (allowed: tblrfk)")
-
-        cull_faces: set[tuple[int, int]] = set()
-        if "t" in cull_letters:
-            cull_faces.add((2, 1))
-        if "b" in cull_letters:
-            cull_faces.add((2, -1))
-        if "l" in cull_letters:
-            cull_faces.add((0, -1))
-        if "r" in cull_letters:
-            cull_faces.add((0, 1))
-        if "f" in cull_letters:
-            cull_faces.add((1, 1))
-        if "k" in cull_letters:
-            cull_faces.add((1, -1))
-
+    cull_faces = _cull_faces_from_letters(str(getattr(opts, "cull", "") or ""), source="--cull")
+    model_cull_faces = {
+        int(midx): faces
+        for midx, model in enumerate(scene.models)
+        if (faces := _model_cull_faces(str(getattr(model, "name", "") or "")))
+    }
+    if cull_faces or model_cull_faces:
         mesher_result = MesherResult(
             quads_per_model=[
                 [
                     q
                     for q in quads
                     if (int(q.axis), int(q.normal_sign)) not in cull_faces
+                    and (int(q.axis), int(q.normal_sign)) not in model_cull_faces.get(int(midx), set())
                 ]
-                for quads in mesher_result.quads_per_model
+                for midx, quads in enumerate(mesher_result.quads_per_model)
             ]
         )
     mark("build_quads")
@@ -1952,7 +1950,7 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
     height_vox = 0.0
 
     for other_model in scene.models:
-        if other_model.name == base_name:
+        if _base_model_name(other_model.name) == base_name:
             base_vox = np.asarray(other_model.voxels)
             if base_vox.size:
                 try:
@@ -1979,6 +1977,51 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
 
 
 def _base_model_name(name: str) -> str:
+    base_name, _ = _split_model_name_metadata(name)
+    return base_name
+
+
+def _model_cull_faces(name: str) -> set[tuple[int, int]]:
+    _, cull_letters = _split_model_name_metadata(name)
+    return _cull_faces_from_letters(cull_letters, source=f"model '{name}'")
+
+
+def _cull_faces_from_letters(cull_letters: str, *, source: str) -> set[tuple[int, int]]:
+    letters = _validate_cull_letters(cull_letters, source=source)
+    if not letters:
+        return set()
+    return {_CULL_FACE_BY_LETTER[c] for c in letters}
+
+
+def _validate_cull_letters(cull_letters: str, *, source: str) -> str:
+    letters = str(cull_letters or "").strip().lower()
+    if not letters:
+        return ""
+    bad = sorted({c for c in letters if c not in _CULL_FACE_BY_LETTER})
+    if bad:
+        raise ValueError(f"{source}: invalid letters: {''.join(bad)} (allowed: tblrfk)")
+    return letters
+
+
+def _split_model_name_metadata(name: str) -> tuple[str, str]:
+    base_name = _model_name_without_face_alias(name)
+    match = re.match(
+        r"^(?:(?P<base>.*)-cull-(?P<letters>[a-z]+)|cull-(?P<letters_only>[a-z]+))$",
+        base_name,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return base_name, ""
+
+    cull_letters = _validate_cull_letters(
+        str(match.group("letters") or match.group("letters_only") or ""),
+        source=f"model '{name}'",
+    )
+    stripped_base = str(match.group("base") or "")
+    return stripped_base, cull_letters
+
+
+def _model_name_without_face_alias(name: str) -> str:
     s = str(name or "")
     if "@" in s:
         return s.split("@", 1)[0]
