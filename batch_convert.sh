@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Local defaults for this repo. Override with env vars when needed.
-DIR_IN="${DIR_IN:-/Users/graylian/workspace/VoxPLC}"
-DIR_OUT="${DIR_OUT:-/Users/graylian/Documents/LayaProject/assets/vox}"
+DIR_IN="${DIR_IN:-../Mistedge/vox/vox}"
+DIR_OUT="${DIR_OUT:-../Mistedge/assets/vox}"
 JOBS="${JOBS:-4}"
 BTP_VOX_TIMINGS="${BTP_VOX_TIMINGS:-1}"
 
