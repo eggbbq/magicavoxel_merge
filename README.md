@@ -70,6 +70,8 @@ JOBS=8 \
 
 大场景如果希望 `--tex-reuse-subrects` 真正复用“大块里的子块”，不要把 `BTP_VOX_REUSE_SUBRECT_LIMIT` 设成正数；`0` 表示不因为 quad 总量过大而整批关闭子矩形复用，这也是当前脚本默认值。
 
+当前 atlas 复用不只会匹配“完全同方向”的子矩形，也会尝试左右翻转、上下翻转和转置后的子矩形；命中后会自动在导出的 UV 里补偿方向，所以像地形边条、拐角条带这类纹理通常能明显减少冗余块。
+
 脚本会：
 
 - 扫描 `DIR_IN` 下所有 `.vox`
@@ -133,7 +135,7 @@ UV / 顶点数据：
 - `--tex-pot`
 - `--tex-fixed-size <width>x<height>`
 - `--tex-tight-blocks`
-- `--tex-reuse-subrects`
+- `--tex-reuse-subrects`：复用重复子矩形；除原样匹配外，也会尝试翻转 / 转置后的子块，并自动修正 UV 方向
 - `--no-tex-reuse-subrects`
 - `--tex-compress-solid-quads`
 - `--face-alias-uv-remap`
