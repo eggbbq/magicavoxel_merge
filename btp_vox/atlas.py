@@ -22,6 +22,8 @@ class QuadUV:
     v0: float
     u1: float
     v1: float
+    u2: float
+    v2: float
 
 
 @dataclass(slots=True)
@@ -39,6 +41,9 @@ class _QuadAnchor:
     src_qidx: int
     off_u: int
     off_v: int
+    swap_uv: bool = False
+    flip_u: bool = False
+    flip_v: bool = False
 
 
 @dataclass(slots=True)
@@ -47,6 +52,17 @@ class _QuadTexSpec:
     core_w: int
     core_h: int
     sample_scale: int
+
+
+@dataclass(slots=True)
+class _QuadPatch:
+    core_x: int
+    core_y: int
+    tex_w: int
+    tex_h: int
+    swap_uv: bool
+    flip_u: bool
+    flip_v: bool
 
 
 def build_atlas(
@@ -137,7 +153,7 @@ def build_atlas(
     # Two layouts:
     # - by-model: each model gets its own packed block, then blocks are packed into atlas
     # - global: all quads are packed together into a single atlas (usually better fill rate)
-    quad_core_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    quad_patches: Dict[Tuple[int, int], _QuadPatch] = {}
     model_block_sizes: Dict[int, Tuple[int, int]] = {}
     model_positions: Dict[int, Tuple[int, int]] = {}
     owner_block_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
@@ -192,9 +208,20 @@ def build_atlas(
                 px_per_cell_y = int(max(1, int(src_spec.core_h) // max(1, src_h)))
                 off_x = int(anchor.off_u) * int(px_per_cell_x)
                 off_y = int(anchor.off_v) * int(px_per_cell_y)
+                child_spec = quad_specs[(midx, qidx)]
+                child_h, child_w = int(child_spec.colors.shape[0]), int(child_spec.colors.shape[1])
+                patch_h_cells, patch_w_cells = _transformed_shape(child_h, child_w, swap_uv=bool(anchor.swap_uv))
                 core_x = int(src_ox + pad + off_x)
                 core_y = int(src_oy + pad + off_y)
-                quad_core_positions[(midx, qidx)] = (core_x, core_y)
+                quad_patches[(midx, qidx)] = _QuadPatch(
+                    core_x=int(core_x),
+                    core_y=int(core_y),
+                    tex_w=int(patch_w_cells * px_per_cell_x),
+                    tex_h=int(patch_h_cells * px_per_cell_y),
+                    swap_uv=bool(anchor.swap_uv),
+                    flip_u=bool(anchor.flip_u),
+                    flip_v=bool(anchor.flip_v),
+                )
 
     else:
         quad_local_positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
@@ -261,9 +288,20 @@ def build_atlas(
                 px_per_cell_y = int(max(1, int(src_spec.core_h) // max(1, src_h)))
                 off_x = int(anchor.off_u) * int(px_per_cell_x)
                 off_y = int(anchor.off_v) * int(px_per_cell_y)
+                child_spec = quad_specs[(midx, qidx)]
+                child_h, child_w = int(child_spec.colors.shape[0]), int(child_spec.colors.shape[1])
+                patch_h_cells, patch_w_cells = _transformed_shape(child_h, child_w, swap_uv=bool(anchor.swap_uv))
                 core_x = int(src_block_ox + pad + off_x)
                 core_y = int(src_block_oy + pad + off_y)
-                quad_core_positions[(midx, qidx)] = (core_x, core_y)
+                quad_patches[(midx, qidx)] = _QuadPatch(
+                    core_x=int(core_x),
+                    core_y=int(core_y),
+                    tex_w=int(patch_w_cells * px_per_cell_x),
+                    tex_h=int(patch_h_cells * px_per_cell_y),
+                    swap_uv=bool(anchor.swap_uv),
+                    flip_u=bool(anchor.flip_u),
+                    flip_v=bool(anchor.flip_v),
+                )
 
         if timings_enabled:
             sys.stderr.write(
@@ -317,25 +355,32 @@ def build_atlas(
         u_max: float | None = None
         v_max: float | None = None
         for qidx, quad in enumerate(quads):
-            spec = quad_specs[(midx, qidx)]
-            tex_w = int(spec.core_w)
-            tex_h = int(spec.core_h)
-            core_x, core_y = quad_core_positions[(midx, qidx)]
+            patch = quad_patches[(midx, qidx)]
+            inset_u = min(inset, max(0.0, (float(patch.tex_w) - 1.0) / 2.0))
+            inset_v = min(inset, max(0.0, (float(patch.tex_h) - 1.0) / 2.0))
 
-            inset_u = min(inset, max(0.0, (tex_w - 1.0) / 2.0))
-            inset_v = min(inset, max(0.0, (tex_h - 1.0) / 2.0))
+            patch_u0 = (float(patch.core_x) + inset_u) / float(atlas_w)
+            patch_v0 = (float(patch.core_y) + inset_v) / float(atlas_h)
+            patch_u_span = (float(patch.tex_w) - inset_u * 2.0) / float(atlas_w)
+            patch_v_span = (float(patch.tex_h) - inset_v * 2.0) / float(atlas_h)
 
-            u0 = (core_x + inset_u) / float(atlas_w)
-            v0 = (core_y + inset_v) / float(atlas_h)
-            u1 = (core_x + tex_w - inset_u) / float(atlas_w)
-            v1 = (core_y + tex_h - inset_v) / float(atlas_h)
+            c00 = _transform_local_uv(0.0, 0.0, swap_uv=bool(patch.swap_uv), flip_u=bool(patch.flip_u), flip_v=bool(patch.flip_v))
+            c10 = _transform_local_uv(1.0, 0.0, swap_uv=bool(patch.swap_uv), flip_u=bool(patch.flip_u), flip_v=bool(patch.flip_v))
+            c01 = _transform_local_uv(0.0, 1.0, swap_uv=bool(patch.swap_uv), flip_u=bool(patch.flip_u), flip_v=bool(patch.flip_v))
 
-            quad_uvs[(midx, qidx)] = QuadUV(u0=u0, v0=v0, u1=u1, v1=v1)
+            quad_uvs[(midx, qidx)] = QuadUV(
+                u0=float(patch_u0 + patch_u_span * c00[0]),
+                v0=float(patch_v0 + patch_v_span * c00[1]),
+                u1=float(patch_u0 + patch_u_span * c10[0]),
+                v1=float(patch_v0 + patch_v_span * c10[1]),
+                u2=float(patch_u0 + patch_u_span * c01[0]),
+                v2=float(patch_v0 + patch_v_span * c01[1]),
+            )
 
-            u_min = float(core_x) if u_min is None else min(u_min, float(core_x))
-            v_min = float(core_y) if v_min is None else min(v_min, float(core_y))
-            u_max = float(core_x + tex_w) if u_max is None else max(u_max, float(core_x + tex_w))
-            v_max = float(core_y + tex_h) if v_max is None else max(v_max, float(core_y + tex_h))
+            u_min = float(patch.core_x) if u_min is None else min(u_min, float(patch.core_x))
+            v_min = float(patch.core_y) if v_min is None else min(v_min, float(patch.core_y))
+            u_max = float(patch.core_x + patch.tex_w) if u_max is None else max(u_max, float(patch.core_x + patch.tex_w))
+            v_max = float(patch.core_y + patch.tex_h) if v_max is None else max(v_max, float(patch.core_y + patch.tex_h))
 
         # Top-left origin convention (matches the baked atlas array). Use --uv-flip-v in the pipeline
         # if your engine treats v=0 as bottom.
@@ -610,7 +655,7 @@ def _build_quad_reuse_map(
 ) -> tuple[dict[tuple[int, int], _QuadAnchor], list[tuple[int, int]]]:
     anchors: dict[tuple[int, int], _QuadAnchor] = {}
     timings_enabled = bool(os.environ.get("BTP_VOX_TIMINGS"))
-    subrect_limit = int(os.environ.get("BTP_VOX_REUSE_SUBRECT_LIMIT", "5000"))
+    subrect_limit = int(os.environ.get("BTP_VOX_REUSE_SUBRECT_LIMIT", "0"))
     max_candidates = int(os.environ.get("BTP_VOX_REUSE_MAX_CANDIDATES", "256"))
 
     all_keys: list[tuple[int, int]] = []
@@ -664,30 +709,38 @@ def _build_quad_reuse_map(
 
             found_src: tuple[int, int] | None = None
             found_off: tuple[int, int] | None = None
+            found_transform = (False, False, False)
 
             if can_subrect and owners:
-                owner_candidates = owners
-                vals, cnts = np.unique(arr.reshape((-1,)), return_counts=True)
-                if vals.size > 0:
-                    anchor_val = int(vals[int(np.argmin(cnts))])
-                    by_val = owners_by_value.get(anchor_val)
-                    if by_val:
-                        owner_candidates = by_val
-
+                owner_candidates = _filter_owner_candidates_for_child(
+                    arr,
+                    owners,
+                    owners_by_value,
+                    max_candidates=max_candidates,
+                )
+                candidate_groups = [owner_candidates]
                 if max_candidates > 0 and len(owner_candidates) > max_candidates:
-                    owner_candidates = owner_candidates[: max_candidates]
+                    candidate_groups = [
+                        owner_candidates[: max_candidates],
+                        owner_candidates[max_candidates:],
+                    ]
 
-                for owner_key in owner_candidates:
-                    attempts += 1
-                    oh, ow = quad_shape[owner_key]
-                    if oh < h or ow < w:
-                        continue
-                    off = _find_subrect_offset(quad_colors[owner_key], arr)
-                    if off is None:
-                        continue
-                    found_src = owner_key
-                    found_off = off
-                    break
+                for owner_group in candidate_groups:
+                    for owner_key in owner_group:
+                        attempts += 1
+                        oh, ow = quad_shape[owner_key]
+                        if oh < h or ow < w:
+                            continue
+                        match = _find_subrect_anchor(quad_colors[owner_key], arr)
+                        if match is None:
+                            continue
+                        off_u, off_v, swap_uv, flip_u, flip_v = match
+                        found_src = owner_key
+                        found_off = (int(off_u), int(off_v))
+                        found_transform = (bool(swap_uv), bool(flip_u), bool(flip_v))
+                        break
+                    if found_src is not None:
+                        break
 
             if found_src is not None and found_off is not None:
                 anchors[key] = _QuadAnchor(
@@ -695,6 +748,9 @@ def _build_quad_reuse_map(
                     src_qidx=int(found_src[1]),
                     off_u=int(found_off[0]),
                     off_v=int(found_off[1]),
+                    swap_uv=bool(found_transform[0]),
+                    flip_u=bool(found_transform[1]),
+                    flip_v=bool(found_transform[2]),
                 )
             else:
                 _add_owner(key, sig)
@@ -718,6 +774,103 @@ def _build_quad_reuse_map(
         if int(anchors[key].src_midx) == int(key[0]) and int(anchors[key].src_qidx) == int(key[1])
     ]
     return anchors, owner_keys
+
+
+def _filter_owner_candidates_for_child(
+    child: np.ndarray,
+    owners: list[tuple[int, int]],
+    owners_by_value: dict[int, list[tuple[int, int]]],
+    *,
+    max_candidates: int,
+) -> list[tuple[int, int]]:
+    vals, cnts = np.unique(np.asarray(child, dtype=np.int32).reshape((-1,)), return_counts=True)
+    if vals.size == 0:
+        return owners
+
+    ranked_vals = sorted(
+        ((int(cnt), int(val)) for val, cnt in zip(vals.tolist(), cnts.tolist())),
+        key=lambda item: (int(item[0]), int(item[1])),
+    )
+
+    filtered: list[tuple[int, int]] | None = None
+    for _count, anchor_val in ranked_vals:
+        by_val = owners_by_value.get(int(anchor_val))
+        if not by_val:
+            return []
+        if filtered is None:
+            filtered = list(by_val)
+        else:
+            allowed = set(by_val)
+            filtered = [key for key in filtered if key in allowed]
+        if not filtered:
+            return []
+        if max_candidates <= 0 or len(filtered) <= max_candidates:
+            break
+
+    return (filtered if filtered is not None else owners)
+
+
+def _transformed_shape(child_h: int, child_w: int, *, swap_uv: bool) -> tuple[int, int]:
+    if bool(swap_uv):
+        return (int(child_w), int(child_h))
+    return (int(child_h), int(child_w))
+
+
+def _transform_local_uv(
+    a: float,
+    b: float,
+    *,
+    swap_uv: bool,
+    flip_u: bool,
+    flip_v: bool,
+) -> tuple[float, float]:
+    s = float(b) if bool(swap_uv) else float(a)
+    t = float(a) if bool(swap_uv) else float(b)
+    if bool(flip_u):
+        s = 1.0 - s
+    if bool(flip_v):
+        t = 1.0 - t
+    return (float(s), float(t))
+
+
+def _transform_quad_array(
+    arr: np.ndarray,
+    *,
+    swap_uv: bool,
+    flip_u: bool,
+    flip_v: bool,
+) -> np.ndarray:
+    out = np.asarray(arr, dtype=np.int32)
+    if bool(swap_uv):
+        out = out.T
+    if bool(flip_v):
+        out = np.flipud(out)
+    if bool(flip_u):
+        out = np.fliplr(out)
+    return np.ascontiguousarray(out, dtype=np.int32)
+
+
+def _find_subrect_anchor(
+    host: np.ndarray,
+    child: np.ndarray,
+) -> tuple[int, int, bool, bool, bool] | None:
+    modes = (
+        (False, False, False),
+        (False, True, False),
+        (False, False, True),
+        (False, True, True),
+        (True, False, False),
+        (True, True, False),
+        (True, False, True),
+        (True, True, True),
+    )
+    for swap_uv, flip_u, flip_v in modes:
+        cand = _transform_quad_array(child, swap_uv=bool(swap_uv), flip_u=bool(flip_u), flip_v=bool(flip_v))
+        off = _find_subrect_offset(host, cand)
+        if off is None:
+            continue
+        return (int(off[0]), int(off[1]), bool(swap_uv), bool(flip_u), bool(flip_v))
+    return None
 
 
 def _find_subrect_offset(host: np.ndarray, child: np.ndarray) -> tuple[int, int] | None:

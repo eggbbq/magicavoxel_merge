@@ -1042,17 +1042,14 @@ def _assemble_meshes(
 
             uu = float(np.dot(u_axis, u_axis)) or 1.0
             vv = float(np.dot(v_axis, v_axis)) or 1.0
-            u_span = uv_rect.u1 - uv_rect.u0
-            v_span = uv_rect.v1 - uv_rect.v0
-
             def map_uv(idx: int) -> tuple[float, float]:
                 rel = p_arr[idx] - p0
                 a = float(np.dot(rel, u_axis) / uu)
                 b = float(np.dot(rel, v_axis) / vv)
                 a = 0.0 if a < 0.0 else (1.0 if a > 1.0 else a)
                 b = 0.0 if b < 0.0 else (1.0 if b > 1.0 else b)
-                u = uv_rect.u0 + u_span * a
-                v = uv_rect.v0 + v_span * b
+                u = uv_rect.u0 + (uv_rect.u1 - uv_rect.u0) * a + (uv_rect.u2 - uv_rect.u0) * b
+                v = uv_rect.v0 + (uv_rect.v1 - uv_rect.v0) * a + (uv_rect.v2 - uv_rect.v0) * b
                 if flip_v:
                     v = 1.0 - v
                 return (float(u), float(v))
@@ -1330,17 +1327,14 @@ def _build_model_meshes(
 
             uu = float(np.dot(u_axis, u_axis)) or 1.0
             vv = float(np.dot(v_axis, v_axis)) or 1.0
-            u_span = uv_rect.u1 - uv_rect.u0
-            v_span = uv_rect.v1 - uv_rect.v0
-
             def map_uv(idx: int) -> tuple[float, float]:
                 rel = p_arr[idx] - p0
                 a = float(np.dot(rel, u_axis) / uu)
                 b = float(np.dot(rel, v_axis) / vv)
                 a = 0.0 if a < 0.0 else (1.0 if a > 1.0 else a)
                 b = 0.0 if b < 0.0 else (1.0 if b > 1.0 else b)
-                u = uv_rect.u0 + u_span * a
-                v = uv_rect.v0 + v_span * b
+                u = uv_rect.u0 + (uv_rect.u1 - uv_rect.u0) * a + (uv_rect.u2 - uv_rect.u0) * b
+                v = uv_rect.v0 + (uv_rect.v1 - uv_rect.v0) * a + (uv_rect.v2 - uv_rect.v0) * b
                 if flip_v:
                     v = 1.0 - v
                 return (float(u), float(v))

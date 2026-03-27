@@ -68,6 +68,8 @@ JOBS=8 \
 ./batch_convert.sh
 ```
 
+大场景如果希望 `--tex-reuse-subrects` 真正复用“大块里的子块”，不要把 `BTP_VOX_REUSE_SUBRECT_LIMIT` 设成正数；`0` 表示不因为 quad 总量过大而整批关闭子矩形复用，这也是当前脚本默认值。
+
 脚本会：
 
 - 扫描 `DIR_IN` 下所有 `.vox`
