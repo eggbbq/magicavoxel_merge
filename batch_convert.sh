@@ -11,6 +11,8 @@ BTP_VOX_TIMINGS="${BTP_VOX_TIMINGS:-1}"
 BTP_VOX_FAST_PACK_THRESHOLD="${BTP_VOX_FAST_PACK_THRESHOLD:-128}"
 BTP_VOX_REUSE_SUBRECT_LIMIT="${BTP_VOX_REUSE_SUBRECT_LIMIT:-0}"
 BTP_VOX_REUSE_MAX_CANDIDATES="${BTP_VOX_REUSE_MAX_CANDIDATES:-256}"
+# Keep subrect reuse enabled by default; set to 0 to disable if needed.
+BTP_VOX_TEX_REUSE_SUBRECTS="${BTP_VOX_TEX_REUSE_SUBRECTS:-1}"
 
 if [[ ! -d "$DIR_IN" ]]; then
   echo "Input directory does not exist: $DIR_IN" >&2
@@ -87,12 +89,17 @@ btp_convert_one() {
     --tex-out         "$out_tex"
     --tex-layout      global
     --tex-compress-solid-quads
-    --face-alias-uv-remap
     --tex-reuse-subrects
+    --face-alias-uv-remap
     --scale           0.02
     --pivot           bottom_center
     --format          gltf
   )
+  if [[ "$BTP_VOX_TEX_REUSE_SUBRECTS" == "1" ]]; then
+    args+=(--tex-reuse-subrects)
+  else
+    args+=(--no-tex-reuse-subrects)
+  fi
   if btp_is_plat_t_file "$in_vox"; then
     args+=(--plat-top-cutout)
   fi
@@ -112,6 +119,7 @@ export -f btp_get_fixed_size
 export -f btp_is_plat_t_file
 export DIR_OUT BTP_VOX_TIMINGS BTP_VOX_FAST_PACK_THRESHOLD
 export BTP_VOX_REUSE_SUBRECT_LIMIT BTP_VOX_REUSE_MAX_CANDIDATES
+export BTP_VOX_TEX_REUSE_SUBRECTS
 export BTP_FIXED_SIZE_RULES BTP_PLAT_T_FILES
 
 find "$DIR_IN" -type f -name "*.vox" -print0 \

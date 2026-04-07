@@ -25,7 +25,7 @@ from .voxio import VoxScene, load_scene
 @dataclass(slots=True)
 class AtlasOptions:
     pad: int = 2
-    inset: float = 1.0
+    inset: float = 0.0
     texel_scale: int = 1
     layout: str = "by-model"  # or "global"
     square: bool = False

@@ -68,9 +68,17 @@ JOBS=8 \
 ./batch_convert.sh
 ```
 
-大场景如果希望 `--tex-reuse-subrects` 真正复用“大块里的子块”，不要把 `BTP_VOX_REUSE_SUBRECT_LIMIT` 设成正数；`0` 表示不因为 quad 总量过大而整批关闭子矩形复用，这也是当前脚本默认值。
+批处理脚本当前默认开启 `--tex-reuse-subrects`；如果你想临时关闭，可以显式指定：
+
+```bash
+BTP_VOX_TEX_REUSE_SUBRECTS=0 ./batch_convert.sh
+```
+
+如果希望 `--tex-reuse-subrects` 真正复用“大块里的子块”，不要把 `BTP_VOX_REUSE_SUBRECT_LIMIT` 设成正数；`0` 表示不因为 quad 总量过大而整批关闭子矩形复用，这也是当前脚本默认值。
 
 当前 atlas 复用不只会匹配“完全同方向”的子矩形，也会尝试左右翻转、上下翻转和转置后的子矩形；命中后会自动在导出的 UV 里补偿方向，所以像地形边条、拐角条带这类纹理通常能明显减少冗余块。
+
+当前 `--tex-inset` 默认值是 `0`。如果你的目标引擎强制改成线性采样、开启 mipmap，或者出现 atlas 边缘串色，再按需把 `--tex-inset` 调大。
 
 脚本会：
 

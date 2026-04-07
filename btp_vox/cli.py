@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tex-fmt", choices=("auto", "rgba", "rgb"), default="auto", help="Atlas texture alpha mode: auto keeps alpha only if needed; rgba forces alpha; rgb strips alpha")
     parser.add_argument("--tex-out", help="Write atlas PNG to this path (otherwise embed into GLB or emit next to glTF)")
     parser.add_argument("--tex-pad", type=int, default=2, help="Atlas padding in texels")
-    parser.add_argument("--tex-inset", type=float, default=1.0, help="Atlas inset in texels")
+    parser.add_argument("--tex-inset", type=float, default=0.0, help="Atlas inset in texels")
     parser.add_argument("--tex-texel-scale", type=int, default=1, help="Texel scale applied to each quad")
     parser.add_argument("--tex-style", choices=("baked", "solid"), default="baked", help="Atlas style")
     parser.add_argument("--tex-layout", choices=("by-model", "global"), default="by-model", help="Atlas layout")

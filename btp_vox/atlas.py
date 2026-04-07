@@ -60,6 +60,7 @@ class _QuadPatch:
     core_y: int
     tex_w: int
     tex_h: int
+    has_local_pad: bool
     swap_uv: bool
     flip_u: bool
     flip_v: bool
@@ -70,7 +71,7 @@ def build_atlas(
     mesher_result: MesherResult,
     *,
     pad: int = 2,
-    inset: float = 1.0,
+    inset: float = 0.0,
     texel_scale: int = 1,
     square: bool = False,
     pot: bool = False,
@@ -213,11 +214,20 @@ def build_atlas(
                 patch_h_cells, patch_w_cells = _transformed_shape(child_h, child_w, swap_uv=bool(anchor.swap_uv))
                 core_x = int(src_ox + pad + off_x)
                 core_y = int(src_oy + pad + off_y)
+                patch_tex_w = int(patch_w_cells * px_per_cell_x)
+                patch_tex_h = int(patch_h_cells * px_per_cell_y)
+                has_local_pad = (
+                    int(off_x) == 0
+                    and int(off_y) == 0
+                    and int(patch_tex_w) == int(src_spec.core_w)
+                    and int(patch_tex_h) == int(src_spec.core_h)
+                )
                 quad_patches[(midx, qidx)] = _QuadPatch(
                     core_x=int(core_x),
                     core_y=int(core_y),
-                    tex_w=int(patch_w_cells * px_per_cell_x),
-                    tex_h=int(patch_h_cells * px_per_cell_y),
+                    tex_w=int(patch_tex_w),
+                    tex_h=int(patch_tex_h),
+                    has_local_pad=bool(has_local_pad),
                     swap_uv=bool(anchor.swap_uv),
                     flip_u=bool(anchor.flip_u),
                     flip_v=bool(anchor.flip_v),
@@ -293,11 +303,20 @@ def build_atlas(
                 patch_h_cells, patch_w_cells = _transformed_shape(child_h, child_w, swap_uv=bool(anchor.swap_uv))
                 core_x = int(src_block_ox + pad + off_x)
                 core_y = int(src_block_oy + pad + off_y)
+                patch_tex_w = int(patch_w_cells * px_per_cell_x)
+                patch_tex_h = int(patch_h_cells * px_per_cell_y)
+                has_local_pad = (
+                    int(off_x) == 0
+                    and int(off_y) == 0
+                    and int(patch_tex_w) == int(src_spec.core_w)
+                    and int(patch_tex_h) == int(src_spec.core_h)
+                )
                 quad_patches[(midx, qidx)] = _QuadPatch(
                     core_x=int(core_x),
                     core_y=int(core_y),
-                    tex_w=int(patch_w_cells * px_per_cell_x),
-                    tex_h=int(patch_h_cells * px_per_cell_y),
+                    tex_w=int(patch_tex_w),
+                    tex_h=int(patch_tex_h),
+                    has_local_pad=bool(has_local_pad),
                     swap_uv=bool(anchor.swap_uv),
                     flip_u=bool(anchor.flip_u),
                     flip_v=bool(anchor.flip_v),
@@ -356,8 +375,9 @@ def build_atlas(
         v_max: float | None = None
         for qidx, quad in enumerate(quads):
             patch = quad_patches[(midx, qidx)]
-            inset_u = min(inset, max(0.0, (float(patch.tex_w) - 1.0) / 2.0))
-            inset_v = min(inset, max(0.0, (float(patch.tex_h) - 1.0) / 2.0))
+            patch_inset = float(inset) if bool(patch.has_local_pad) else 0.0
+            inset_u = min(patch_inset, max(0.0, (float(patch.tex_w) - 1.0) / 2.0))
+            inset_v = min(patch_inset, max(0.0, (float(patch.tex_h) - 1.0) / 2.0))
 
             patch_u0 = (float(patch.core_x) + inset_u) / float(atlas_w)
             patch_v0 = (float(patch.core_y) + inset_v) / float(atlas_h)
