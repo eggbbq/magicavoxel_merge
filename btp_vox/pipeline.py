@@ -1933,21 +1933,27 @@ def _compute_plat_base_half_height(scene: VoxScene, midx: int, scale: float) -> 
 
     height_vox = 0.0
 
-    for other_model in scene.models:
-        if _base_model_name(other_model.name) == base_name:
-            base_vox = np.asarray(other_model.voxels)
-            if base_vox.size:
-                try:
-                    z_coords = base_vox[:, 2]
-                except Exception:
-                    z_coords = np.asarray([])
-                if z_coords.size:
-                    height_vox = float(z_coords.max() - z_coords.min() + 1)
-                    break
-            size_z = float(other_model.size[2])
-            if size_z > 0.0:
-                height_vox = size_z
-            break
+    for other_midx, other_model in enumerate(scene.models):
+        if int(other_midx) == int(midx):
+            continue
+        if _base_model_name(other_model.name) != base_name:
+            continue
+        # A second cutout with the same exported name is not the solid base whose
+        # height should position this top plate.
+        if _model_cutout_mode(other_model.name, plat_suffix="-cutout") is not None:
+            continue
+
+        base_vox = np.asarray(other_model.voxels)
+        if base_vox.ndim == 3 and base_vox.size:
+            occupied_z = np.flatnonzero(np.any(base_vox != 0, axis=(0, 1)))
+            if occupied_z.size:
+                height_vox = float(int(occupied_z[-1]) - int(occupied_z[0]) + 1)
+                break
+
+        size_z = float(other_model.size[2])
+        if size_z > 0.0:
+            height_vox = size_z
+        break
 
     if height_vox <= 0.0:
         size_z = float(scene.models[midx].size[2])
