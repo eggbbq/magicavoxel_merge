@@ -33,6 +33,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--print-nodes", action="store_true", help="Print VOX scene graph nodes to stderr")
 
     parser.add_argument("--format", choices=("glb", "gltf"), default="glb", help="Output format")
+    parser.add_argument(
+        "--handedness",
+        choices=("right", "left"),
+        default="right",
+        help="Output coordinate handedness after converting to Y-up (default: right; use left for legacy compatibility)",
+    )
     parser.add_argument("--scale", type=float, default=1.0, help="Uniform scale applied to geometry")
     parser.add_argument("--pivot", choices=("corner", "bottom_center", "center"), default="corner", help="Model pivot")
     parser.add_argument("--cull", default="", help="Cull faces by letters in MagicaVoxel model space: t=+Z, b=-Z, l=-X, r=+X, f=+Y, k=-Y")
@@ -83,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
 
     fields = getattr(PipelineOptions, "__dataclass_fields__", {}) or {}
     pipe_kwargs: dict = {
+        "handedness": str(args.handedness),
         "scale": args.scale,
         "pivot": args.pivot,
         "flip_v": args.uv_flip_v,

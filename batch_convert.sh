@@ -43,7 +43,7 @@ btp_is_plat_t_file() {
   local in_vox="$1"
   local base stem key entry
   base="$(basename "$in_vox")"
-  stem="${base%.vox}"
+  stem="${base%.vox}" 
 
   for key in "$in_vox" "$base" "$stem"; do
     while IFS= read -r entry; do
@@ -84,10 +84,12 @@ btp_convert_one() {
     --uv-out          "$out_uv"
     --uv2
     --character-flat
+    --handedness      right
     --tex-pot
     --tex-fmt         rgb
     --tex-out         "$out_tex"
     --tex-layout      global
+    --handedness      right
     --tex-compress-solid-quads
     --tex-reuse-subrects
     --face-alias-uv-remap

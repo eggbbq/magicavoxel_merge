@@ -59,6 +59,7 @@ class PipelineOptions:
     plat_suffix: str = "-cutout"
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
+    handedness: str = "right"
 
 
 _CULL_FACE_BY_LETTER: dict[str, tuple[int, int]] = {
@@ -246,8 +247,9 @@ def convert(
     if debug_transforms_out:
         _write_transform_debug(debug_transforms_out, scene=scene, meshes=meshes, stage="pre_axis")
 
-    meshes = _to_y_up_left_handed(meshes)
-    nodes = _to_y_up_left_handed_nodes(nodes, meshes)
+    handedness = _normalize_handedness(getattr(opts, "handedness", "right"))
+    meshes = _to_y_up(meshes, handedness=handedness)
+    nodes = _to_y_up_nodes(nodes, meshes, handedness=handedness)
     mark("axis_convert")
 
     if debug_transforms_out:
@@ -1783,7 +1785,17 @@ def _build_scene_nodes_two_level(
     return nodes, parent_ids
 
 
-def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[dict]:
+def _normalize_handedness(handedness: str) -> str:
+    value = str(handedness or "").strip().lower()
+    if value not in ("right", "left"):
+        raise ValueError(f"handedness must be 'right' or 'left', got {handedness!r}")
+    return value
+
+
+def _to_y_up_nodes(nodes: list[dict], meshes: list[dict], *, handedness: str = "right") -> list[dict]:
+    handedness = _normalize_handedness(handedness)
+    left_handed = handedness == "left"
+
     # Helper function to find half_height in children
     def find_half_height_in_children(node_idx: int, nodes: list[dict], meshes: list[dict]) -> float | None:
         """Recursively search for half_height in child nodes"""
@@ -1828,14 +1840,16 @@ def _to_y_up_left_handed_nodes(nodes: list[dict], meshes: list[dict]) -> list[di
         tr = mm.get("translation")
         if tr is not None:
             t = np.asarray(tr, dtype=np.float32) @ axis_m
-            t[2] *= -1.0
+            if left_handed:
+                t[2] *= -1.0
             mm["translation"] = (float(t[0]), float(t[1]), float(t[2]))
 
         rot = mm.get("rotation")
         if rot is not None:
             rmat = _quat_to_mat3(tuple(rot))
             rmat = b @ rmat @ bt
-            rmat = h @ rmat @ h
+            if left_handed:
+                rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
         
         # For bottom_center: move node down by half_height to compensate for vertex movement
@@ -2313,12 +2327,15 @@ def _mat3_to_quat(m: np.ndarray) -> tuple[float, float, float, float]:
     return (float(x / n), float(y / n), float(z / n), float(w / n))
 
 
-def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
-    """Match magicavoxel_merge's coordinate + normal conversion.
+def _to_y_up(meshes: List[dict], *, handedness: str = "right") -> List[dict]:
+    """Convert MagicaVoxel Z-up data to a Y-up target coordinate system.
 
     1) Axis map MV->Y-up: (x,y,z) -> (x,z,-y)
-    2) Left-handed output: mirror Z and flip triangle winding.
+    2) For left-handed output only, mirror Z and flip triangle winding.
     """
+
+    handedness = _normalize_handedness(handedness)
+    left_handed = handedness == "left"
 
     # Row-vector transform for axis map: v' = v @ m
     axis_m = np.asarray(
@@ -2357,23 +2374,24 @@ def _to_y_up_left_handed(meshes: List[dict]) -> List[dict]:
         rot = mm.get("rotation")
         if rot is not None:
             rmat = _quat_to_mat3(tuple(rot))
-            # Apply axis basis change, then handedness conjugation.
+            # Apply the axis basis change, then optional handedness conjugation.
             rmat = b @ rmat @ bt
-            rmat = h @ rmat @ h
+            if left_handed:
+                rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
 
-        # Mirror Z for left-handed output
-        pos[:, 2] *= -1.0
-        nrm[:, 2] *= -1.0
-        if tr is not None:
-            tx, ty, tz = mm["translation"]
-            mm["translation"] = (float(tx), float(ty), -float(tz))
+        if left_handed:
+            # Mirror Z and flip winding to match the handedness reflection.
+            pos[:, 2] *= -1.0
+            nrm[:, 2] *= -1.0
+            if tr is not None:
+                tx, ty, tz = mm["translation"]
+                mm["translation"] = (float(tx), float(ty), -float(tz))
 
-        # Flip winding to match the handedness reflection.
-        if idx.size % 3 != 0:
-            raise ValueError("indices length must be multiple of 3")
-        tris = idx.reshape((-1, 3))
-        idx = tris[:, [0, 2, 1]].reshape((-1,)).astype(np.uint32)
+            if idx.size % 3 != 0:
+                raise ValueError("indices length must be multiple of 3")
+            tris = idx.reshape((-1, 3))
+            idx = tris[:, [0, 2, 1]].reshape((-1,)).astype(np.uint32)
 
         mm["positions"] = pos
         mm["normals"] = nrm

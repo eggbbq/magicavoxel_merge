@@ -8,6 +8,7 @@
 - 生成 atlas 纹理，并可额外导出每个模型的 UV 矩形 JSON
 - 支持多模型、场景树和按场景实例导出
 - 支持 cutout、UV2、顶点色和多种 atlas 打包选项
+- 支持输出 Y-up 右手系或兼容旧资源的 Y-up 左手系
 
 ## 依赖
 
@@ -93,7 +94,8 @@ BTP_VOX_TEX_REUSE_SUBRECTS=0 ./batch_convert.sh
 
 - 按场景里的 shape 实例生成 mesh，避免同一个 model 被多次引用时丢实例
 - 对节点层级做简化，自动折叠无意义的 wrapper 节点
-- 把坐标转换成导出目标使用的 `Y-up` 左手系
+- 默认把坐标转换成符合 glTF 规范、可直接用于 LayaAir 的 `Y-up` 右手系
+- 如需兼容旧版本导出的方向，可使用 `--handedness left` 输出 `Y-up` 左手系
 
 注意：
 
@@ -112,6 +114,7 @@ BTP_VOX_TEX_REUSE_SUBRECTS=0 ./batch_convert.sh
 - `--input <path>`：输入 `.vox`
 - `--output <path>`：输出 `.glb` 或 `.gltf`
 - `--format glb|gltf`
+- `--handedness right|left`：输出坐标系手性；默认 `right`，`left` 用于兼容旧资源
 - `--scale <float>`：统一缩放
 - `--pivot corner|center|bottom_center`
 - `--cull <letters>`：按面裁剪，字母含义为 `t=+Z b=-Z l=-X r=+X f=+Y k=-Y`
