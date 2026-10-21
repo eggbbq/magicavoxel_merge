@@ -60,6 +60,7 @@ class PipelineOptions:
     texture_alpha: str = "auto"
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
     handedness: str = "right"
+    uv_mode: str = "atlas"
 
 
 _CULL_FACE_BY_LETTER: dict[str, tuple[int, int]] = {
@@ -78,6 +79,8 @@ def convert(
     *,
     texture_out: str | None = None,
     uv_json_out: str | None = None,
+    uv_template_out: str | None = None,
+    uv_islands_out: str | None = None,
     debug_transforms_out: str | None = None,
     print_nodes: bool = False,
     output_format: str = "glb",
@@ -100,7 +103,15 @@ def convert(
         last_t = now
 
     opts = options or PipelineOptions()
+    if opts.uv_mode not in ("atlas", "paint"):
+        raise ValueError("uv_mode must be 'atlas' or 'paint'")
+    if (uv_template_out or uv_islands_out) and opts.uv_mode != "paint":
+        raise ValueError("UV template/island export requires --uv-mode paint")
     scene = load_scene(input_vox)
+    if opts.uv_mode == "paint":
+        from .paint_uv import unique_scene_models
+
+        scene = unique_scene_models(scene)
     mark("load_scene")
 
     if bool(print_nodes):
@@ -161,30 +172,42 @@ def convert(
         )
     mark("build_quads")
 
-    # Plat cutout meshes are single quads; remove padding/inset so their UVs span the whole patch.
+    # Keep the original atlas cutout policy; paint charts have their own gutters.
     atlas_pad = int(opts.atlas.pad)
     atlas_inset = float(opts.atlas.inset)
-    if bool(opts.plat_cutout) or bool(any_cutout):
+    if opts.uv_mode == "atlas" and (bool(opts.plat_cutout) or bool(any_cutout)):
         atlas_pad = 0
         atlas_inset = 0.0
 
-    atlas_result = atlas_mod.build_atlas(
-        scene,
-        mesher_result,
-        pad=atlas_pad,
-        inset=atlas_inset,
-        texel_scale=int(opts.atlas.texel_scale),
-        square=bool(opts.atlas.square),
-        pot=bool(opts.atlas.pot),
-        fixed_size=getattr(opts.atlas, "fixed_size", None),
-        layout=str(opts.atlas.layout),
-        tight_blocks=bool(opts.atlas.tight_blocks),
-        style=("baked" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.atlas.style)),
-        alpha=("rgba" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.texture_alpha)),
-        reuse_subrects=bool(getattr(opts.atlas, "reuse_subrects", True)),
-        compress_solid_quads=bool(getattr(opts.atlas, "compress_solid_quads", False)),
-        face_alias_uv_remap=bool(getattr(opts.atlas, "face_alias_uv_remap", False)),
-    )
+    paint_layout = None
+    if opts.uv_mode == "paint":
+        from .paint_uv import build_paint_atlas
+
+        atlas_result, paint_layout = build_paint_atlas(
+            scene, mesher_result,
+            pad=atlas_pad, texel_scale=int(opts.atlas.texel_scale),
+            square=bool(opts.atlas.square), pot=bool(opts.atlas.pot),
+            fixed_size=opts.atlas.fixed_size,
+            alpha=("rgba" if any_cutout else str(opts.texture_alpha)),
+        )
+    else:
+        atlas_result = atlas_mod.build_atlas(
+            scene,
+            mesher_result,
+            pad=atlas_pad,
+            inset=atlas_inset,
+            texel_scale=int(opts.atlas.texel_scale),
+            square=bool(opts.atlas.square),
+            pot=bool(opts.atlas.pot),
+            fixed_size=getattr(opts.atlas, "fixed_size", None),
+            layout=str(opts.atlas.layout),
+            tight_blocks=bool(opts.atlas.tight_blocks),
+            style=("baked" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.atlas.style)),
+            alpha=("rgba" if bool(opts.plat_cutout) or bool(any_cutout) else str(opts.texture_alpha)),
+            reuse_subrects=bool(getattr(opts.atlas, "reuse_subrects", True)),
+            compress_solid_quads=bool(getattr(opts.atlas, "compress_solid_quads", False)),
+            face_alias_uv_remap=bool(getattr(opts.atlas, "face_alias_uv_remap", False)),
+        )
     mark("build_atlas")
 
     texture_uri = None
@@ -289,6 +312,12 @@ def convert(
             rects[key] = rect
         uv_export.write_uv_json(uv_json_out, width=atlas_result.width, height=atlas_result.height, model_rects=rects)
         mark("write_uv_json")
+
+    if paint_layout is not None:
+        if uv_template_out:
+            paint_layout.write_template(uv_template_out, flip_v=bool(opts.flip_v))
+        if uv_islands_out:
+            paint_layout.write_json(uv_islands_out, flip_v=bool(opts.flip_v))
 
 
 def _print_scene_nodes(scene: VoxScene) -> None:

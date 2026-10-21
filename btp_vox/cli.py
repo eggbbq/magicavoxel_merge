@@ -53,6 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     
     parser.add_argument("--uv-out", help="Write per-model UV rectangles to this JSON file")
+    parser.add_argument("--uv-mode", choices=("atlas", "paint"), default="atlas", help="UV layout: atlas keeps existing packing; paint unfolds independent model surfaces for repainting")
+    parser.add_argument("--uv-template-out", help="Write a labeled SVG painting guide (requires --uv-mode paint)")
+    parser.add_argument("--uv-islands-out", help="Write painting layout and per-quad pixel coordinates as JSON (requires --uv-mode paint)")
     parser.add_argument("--uv-flip-v", action="store_true", help="Flip V texture coordinate")
     parser.add_argument("--uv2", action="store_true", help="Export secondary UV set (TEXCOORD_1); behavior is controlled by --uv2-mode")
     parser.add_argument("--uv2-mode", choices=("copy", "lightmap"), default="copy", help="How to generate UV2 (TEXCOORD_1): copy duplicates UV0; lightmap generates non-overlapping UVs")
@@ -86,10 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if (args.uv_template_out or args.uv_islands_out) and args.uv_mode != "paint":
+        parser.error("--uv-template-out and --uv-islands-out require --uv-mode paint")
 
     fields = getattr(PipelineOptions, "__dataclass_fields__", {}) or {}
     pipe_kwargs: dict = {
         "handedness": str(args.handedness),
+        "uv_mode": str(args.uv_mode),
         "scale": args.scale,
         "pivot": args.pivot,
         "flip_v": args.uv_flip_v,
@@ -129,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
         args.output,
         texture_out=args.tex_out,
         uv_json_out=args.uv_out,
+        uv_template_out=args.uv_template_out,
+        uv_islands_out=args.uv_islands_out,
         debug_transforms_out=args.debug_transforms_out,
         print_nodes=bool(args.print_nodes),
         output_format=str(args.format),
