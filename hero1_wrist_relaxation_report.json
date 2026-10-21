@@ -1,0 +1,116 @@
+{
+  "chop": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 3.121795502333708e-07,
+    "tool_pose_times": 51,
+    "tool_rotation_error_degrees": 0.11190581936148891,
+    "tool_position_error": 0.0001772220729393423
+  },
+  "clutch": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 3.1007867288720537e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 4.108642244029712e-07
+  },
+  "crouching": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 1.3738191809196602e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 6.213551941196335e-06
+  },
+  "eating": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 2.162133103959166e-07,
+    "tool_pose_times": 49,
+    "tool_rotation_error_degrees": 0.14803749339042993,
+    "tool_position_error": 5.0727519835146836e-05
+  },
+  "fishing": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 2.3140508122811407e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 6.189219839336599e-06
+  },
+  "fishing_pull": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 2.467706078541159e-07,
+    "tool_pose_times": 73,
+    "tool_rotation_error_degrees": 0.14265250287968312,
+    "tool_position_error": 0.0001950121771902677
+  },
+  "hands_over_head": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 4.786961795153919e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 1.574524694626278e-06
+  },
+  "hold_up": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 8.228086049722745e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 3.1944141659989457e-06
+  },
+  "idle": {
+    "changed": false
+  },
+  "jump": {
+    "changed": false
+  },
+  "run": {
+    "changed": false
+  },
+  "sitting": {
+    "changed": true,
+    "pose_times": 9,
+    "key_pose_palm_centre_error": 1.519626234052415e-07,
+    "tool_pose_times": 9,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 1.094804447097891e-06
+  },
+  "sleep": {
+    "changed": false
+  },
+  "stomach_pain": {
+    "changed": true,
+    "pose_times": 13,
+    "key_pose_palm_centre_error": 2.1900144899933143e-07,
+    "tool_pose_times": 13,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 2.981163415870451e-07
+  },
+  "surrendering": {
+    "changed": true,
+    "pose_times": 17,
+    "key_pose_palm_centre_error": 3.29514509253144e-07,
+    "tool_pose_times": 17,
+    "tool_rotation_error_degrees": 0.0,
+    "tool_position_error": 3.207041468692235e-05
+  },
+  "till": {
+    "changed": true,
+    "pose_times": 16,
+    "key_pose_palm_centre_error": 4.0535540904806387e-07,
+    "tool_pose_times": 97,
+    "tool_rotation_error_degrees": 0.14803749339042993,
+    "tool_position_error": 0.00018476199797771287
+  },
+  "walk": {
+    "changed": false
+  },
+  "walk_fast": {
+    "changed": false
+  }
+}

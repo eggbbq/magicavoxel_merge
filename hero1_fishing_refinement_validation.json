@@ -1,0 +1,40 @@
+{
+  "fishing": {
+    "samples": 577,
+    "palm_z_range": [
+      0.5470000505447388,
+      0.5914179682731628
+    ],
+    "palm_x_range": [
+      0.2829999625682831,
+      0.3571717143058777
+    ],
+    "elbow_flex_degrees": [
+      -70.3147416183411,
+      -60.55946929475702
+    ],
+    "max_grip_error_m": 3.5062661062048306e-06,
+    "max_wrist_swing_degrees": 30.125734372162235,
+    "max_wrist_twist_degrees": 7.859093135451703,
+    "max_entry_difference_m": 0.004966570322037258
+  },
+  "fishing_pull": {
+    "samples": 305,
+    "palm_z_range": [
+      0.538425087928772,
+      1.1393394470214844
+    ],
+    "palm_x_range": [
+      0.12484997510910034,
+      0.38110285997390747
+    ],
+    "elbow_flex_degrees": [
+      -96.96980074112598,
+      -19.391941827325457
+    ],
+    "max_grip_error_m": 0.014738124509908657,
+    "max_wrist_swing_degrees": 32.14516176254654,
+    "max_wrist_twist_degrees": 22.000003458117927,
+    "max_entry_difference_m": 0
+  }
+}

@@ -97,15 +97,21 @@ BTP_VOX_TEX_REUSE_SUBRECTS=0 ./batch_convert.sh
 - 默认把坐标转换成符合 glTF 规范、可直接用于 LayaAir 的 `Y-up` 右手系
 - 如需兼容旧版本导出的方向，可使用 `--handedness left` 输出 `Y-up` 左手系
 
-注意：
-
-- 如果模型或场景实例本身带有旋转，当前导出结果里的 `pivot`（锚点）和节点位置可能会有偏差；依赖精确锚点对齐的资源建议在导出后额外检查。
-
 如果你需要更接近原始 VOX 层级的结果，可以使用：
 
-- `--no-merge-nodes`：尽量保留原始 scene graph
+- `--no-merge-nodes`：保留原始 scene graph，包括 nTRN / nGRP / nSHP 包装节点（单独使用，不叠加角色层级简化选项）
 - `--character-apart`：保留角色部件为独立 mesh
 - `--character-flat`：在 `--character-apart` 的基础上，把每个角色根下的部件扁平到一层
+
+导出 `hero1.vox` 并保留 MagicaVoxel 中命名的角色分组：
+
+```bash
+./export_hero1.sh
+```
+
+脚本使用 `--character-apart`，保留 `hero1 → hand-right / hand-left → upper-arm / forearm / palm` 等层级。输出文件写入当前工作目录。
+
+切换 `corner`、`center`、`bottom_center` 只改变 mesh 的局部锚点，部件的世界位置保持一致。导出器按 VOX 网格原点 `floor(SIZE / 2)` 对齐，并在 mesh 节点处补偿一次锚点偏移；空白边距、奇数尺寸、旋转和重复实例都参与计算。
 
 ## 常用参数
 
@@ -215,7 +221,6 @@ plat / cutout 推荐命名：
 
 - `--vox-view` 这个参数目前仍保留在 CLI 里做兼容，但当前版本不会在默认自动 wrapper 折叠之外再增加额外行为；不建议依赖它来区分导出结果。
 - `bottom_center` 只负责把 pivot 放到底部中心并保持模型视觉位置，不会额外把整个场景自动吸附到 `y=0`。
-- 如果模型或场景实例带有旋转，当前导出时 `pivot`（锚点）和节点位置都可能出现偏差。
 - 名称为 `@t`（或兼容旧写法 `-plat-t`）的模型会走特殊 cutout 处理，这会影响其几何 pivot 计算方式。
 
 ## 排查

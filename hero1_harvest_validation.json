@@ -1,0 +1,39 @@
+{
+  "samples": 289,
+  "min_tool_z": 0.03635687008500099,
+  "min_character_z": 0.002911488525569439,
+  "hand_spacing_m": [
+    0.1803378383629024,
+    0.20266900584101677
+  ],
+  "max_socket_error_m": 6.006850114687196e-08,
+  "max_hand_perpendicular_error_m": 0.01950442264902052,
+  "elbow_flex_degrees": [
+    -123.3790208651146,
+    -39.70235285272087
+  ],
+  "max_wrist_swing_degrees": 32.84247285038607,
+  "max_wrist_twist_degrees": 22.01119813816758,
+  "cut_blade_height_m": [
+    0.06258135288953781,
+    0.12040957808494568
+  ],
+  "max_cut_blade_height_span_m": 0.026204675436019897,
+  "heading_degrees": [
+    7.997914762391704,
+    112.1014329244095
+  ],
+  "hips_yaw_degrees": [
+    -13.999594562512307,
+    11.99900568763254
+  ],
+  "knee_flex_degrees": [
+    23.730792176819378,
+    40.63436631591496
+  ],
+  "min_stance_width_m": 0.3416409838210962,
+  "max_return_blade_height_m": 0.3608928918838501,
+  "loop_pose_error_m": 0.0,
+  "max_foot_planar_motion_m": 0.0030685429282074866,
+  "hip_sway_m": 0.04499680548906326
+}

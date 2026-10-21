@@ -197,7 +197,8 @@ def convert(
         texture_uri = texture_path.name
         texture_png = None
 
-    meshes = _assemble_meshes(
+    # Build geometry once per model; separate nodes retain every scene instance.
+    meshes, model_to_mesh = _build_model_meshes(
         scene,
         mesher_result,
         atlas_result,
@@ -215,29 +216,21 @@ def convert(
     no_merge_nodes = bool(getattr(opts, "no_merge_nodes", False)) or character_apart
 
     if no_merge_nodes:
-        meshes, model_to_mesh = _build_model_meshes(
-            scene,
-            mesher_result,
-            atlas_result,
-            scale=float(opts.scale),
-            flip_v=bool(opts.flip_v),
-            pivot=str(opts.pivot),
-            export_uv2=bool(getattr(opts, "export_uv2", False)),
-            uv2_mode=str(getattr(opts, "uv2_mode", "copy")),
-            export_vertex_color=bool(getattr(opts, "export_vertex_color", False)),
-        )
         nodes, root_node_ids, meshes = _build_scene_nodes_no_extra(scene, model_to_mesh, meshes, scale=float(opts.scale))
+        nodes = _apply_pivot_compensation(nodes, meshes)
         if character_apart:
             nodes, root_node_ids = _collapse_scene_nodes_inplace(scene, nodes, root_node_ids, model_to_mesh)
             if character_flat:
                 nodes, root_node_ids = _flatten_character_roots(nodes, root_node_ids)
     else:
-        nodes, root_node_ids = _build_scene_nodes_two_level(scene, {m["model_id"]: i for i, m in enumerate(meshes)}, scale=float(opts.scale))
+        nodes, root_node_ids = _build_scene_nodes_two_level(scene, model_to_mesh, scale=float(opts.scale))
+        nodes = _apply_pivot_compensation(nodes, meshes)
     mark("build_scene_nodes")
 
-    nodes, root_node_ids = _collapse_auto_wrappers(nodes, root_node_ids)
-
-    nodes, root_node_ids = _collapse_same_name_single_child(nodes, root_node_ids)
+    # Explicit no-merge mode keeps even the original nTRN/nGRP/nSHP wrappers.
+    if not (bool(opts.no_merge_nodes) and not character_apart):
+        nodes, root_node_ids = _collapse_auto_wrappers(nodes, root_node_ids)
+        nodes, root_node_ids = _collapse_same_name_single_child(nodes, root_node_ids)
 
     nodes, meshes = _sanitize_export_names(nodes, meshes)
 
@@ -980,300 +973,6 @@ def _build_plat_cutout_quad_with_basis(
     ]
 
 
-def _assemble_meshes(
-    scene: VoxScene,
-    mesher_result: MesherResult,
-    atlas_result: atlas_mod.AtlasBuildResult,
-    *,
-    scale: float,
-    flip_v: bool,
-    pivot: str = "corner",
-    export_uv2: bool = False,
-    uv2_mode: str = "copy",
-    export_vertex_color: bool = False,
-) -> List[dict]:
-    # IMPORTANT: We assemble meshes per scene-graph shape instance (nSHP), not per model.
-    # A single model_id can be referenced by multiple nSHP nodes (instancing). If we only
-    # export one mesh per model_id, those additional instances disappear.
-    meshes: List[dict] = []
-
-    if pivot not in ("corner", "bottom_center", "center"):
-        raise ValueError("pivot must be one of: corner, bottom_center, center")
-
-    model_geom_cache: dict[int, dict] = {}
-
-    def build_model_geom(midx: int) -> dict | None:
-        if midx in model_geom_cache:
-            return model_geom_cache[midx]
-
-        quads = mesher_result.quads_per_model[midx]
-        positions: list[tuple[float, float, float]] = []
-        normals: list[tuple[float, float, float]] = []
-        texcoords: list[tuple[float, float]] = []
-        indices: list[int] = []
-
-        for qidx, quad in enumerate(quads):
-            uv_rect = atlas_result.quad_uvs[(midx, qidx)]
-
-            p_arr = np.asarray(quad.verts, dtype=np.float32)
-            p0, p1, _p2, p3 = p_arr
-            edge_u = p1 - p0
-            edge_v = p3 - p0
-            face_normal = np.cross(edge_u, edge_v)
-            tri_order = (0, 1, 2, 0, 2, 3)
-            if float(np.dot(face_normal, np.asarray(quad.normal, dtype=np.float32))) < 0.0:
-                tri_order = (0, 2, 1, 0, 3, 2)
-
-            # Determine which quad edge corresponds to (size_u, size_v).
-            # Compare in model-space voxel units on both sides; mixing scaled/unscaled
-            # units can create near-ties that randomly swap UV axes on some quads.
-            w_vox = float(quad.size_u)
-            h_vox = float(quad.size_v)
-            e1 = edge_u
-            e3 = edge_v
-            len1 = float(np.linalg.norm(e1))
-            len3 = float(np.linalg.norm(e3))
-            d_keep = abs(len1 - w_vox) + abs(len3 - h_vox)
-            d_swap = abs(len1 - h_vox) + abs(len3 - w_vox)
-            if d_swap < d_keep:
-                u_axis = e3
-                v_axis = e1
-            else:
-                u_axis = e1
-                v_axis = e3
-
-            uu = float(np.dot(u_axis, u_axis)) or 1.0
-            vv = float(np.dot(v_axis, v_axis)) or 1.0
-            def map_uv(idx: int) -> tuple[float, float]:
-                rel = p_arr[idx] - p0
-                a = float(np.dot(rel, u_axis) / uu)
-                b = float(np.dot(rel, v_axis) / vv)
-                a = 0.0 if a < 0.0 else (1.0 if a > 1.0 else a)
-                b = 0.0 if b < 0.0 else (1.0 if b > 1.0 else b)
-                u = uv_rect.u0 + (uv_rect.u1 - uv_rect.u0) * a + (uv_rect.u2 - uv_rect.u0) * b
-                v = uv_rect.v0 + (uv_rect.v1 - uv_rect.v0) * a + (uv_rect.v2 - uv_rect.v0) * b
-                if flip_v:
-                    v = 1.0 - v
-                return (float(u), float(v))
-
-            base = len(positions)
-            for vx in quad.verts:
-                positions.append((vx[0] * scale, vx[1] * scale, vx[2] * scale))
-                normals.append(quad.normal)
-            texcoords.extend(map_uv(i) for i in range(4))
-            indices.extend(base + idx for idx in tri_order)
-
-        if not positions:
-            vox = np.asarray(scene.models[midx].voxels)
-            if vox.size:
-                try:
-                    vcnt = int(vox.shape[0])
-                except Exception:
-                    vcnt = int(vox.size)
-                sys.stderr.write(
-                    f"[btp_vox] warning: model has voxels but produced no quads; skipped export. "
-                    f"model_id={midx} name={scene.models[midx].name} voxel_count={vcnt} size={scene.models[midx].size}\n"
-                )
-            model_geom_cache[midx] = {}
-            return None
-
-        pos_arr = np.asarray(positions, dtype=np.float32)
-        
-        requested_pivot = pivot
-        pivot_for_geom = requested_pivot
-        is_plat_t = _is_plat_t_model(scene, midx)
-        if is_plat_t:
-            pivot_for_geom = "top_center"
-
-        if pivot_for_geom == "corner":
-            p = np.asarray((0.0, 0.0, 0.0), dtype=np.float32)
-        else:
-            # Use actual geometry bounds (not the model grid size) so the pivot is visually centered.
-            bmin = pos_arr.min(axis=0)
-            bmax = pos_arr.max(axis=0)
-            cx = float(bmin[0] + bmax[0]) * 0.5
-            cy = float(bmin[1] + bmax[1]) * 0.5
-            
-            if pivot_for_geom == "top_center":
-                cz = float(bmax[2])  # Pivot at top (max Z)
-            else:  # center or bottom_center
-                cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
-            
-            p = np.asarray((cx, cy, cz), dtype=np.float32)
-
-        # For bottom_center: calculate half_height and move vertices up
-        half_height_for_node = None
-        if pos_arr.size:
-            pos_arr = pos_arr.copy()
-            pos_arr[:, 0] -= float(p[0])
-            pos_arr[:, 1] -= float(p[1])
-            pos_arr[:, 2] -= float(p[2])
-            
-            if requested_pivot == "bottom_center":
-                bmin_centered = pos_arr.min(axis=0)
-                bmax_centered = pos_arr.max(axis=0)
-                height = float(bmax_centered[2] - bmin_centered[2])
-                half_height_for_node = height * 0.5
-                # Move vertices up by half-height (pivot at bottom)
-                pos_arr[:, 2] += half_height_for_node
-
-                if is_plat_t:
-                    extra_plat_offset = _compute_plat_base_half_height(scene, midx, scale)
-                    if float(extra_plat_offset):
-                        pos_arr[:, 2] += float(extra_plat_offset)
-
-        texcoords_arr = np.asarray(texcoords, dtype=np.float32)
-        texcoords1_arr = None
-        if bool(export_uv2):
-            if str(uv2_mode) == "lightmap":
-                quad_count = int(texcoords_arr.shape[0] // 4)
-                grid = int(math.ceil(math.sqrt(float(max(1, quad_count)))))
-                pad = 0.05
-                cell = 1.0 / float(grid)
-                inner = cell * (1.0 - 2.0 * pad)
-                uv1 = np.empty_like(texcoords_arr)
-                for qi in range(quad_count):
-                    gx = int(qi % grid)
-                    gy = int(qi // grid)
-                    x0 = float(gx) * cell + cell * pad
-                    y0 = float(gy) * cell + cell * pad
-                    x1 = x0 + inner
-                    y1 = y0 + inner
-                    base = qi * 4
-                    uv1[base + 0] = (x0, y0)
-                    uv1[base + 1] = (x1, y0)
-                    uv1[base + 2] = (x1, y1)
-                    uv1[base + 3] = (x0, y1)
-                texcoords1_arr = uv1
-            else:
-                texcoords1_arr = texcoords_arr.copy()
-
-        color0_arr = None
-        if bool(export_vertex_color):
-            n = int(pos_arr.shape[0])
-            color0_arr = np.ones((n, 4), dtype=np.float32)
-
-        geom = {
-            "positions": pos_arr,
-            "normals": np.asarray(normals, dtype=np.float32),
-            "texcoords": texcoords_arr,
-            "texcoords1": texcoords1_arr,
-            "color0": color0_arr,
-            "indices": np.asarray(indices, dtype=np.uint32),
-            "pivot_p": (float(p[0]), float(p[1]), float(p[2])),
-        }
-        if half_height_for_node is not None:
-            geom["half_height"] = half_height_for_node
-        model_geom_cache[midx] = geom
-        return geom
-
-    def merge_geoms(geoms: list[tuple[int, dict]]) -> dict | None:
-        if not geoms:
-            return None
-        pos_list: list[np.ndarray] = []
-        nrm_list: list[np.ndarray] = []
-        uv_list: list[np.ndarray] = []
-        uv1_list: list[np.ndarray] = []
-        any_uv1 = False
-        col_list: list[np.ndarray] = []
-        any_col = False
-        idx_list: list[np.ndarray] = []
-        base = 0
-        for _midx, g in geoms:
-            pos = np.asarray(g["positions"], dtype=np.float32)
-            nrm = np.asarray(g["normals"], dtype=np.float32)
-            uv = np.asarray(g["texcoords"], dtype=np.float32)
-            uv1 = g.get("texcoords1")
-            if uv1 is not None:
-                any_uv1 = True
-                uv1_list.append(np.asarray(uv1, dtype=np.float32))
-            col = g.get("color0")
-            if col is not None:
-                any_col = True
-                col_list.append(np.asarray(col, dtype=np.float32))
-            idx = np.asarray(g["indices"], dtype=np.uint32)
-            pos_list.append(pos)
-            nrm_list.append(nrm)
-            uv_list.append(uv)
-            idx_list.append(idx + np.uint32(base))
-            base += int(pos.shape[0])
-        if base == 0:
-            return None
-        return {
-            "positions": np.vstack(pos_list),
-            "normals": np.vstack(nrm_list),
-            "texcoords": np.vstack(uv_list),
-            "texcoords1": (np.vstack(uv1_list) if any_uv1 else None),
-            "color0": (np.vstack(col_list) if any_col else None),
-            "indices": np.concatenate(idx_list),
-        }
-
-    def walk(node_id: int, wt: tuple[float, float, float], wr: tuple[float, float, float, float]) -> None:
-        if node_id < 0 or node_id >= len(scene.nodes):
-            return
-        nd = scene.nodes[int(node_id)]
-        if nd.kind == "trn":
-            lt = nd.translation
-            lr = nd.rotation
-            # MagicaVoxel nTRN translations are authored in parent space; do NOT rotate by parent rotation.
-            nwt = (wt[0] + lt[0], wt[1] + lt[1], wt[2] + lt[2])
-            nwr = _quat_mul(wr, lr)
-            nwr = _quat_norm(nwr)
-            for ch in nd.children:
-                walk(int(ch), nwt, nwr)
-            return
-
-        if nd.kind == "grp":
-            for ch in nd.children:
-                walk(int(ch), wt, wr)
-            return
-
-        if nd.kind == "shp":
-            geoms: list[tuple[int, dict]] = []
-            for mid in nd.model_ids:
-                if 0 <= int(mid) < len(scene.models):
-                    g = build_model_geom(int(mid))
-                    if g is not None:
-                        geoms.append((int(mid), g))
-            merged = merge_geoms(geoms)
-            if merged is None:
-                return
-
-            t = np.asarray((float(wt[0]) * scale, float(wt[1]) * scale, float(wt[2]) * scale), dtype=np.float32)
-            r = (float(wr[0]), float(wr[1]), float(wr[2]), float(wr[3]))
-
-            # Name instances uniquely to avoid editor collapsing duplicates.
-            if len(nd.model_ids) == 1 and 0 <= int(nd.model_ids[0]) < len(scene.models):
-                base_name = _export_model_name(scene.models[int(nd.model_ids[0])].name)
-            else:
-                base_name = _export_model_name(nd.name)
-            name = f"{base_name}__{node_id}"
-
-            meshes.append(
-                {
-                    "name": name,
-                    "model_id": int(nd.model_ids[0]) if nd.model_ids else -1,
-                    "positions": merged["positions"],
-                    "normals": merged["normals"],
-                    "texcoords": merged["texcoords"],
-                    "texcoords1": merged["texcoords1"],
-                    "color0": merged.get("color0"),
-                    "indices": merged["indices"],
-                    "translation": (float(t[0]), float(t[1]), float(t[2])),
-                    "rotation": r,
-                    "pivot_p": (0.0, 0.0, 0.0),
-                    "pivot_rp": (0.0, 0.0, 0.0),
-                }
-            )
-            return
-
-
-    for rid in scene.root_node_ids:
-        walk(int(rid), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
-
-    return meshes
-
-
 def _build_model_meshes(
     scene: VoxScene,
     mesher_result: MesherResult,
@@ -1362,7 +1061,7 @@ def _build_model_meshes(
             continue
 
         pos_arr = np.asarray(positions, dtype=np.float32)
-        
+
         requested_pivot = pivot
         pivot_for_geom = requested_pivot
         is_plat_t = _is_plat_t_model(scene, midx)
@@ -1380,30 +1079,23 @@ def _build_model_meshes(
             
             if pivot_for_geom == "top_center":
                 cz = float(bmax[2])  # Pivot at top (max Z)
-            else:  # center or bottom_center
-                cz = float(bmin[2] + bmax[2]) * 0.5  # Always use center for Z
-            
+            elif requested_pivot == "bottom_center":
+                cz = float(bmin[2])
+            else:
+                cz = float(bmin[2] + bmax[2]) * 0.5
+
             p = np.asarray((cx, cy, cz), dtype=np.float32)
 
-        # For bottom_center: calculate half_height and move vertices up
-        half_height_for_node = None
-        if pos_arr.size:
-            pos_arr = pos_arr.copy()
-            pos_arr[:, 0] -= float(p[0])
-            pos_arr[:, 1] -= float(p[1])
-            pos_arr[:, 2] -= float(p[2])
-            
-            if requested_pivot == "bottom_center":
-                bmin_centered = pos_arr.min(axis=0)
-                bmax_centered = pos_arr.max(axis=0)
-                height = float(bmax_centered[2] - bmin_centered[2])
-                half_height_for_node = height * 0.5
-                # Move vertices up by half-height (pivot at bottom)
-                pos_arr[:, 2] += half_height_for_node
-                if is_plat_t:
-                    extra_plat_offset = _compute_plat_base_half_height(scene, midx, scale)
-                    if float(extra_plat_offset):
-                        pos_arr[:, 2] += float(extra_plat_offset)
+        # VOX scene transforms refer to floor(SIZE / 2), including empty grid
+        # margins. Changing the mesh pivot must not move the authored geometry.
+        # See ogt_vox.h, "EXPLANATION OF MODEL PIVOTS".
+        vox_origin = np.asarray([int(s) // 2 for s in scene.models[midx].size], dtype=np.float32) * scale
+        pivot_offset = p - vox_origin
+        pos_arr = pos_arr - p
+
+        if is_plat_t and requested_pivot == "bottom_center":
+            # Preserve the explicit top-cutout lift above its base model.
+            pos_arr[:, 2] += _compute_plat_base_half_height(scene, midx, scale)
 
         mesh_index = len(meshes)
 
@@ -1449,9 +1141,9 @@ def _build_model_meshes(
             "texcoords1": texcoords1_arr,
             "color0": color0_arr,
             "indices": np.asarray(indices, dtype=np.uint32),
+            "pivot_p": tuple(float(x) for x in p),
+            "pivot_offset": tuple(float(x) for x in pivot_offset),
         }
-        if half_height_for_node is not None:
-            mesh_dict["half_height"] = half_height_for_node
         meshes.append(mesh_dict)
         model_to_mesh[int(midx)] = int(mesh_index)
 
@@ -1525,6 +1217,9 @@ def _build_scene_nodes_no_extra(
         for mid in mesh_ids:
             m = meshes[int(mid)]
             pos = np.asarray(m["positions"], dtype=np.float32)
+            # A merged nSHP has one node transform, so restore each model's
+            # VOX origin before combining geometry with different mesh pivots.
+            pos = pos + np.asarray(m.get("pivot_offset", (0.0, 0.0, 0.0)), dtype=np.float32)
             nrm = np.asarray(m["normals"], dtype=np.float32)
             uv = np.asarray(m["texcoords"], dtype=np.float32)
             pos_list.append(pos)
@@ -1686,8 +1381,9 @@ def _build_scene_nodes_two_level(
         if nd.kind == "trn":
             lt = tuple(float(x) for x in nd.translation)
             lr = tuple(float(x) for x in nd.rotation)
-            # MagicaVoxel nTRN translation is in parent space; do not rotate by parent.
-            t = (t[0] + lt[0], t[1] + lt[1], t[2] + lt[2])
+            # world = parent * local: parent rotation also affects local translation.
+            rt = _quat_rotate_vec(r, lt)
+            t = (t[0] + rt[0], t[1] + rt[1], t[2] + rt[2])
             r = _quat_norm(_quat_mul(r, lr))
 
         world_t[nid] = t
@@ -1796,31 +1492,6 @@ def _to_y_up_nodes(nodes: list[dict], meshes: list[dict], *, handedness: str = "
     handedness = _normalize_handedness(handedness)
     left_handed = handedness == "left"
 
-    # Helper function to find half_height in children
-    def find_half_height_in_children(node_idx: int, nodes: list[dict], meshes: list[dict]) -> float | None:
-        """Recursively search for half_height in child nodes"""
-        node = nodes[node_idx]
-        mesh_id = node.get("mesh")
-        
-        # Check current node
-        if mesh_id is not None:
-            try:
-                mi = int(mesh_id)
-                if 0 <= mi < len(meshes):
-                    half_height = meshes[mi].get("half_height")
-                    if half_height is not None:
-                        return float(half_height)
-            except:
-                pass
-        
-        # Check children
-        child_ids = node.get("children", [])
-        for child_id in child_ids:
-            child_half_height = find_half_height_in_children(child_id, nodes, meshes)
-            if child_half_height is not None:
-                return child_half_height
-        
-        return None
     axis_m = np.asarray(
         [
             [1.0, 0.0, 0.0],
@@ -1852,31 +1523,6 @@ def _to_y_up_nodes(nodes: list[dict], meshes: list[dict], *, handedness: str = "
                 rmat = h @ rmat @ h
             mm["rotation"] = _mat3_to_quat(rmat)
         
-        # For bottom_center: move node down by half_height to compensate for vertex movement
-        # Vertices moved up -> node moves down -> visual position stays the same
-        if tr is not None:
-            # First check if this node has a mesh
-            mesh_id = mm.get("mesh")
-            half_height = None
-            
-            if mesh_id is not None:
-                try:
-                    mi = int(mesh_id)
-                    if 0 <= mi < len(meshes):
-                        half_height = meshes[mi].get("half_height")
-                except:
-                    pass
-            
-            # If no half_height found, search in children
-            if half_height is None:
-                node_idx = len(out)  # Current node index
-                half_height = find_half_height_in_children(node_idx, nodes, meshes)
-            
-            # Apply adjustment if half_height found
-            if half_height is not None:
-                tx, ty, tz = mm["translation"]
-                mm["translation"] = (float(tx), float(ty) - float(half_height), float(tz))
-
         out.append(mm)
 
     return out
@@ -2245,6 +1891,12 @@ def _flatten_character_roots(nodes: list[dict], root_node_ids: list[int]) -> tup
 
         if not mesh_desc:
             continue
+
+        # Detach the original subtree before reparenting its meshes. Unreachable
+        # wrappers are still exported, so stale links would give meshes multiple
+        # parents and could apply wrapper transforms again during later collapse.
+        for nid in seen:
+            nodes[nid]["children"] = []
 
         # Recompute each mesh node's local transform relative to the root, and detach its children.
         new_children: list[int] = []

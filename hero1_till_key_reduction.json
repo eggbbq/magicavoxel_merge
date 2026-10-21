@@ -1,0 +1,20 @@
+{
+  "before": {
+    "keys": 2001,
+    "times": 97,
+    "tool_keys": 970,
+    "tool_times": 97
+  },
+  "after": {
+    "keys": 990,
+    "times": 26,
+    "tool_keys": 185,
+    "tool_times": 26
+  },
+  "constant_channels_collapsed": 19,
+  "sampled_poses": 577,
+  "tool_position_error_m": 0.00046758534519191896,
+  "tool_angle_error_degrees": 0.6760825397340098,
+  "hoe_vertex_error_m": 0.007198088320953967,
+  "character_vertex_error_m": 6.107658604359387e-07
+}

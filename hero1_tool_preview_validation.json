@@ -1,0 +1,11 @@
+{
+  "socket": "tool.R",
+  "parent_bone": "hand.R",
+  "deforming": false,
+  "bone_count": 14,
+  "preview_prop": "PREVIEW_Hoe",
+  "grip_position_error": 6.664652624284791e-08,
+  "min_tool_z": 0.004565924406051636,
+  "existing_action_keys_unchanged": true,
+  "existing_midpose_vertex_error": 0
+}

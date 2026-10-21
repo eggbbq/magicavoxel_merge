@@ -1,0 +1,54 @@
+{
+  "clips": {
+    "paddle_left": {
+      "frames": 96,
+      "fps": 48,
+      "duration": 2.0,
+      "author_pose_times": 15,
+      "tool_pose_times": 30,
+      "keys": 894,
+      "max_grip_reach_error_m": 2.889442358861166e-07
+    },
+    "paddle_right": {
+      "frames": 96,
+      "fps": 48,
+      "duration": 2.0,
+      "author_pose_times": 15,
+      "tool_pose_times": 36,
+      "keys": 918,
+      "max_grip_reach_error_m": 2.7957056521316944e-07
+    }
+  },
+  "preserved_actions": [
+    "chop",
+    "clutch",
+    "crouching",
+    "eating",
+    "fishing",
+    "fishing_pull",
+    "hands_over_head",
+    "harvest",
+    "hold_up",
+    "idle",
+    "javelin_throw",
+    "jump",
+    "run",
+    "sitting",
+    "sleep",
+    "stomach_pain",
+    "surrendering",
+    "till",
+    "walk",
+    "walk_fast"
+  ],
+  "boat_preview_only": true,
+  "paddle_preview_only": true,
+  "stance": "standing",
+  "foot_plane_z": 0.0,
+  "supported_preview_vessels": [
+    "PLANK",
+    "RAFT",
+    "CANOE",
+    "WOOD_BOAT"
+  ]
+}

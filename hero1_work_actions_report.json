@@ -1,0 +1,54 @@
+{
+  "new_actions": {
+    "fishing": {
+      "frames": 144,
+      "duration": 3.0,
+      "looping": true,
+      "distinct_key_times": 9,
+      "keys": 499,
+      "key_pose_grip_reach_error": 1.2780514954334827e-07
+    },
+    "fishing_pull": {
+      "frames": 64,
+      "duration": 1.3333333333333333,
+      "looping": false,
+      "distinct_key_times": 9,
+      "keys": 579,
+      "key_pose_grip_reach_error": 1.850029572223709e-07
+    },
+    "chop": {
+      "frames": 56,
+      "duration": 1.1666666666666667,
+      "looping": true,
+      "distinct_key_times": 9,
+      "keys": 651,
+      "key_pose_grip_reach_error": 1.4634918661077232e-07
+    },
+    "till": {
+      "frames": 72,
+      "duration": 1.5,
+      "looping": true,
+      "distinct_key_times": 16,
+      "keys": 1086,
+      "key_pose_grip_reach_error": 2.763314277557786e-07
+    }
+  },
+  "preserved_actions": [
+    "chop",
+    "clutch",
+    "crouching",
+    "eating",
+    "fishing",
+    "fishing_pull",
+    "hands_over_head",
+    "hold_up",
+    "idle",
+    "jump",
+    "run",
+    "sitting",
+    "sleep",
+    "till",
+    "walk",
+    "walk_fast"
+  ]
+}

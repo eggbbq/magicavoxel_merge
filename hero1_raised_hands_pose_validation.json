@@ -1,0 +1,28 @@
+{
+  "hands_over_head": {
+    "hits": 0,
+    "examples": [],
+    "palm_z_range": [
+      1.2659997940063477,
+      1.2739999294281006
+    ],
+    "elbow_flex_range": [
+      -52.06042585388921,
+      -48.80143182726889
+    ],
+    "max_palm_normal_error_radians": 0
+  },
+  "hold_up": {
+    "hits": 0,
+    "examples": [],
+    "palm_z_range": [
+      1.241999626159668,
+      1.2580002546310425
+    ],
+    "elbow_flex_range": [
+      -33.42926806236021,
+      -30.77577713585069
+    ],
+    "max_palm_normal_error_radians": 0
+  }
+}

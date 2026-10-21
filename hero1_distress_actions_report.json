@@ -1,0 +1,18 @@
+{
+  "stomach_pain": {
+    "frames": 48,
+    "duration": 1.0,
+    "looping": true,
+    "distinct_key_times": 13,
+    "keys": 933,
+    "key_pose_grip_reach_error": 1.737759081973225e-07
+  },
+  "surrendering": {
+    "frames": 48,
+    "duration": 1.0,
+    "looping": true,
+    "distinct_key_times": 17,
+    "keys": 1133,
+    "key_pose_grip_reach_error": 1.4057727354849284e-07
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "bones": 18,
+  "clips": {
+    "chop": {
+      "joint_position_error_m": 1.2731557704981462e-07,
+      "palm_tool_matrix_error": 6.556510925292969e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 109
+    },
+    "clutch": {
+      "joint_position_error_m": 1.3743241686893043e-07,
+      "palm_tool_matrix_error": 5.364418029785156e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "crouching": {
+      "joint_position_error_m": 1.1638178938488147e-07,
+      "palm_tool_matrix_error": 5.960464477539062e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "eating": {
+      "joint_position_error_m": 1.0086270780058398e-07,
+      "palm_tool_matrix_error": 5.364418029785156e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 105
+    },
+    "fishing": {
+      "joint_position_error_m": 1.4911634891946193e-07,
+      "palm_tool_matrix_error": 5.960464477539062e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "fishing_pull": {
+      "joint_position_error_m": 1.3758380198940178e-07,
+      "palm_tool_matrix_error": 7.748603820800781e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 120
+    },
+    "hands_over_head": {
+      "joint_position_error_m": 2.4620758953479386e-07,
+      "palm_tool_matrix_error": 5.364418029785156e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "hold_up": {
+      "joint_position_error_m": 3.8426509375058493e-07,
+      "palm_tool_matrix_error": 4.172325134277344e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "idle": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "jump": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 73
+    },
+    "run": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "sitting": {
+      "joint_position_error_m": 9.18569267238524e-08,
+      "palm_tool_matrix_error": 3.5762786865234375e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "sleep": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "stomach_pain": {
+      "joint_position_error_m": 6.705522537231445e-08,
+      "palm_tool_matrix_error": 5.364418029785156e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 73
+    },
+    "surrendering": {
+      "joint_position_error_m": 8.940696716308594e-08,
+      "palm_tool_matrix_error": 2.980232238769531e-07,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "till": {
+      "joint_position_error_m": 2.285531632249397e-06,
+      "palm_tool_matrix_error": 5.221366882324219e-05,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 150
+    },
+    "walk": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    },
+    "walk_fast": {
+      "joint_position_error_m": 0.0,
+      "palm_tool_matrix_error": 0.0,
+      "arm_local_width_error": 0.0,
+      "body_matrix_error": 0.0,
+      "samples": 65
+    }
+  },
+  "samples": 1410
+}

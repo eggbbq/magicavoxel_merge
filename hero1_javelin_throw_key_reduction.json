@@ -1,0 +1,20 @@
+{
+  "before": {
+    "keys": 953,
+    "times": 38,
+    "tool_keys": 158,
+    "tool_times": 38
+  },
+  "after": {
+    "keys": 913,
+    "times": 28,
+    "tool_keys": 118,
+    "tool_times": 28
+  },
+  "constant_channels_collapsed": 0,
+  "sampled_poses": 961,
+  "tool_position_error_m": 0.0,
+  "tool_angle_error_degrees": 0.6330356993768276,
+  "javelin_vertex_error_m": 0.00771020682527569,
+  "character_vertex_error_m": 0.0
+}

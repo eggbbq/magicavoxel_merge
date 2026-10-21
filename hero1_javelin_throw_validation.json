@@ -1,0 +1,47 @@
+{
+  "samples": 481,
+  "release_frame": 43.0,
+  "right_hand_x_m": [
+    -0.3900410532951355,
+    0.8144039511680603
+  ],
+  "right_hand_z_m": [
+    0.34407761693000793,
+    0.9751707315444946
+  ],
+  "body_pitch_degrees": [
+    -22.99999417932439,
+    38.0000043254082
+  ],
+  "body_yaw_degrees": [
+    -38.028751600392646,
+    62.000017662415246
+  ],
+  "hips_yaw_degrees": [
+    -22.000001750570636,
+    26.000008122887515
+  ],
+  "knee_flex_degrees": [
+    0.0,
+    87.22219871997983
+  ],
+  "elbow_flex_degrees": [
+    -100.0000005060238,
+    -4.999999000772815
+  ],
+  "max_wrist_swing_degrees": 0,
+  "max_wrist_twist_degrees": 0,
+  "min_character_z_m": -0.0008490215986967087,
+  "max_held_spear_socket_error_m": 5.960464477539063e-08,
+  "left_foot_max_height_m": 0.10412022471427917,
+  "right_foot_max_height_m": 0.13399949669837952,
+  "max_lowest_foot_z_m": 0.005945341195911169,
+  "start_end_pose_difference_m": 0.0,
+  "plant_foot_slide_m": 0.010002757298971859,
+  "flight_distance_after_four_frames_m": 0.5737317316568963,
+  "recovery_palm_height_m": [
+    0.4749349355697632,
+    0.5031391382217407
+  ],
+  "recovery_max_elbow_flex_degrees": 7.000003467591724
+}

@@ -1,0 +1,128 @@
+{
+  "chop": {
+    "swing": 32.62,
+    "twist": 22.07,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "clutch": {
+    "swing": 32.0,
+    "twist": 21.87,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "crouching": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "eating": {
+    "swing": 32.11,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "fishing": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "fishing_pull": {
+    "swing": 32.5,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.926,
+    "hits": 0,
+    "examples": []
+  },
+  "hands_over_head": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.932,
+    "hits": 0,
+    "examples": []
+  },
+  "hold_up": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.934,
+    "hits": 0,
+    "examples": []
+  },
+  "idle": {
+    "swing": 0,
+    "twist": 0,
+    "min_wrist_area_ratio": 1.0,
+    "hits": 0,
+    "examples": []
+  },
+  "jump": {
+    "swing": 0,
+    "twist": 0,
+    "min_wrist_area_ratio": 1.0,
+    "hits": 0,
+    "examples": []
+  },
+  "run": {
+    "swing": 0,
+    "twist": 0,
+    "min_wrist_area_ratio": 1.0,
+    "hits": 0,
+    "examples": []
+  },
+  "sitting": {
+    "swing": 32.0,
+    "twist": 3.87,
+    "min_wrist_area_ratio": 0.96,
+    "hits": 0,
+    "examples": []
+  },
+  "sleep": {
+    "swing": 8.0,
+    "twist": 0,
+    "min_wrist_area_ratio": 0.998,
+    "hits": 0,
+    "examples": []
+  },
+  "stomach_pain": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "surrendering": {
+    "swing": 32.0,
+    "twist": 22.0,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "till": {
+    "swing": 33.39,
+    "twist": 22.01,
+    "min_wrist_area_ratio": 0.928,
+    "hits": 0,
+    "examples": []
+  },
+  "walk": {
+    "swing": 0,
+    "twist": 0,
+    "min_wrist_area_ratio": 1.0,
+    "hits": 0,
+    "examples": []
+  },
+  "walk_fast": {
+    "swing": 0,
+    "twist": 0,
+    "min_wrist_area_ratio": 1.0,
+    "hits": 0,
+    "examples": []
+  }
+}

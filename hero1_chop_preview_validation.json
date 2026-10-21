@@ -1,0 +1,58 @@
+{
+  "samples": 209,
+  "palm_z_range": [
+    0.5132657885551453,
+    0.6010534763336182
+  ],
+  "axe_head_z_range": [
+    0.5222797989845276,
+    0.6004068851470947
+  ],
+  "axe_head_y_range": [
+    0.06870072335004807,
+    0.5880585312843323
+  ],
+  "shaft_heading_range_degrees": [
+    44.7460040290437,
+    204.99999971118544
+  ],
+  "max_shaft_tilt_degrees": 0.6131923651582696,
+  "max_socket_error": 2.9802322387695312e-08,
+  "max_grip_offset": 0.02866398796146808,
+  "min_axe_z": 0.49195465445518494,
+  "max_wrist_swing_degrees": 32.3384117198283,
+  "max_wrist_twist_degrees": 22.00001199585439,
+  "elbow_flex_range_degrees": [
+    -125.99685478906206,
+    -42.609926816354864
+  ],
+  "max_arm_width_error": 0,
+  "grip_spacing_range_m": [
+    0.16734929014955924,
+    0.20386931358700622
+  ],
+  "min_hand_order_in_body_m": 0.1454675478629106,
+  "contact_pause_seconds": 0.20833333333333334,
+  "contact_pause_motion_m": 0.0,
+  "max_trunk_depth_m": 0.021794567108154306,
+  "extraction_distance_m": 0.06499999761581421,
+  "stance_width_m": 0.34132179617881775,
+  "knee_bend_degrees": [
+    22.84071266003458,
+    39.54410761493543
+  ],
+  "max_foot_motion_m": 0.005593545636778473,
+  "max_foot_planar_motion_m": 0.0033037529463630097,
+  "foot_floor_range_m": [
+    0.0030488944612443447,
+    0.004272726364433765
+  ],
+  "max_knee_motion_m": 0.031096671751210635,
+  "hip_side_shift_m": 0.03800000622868538,
+  "hip_yaw_range_degrees": [
+    -9.99999970909292,
+    12.000004602798654
+  ],
+  "strike_seconds": 0.08333333333333333,
+  "extraction_seconds": 0.08333333333333333
+}

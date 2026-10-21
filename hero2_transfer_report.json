@@ -1,0 +1,219 @@
+{
+  "source": "/Users/graylian/workspace/magicavoxel_merge/hero2.blend",
+  "template": "/Users/graylian/workspace/magicavoxel_merge/hero1_animated.blend",
+  "outputs": [
+    "/Users/graylian/workspace/magicavoxel_merge/hero2_animated.blend",
+    "/Users/graylian/workspace/magicavoxel_merge/hero2_animated.glb",
+    "/Users/graylian/workspace/magicavoxel_merge/hero2_skinned.glb"
+  ],
+  "source_unchanged": true,
+  "rotation_z_degrees": 90,
+  "global_translation": [
+    0.10000001639127731,
+    0.05000000447034836,
+    0.0
+  ],
+  "limb_alignments_m": {
+    "upper-arm.001": [
+      -2.2351741790771484e-08,
+      0.009999990463256836,
+      0.0
+    ],
+    "upper-arm": [
+      7.450580596923828e-09,
+      -0.01000000536441803,
+      0.0
+    ],
+    "thigh.001": [
+      -2.2351741790771484e-08,
+      0.009999990463256836,
+      0.0
+    ],
+    "thigh": [
+      -7.450580596923828e-09,
+      -0.030000008642673492,
+      0.0
+    ],
+    "palm.001": [
+      -2.2351741790771484e-08,
+      0.009999990463256836,
+      0.0
+    ],
+    "palm": [
+      7.450580596923828e-09,
+      -0.01000000536441803,
+      0.0
+    ],
+    "forearm.001": [
+      -2.2351741790771484e-08,
+      0.009999990463256836,
+      0.0
+    ],
+    "forearm": [
+      7.450580596923828e-09,
+      -0.01000000536441803,
+      0.0
+    ],
+    "calf.001": [
+      -2.2351741790771484e-08,
+      0.009999990463256836,
+      0.0
+    ],
+    "calf": [
+      -7.450580596923828e-09,
+      -0.030000008642673492,
+      0.0
+    ]
+  },
+  "source_vertices": 1108,
+  "skinned_vertices": 1020,
+  "bones": 18,
+  "drivers": 12,
+  "animations": {
+    "chop": {
+      "length_frames": 52,
+      "looping": true,
+      "unchanged": true
+    },
+    "clutch": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "crouching": {
+      "length_frames": 96,
+      "looping": true,
+      "unchanged": true
+    },
+    "eating": {
+      "length_frames": 120,
+      "looping": true,
+      "unchanged": true
+    },
+    "fishing": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "fishing_pull": {
+      "length_frames": 76,
+      "looping": false,
+      "unchanged": true
+    },
+    "hands_over_head": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "harvest": {
+      "length_frames": 72,
+      "looping": true,
+      "unchanged": true
+    },
+    "hold_up": {
+      "length_frames": 120,
+      "looping": true,
+      "unchanged": true
+    },
+    "idle": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "javelin_throw": {
+      "length_frames": 120,
+      "looping": false,
+      "unchanged": true
+    },
+    "jump": {
+      "length_frames": 96,
+      "looping": false,
+      "unchanged": true
+    },
+    "run": {
+      "length_frames": 25,
+      "looping": true,
+      "unchanged": true
+    },
+    "sitting": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "sleep": {
+      "length_frames": 192,
+      "looping": true,
+      "unchanged": true
+    },
+    "stomach_pain": {
+      "length_frames": 48,
+      "looping": true,
+      "unchanged": true
+    },
+    "surrendering": {
+      "length_frames": 48,
+      "looping": true,
+      "unchanged": true
+    },
+    "till": {
+      "length_frames": 72,
+      "looping": true,
+      "unchanged": true
+    },
+    "walk": {
+      "length_frames": 64,
+      "looping": true,
+      "unchanged": true
+    },
+    "walk_fast": {
+      "length_frames": 40,
+      "looping": true,
+      "unchanged": true
+    }
+  },
+  "welded_limbs": [
+    {
+      "limb": "arm.L",
+      "vertices": 48,
+      "joints": 2,
+      "closed": true,
+      "connected": true
+    },
+    {
+      "limb": "leg.L",
+      "vertices": 28,
+      "joints": 1,
+      "closed": true,
+      "connected": true
+    },
+    {
+      "limb": "arm.R",
+      "vertices": 48,
+      "joints": 2,
+      "closed": true,
+      "connected": true
+    },
+    {
+      "limb": "leg.R",
+      "vertices": 28,
+      "joints": 1,
+      "closed": true,
+      "connected": true
+    }
+  ],
+  "transferred_limb_vertices": 152,
+  "max_limb_match_error_m": 3.1828893298779803e-08,
+  "max_generated_weight_difference": 0.0,
+  "material": "hero2_mat",
+  "head_alignment_x_m": -0.01,
+  "standard_template": true,
+  "preview_tools": {
+    "PREVIEW_Trunk": "chop",
+    "PREVIEW_Scythe": "harvest",
+    "PREVIEW_Javelin": "javelin_throw",
+    "PREVIEW_Hoe": "till",
+    "PREVIEW_FishingRod": "fishing,fishing_pull",
+    "PREVIEW_Axe": "chop"
+  },
+  "all_animation_curves_preserved": true
+}

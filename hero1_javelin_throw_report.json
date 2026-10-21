@@ -1,0 +1,52 @@
+{
+  "frames": 120,
+  "fps": 48,
+  "duration": 2.5,
+  "looping": false,
+  "release_frame": 43,
+  "distinct_key_times": 18,
+  "tool_pose_times": 28,
+  "keys": 913,
+  "max_grip_reach_error_m": 0,
+  "preserved_actions": [
+    "chop",
+    "clutch",
+    "crouching",
+    "eating",
+    "fishing",
+    "fishing_pull",
+    "hands_over_head",
+    "harvest",
+    "hold_up",
+    "idle",
+    "jump",
+    "run",
+    "sitting",
+    "sleep",
+    "stomach_pain",
+    "surrendering",
+    "till",
+    "walk",
+    "walk_fast"
+  ],
+  "key_reduction": {
+    "before": {
+      "keys": 953,
+      "times": 38,
+      "tool_keys": 158,
+      "tool_times": 38
+    },
+    "after": {
+      "keys": 913,
+      "times": 28,
+      "tool_keys": 118,
+      "tool_times": 28
+    },
+    "constant_channels_collapsed": 0,
+    "sampled_poses": 961,
+    "tool_position_error_m": 0.0,
+    "tool_angle_error_degrees": 0.6330356993768276,
+    "javelin_vertex_error_m": 0.00771020682527569,
+    "character_vertex_error_m": 0.0
+  }
+}

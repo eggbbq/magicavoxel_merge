@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "template": "hero2_animated.blend",
+  "animation_library": "hero2_animated.glb",
+  "skinned_model": "hero2_skinned.glb",
+  "forward": "+X",
+  "up": "+Z",
+  "fps": 48,
+  "rig_object": "Hero",
+  "mesh_object": "HeroMesh",
+  "bones": 18,
+  "tool_socket": "tool.R",
+  "animations": {
+    "chop": {
+      "length_frames": 52,
+      "looping": true,
+      "unchanged": true
+    },
+    "clutch": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "crouching": {
+      "length_frames": 96,
+      "looping": true,
+      "unchanged": true
+    },
+    "eating": {
+      "length_frames": 120,
+      "looping": true,
+      "unchanged": true
+    },
+    "fishing": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "fishing_pull": {
+      "length_frames": 76,
+      "looping": false,
+      "unchanged": true
+    },
+    "hands_over_head": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "harvest": {
+      "length_frames": 72,
+      "looping": true,
+      "unchanged": true
+    },
+    "hold_up": {
+      "length_frames": 120,
+      "looping": true,
+      "unchanged": true
+    },
+    "idle": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "javelin_throw": {
+      "length_frames": 120,
+      "looping": false,
+      "unchanged": true
+    },
+    "jump": {
+      "length_frames": 96,
+      "looping": false,
+      "unchanged": true
+    },
+    "run": {
+      "length_frames": 25,
+      "looping": true,
+      "unchanged": true
+    },
+    "sitting": {
+      "length_frames": 144,
+      "looping": true,
+      "unchanged": true
+    },
+    "sleep": {
+      "length_frames": 192,
+      "looping": true,
+      "unchanged": true
+    },
+    "stomach_pain": {
+      "length_frames": 48,
+      "looping": true,
+      "unchanged": true
+    },
+    "surrendering": {
+      "length_frames": 48,
+      "looping": true,
+      "unchanged": true
+    },
+    "till": {
+      "length_frames": 72,
+      "looping": true,
+      "unchanged": true
+    },
+    "walk": {
+      "length_frames": 64,
+      "looping": true,
+      "unchanged": true
+    },
+    "walk_fast": {
+      "length_frames": 40,
+      "looping": true,
+      "unchanged": true
+    },
+    "paddle_left": {
+      "length_frames": 96,
+      "looping": true,
+      "description": "站立左侧划桨",
+      "author_pose_times": 15,
+      "paddle_grip_offset_m": -0.64,
+      "stance": "standing",
+      "foot_plane_z": 0.0,
+      "stance_width_m": 0.28
+    },
+    "paddle_right": {
+      "length_frames": 96,
+      "looping": true,
+      "description": "站立右侧划桨",
+      "author_pose_times": 15,
+      "paddle_grip_offset_m": 0.0,
+      "stance": "standing",
+      "foot_plane_z": 0.0,
+      "stance_width_m": 0.28
+    },
+    "exhausted_breathing": {
+      "length_frames": 144,
+      "looping": true,
+      "description": "虚弱喘息：低头弓背，双臂松垂，明显呼吸起伏",
+      "author_pose_times": 9,
+      "breaths_per_loop": 2
+    },
+    "grilling": {
+      "length_frames": 192,
+      "looping": true,
+      "description": "烧烤：前伸烤串、翻面、抬起查看，再放回火堆上方；左手轻扇",
+      "author_pose_times": 14,
+      "tool_pose_times": 31,
+      "tool_socket": "tool.R"
+    }
+  },
+  "animation_event_authoring": "engine",
+  "preview_tools_exported": false,
+  "paddle_preview_vessels": [
+    "PLANK",
+    "RAFT",
+    "CANOE",
+    "WOOD_BOAT"
+  ]
+}

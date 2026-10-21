@@ -1,0 +1,21 @@
+{
+  "run_speed_multiplier": 0.8,
+  "authoring_fps": 48,
+  "key_counts": {
+    "idle": 283,
+    "jump": 424,
+    "run": 363,
+    "sleep": 187,
+    "walk": 283,
+    "walk_fast": 331
+  },
+  "normalized_pose_max_error": 0,
+  "durations_seconds": {
+    "idle": 3.0,
+    "jump": 2.0,
+    "run": 0.5208333333333334,
+    "sleep": 4.0,
+    "walk": 1.3333333333333333,
+    "walk_fast": 0.8333333333333334
+  }
+}

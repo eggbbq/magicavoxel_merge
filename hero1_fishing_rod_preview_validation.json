@@ -1,0 +1,12 @@
+{
+  "fishing": {
+    "samples": 577,
+    "socket_error_m": 5.960464477539063e-08,
+    "highest_tip_z_m": 1.0943586826324463
+  },
+  "fishing_pull": {
+    "samples": 305,
+    "socket_error_m": 1.1920928955078125e-07,
+    "highest_tip_z_m": 2.1665754318237305
+  }
+}

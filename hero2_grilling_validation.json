@@ -1,0 +1,21 @@
+{
+  "samples": 769,
+  "preserved_actions": 23,
+  "foot_motion_m": 0.0,
+  "min_ground_z": 0.0019999975338578224,
+  "grip_error_m": 1.341104507446289e-07,
+  "food_height_range_m": [
+    0.4617260992527008,
+    0.7420403957366943
+  ],
+  "left_hand_height_range_m": [
+    0.48999834060668945,
+    0.589994877576828
+  ],
+  "skewer_turn_degrees": 56.30530269809901,
+  "food_over_fire_samples": 361,
+  "max_wrist_swing_degrees": 32.08691390930468,
+  "max_wrist_twist_degrees": 22.000006873212513,
+  "loop_seam_m": 0.0,
+  "forearm_and_skewer_body_head_collision": false
+}

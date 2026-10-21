@@ -1,0 +1,111 @@
+{
+  "chop": {
+    "palm_centre_max_error": 0.010892699808383527,
+    "tool_socket_position_max_error": 0.00016885038018621672,
+    "tool_socket_rotation_max_degrees": 0.11190581936148891,
+    "body_head_leg_curves_unchanged": true
+  },
+  "clutch": {
+    "palm_centre_max_error": 4.5759319476064814e-07,
+    "tool_socket_position_max_error": 3.406349715768137e-07,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "crouching": {
+    "palm_centre_max_error": 6.192575510155093e-06,
+    "tool_socket_position_max_error": 6.213551941196335e-06,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "eating": {
+    "palm_centre_max_error": 0.0006440156837681338,
+    "tool_socket_position_max_error": 5.059099879974669e-05,
+    "tool_socket_rotation_max_degrees": 0.14803749339042993,
+    "body_head_leg_curves_unchanged": true
+  },
+  "fishing": {
+    "palm_centre_max_error": 0.00037799134922024923,
+    "tool_socket_position_max_error": 6.189219839336599e-06,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "fishing_pull": {
+    "palm_centre_max_error": 0.011967591549905737,
+    "tool_socket_position_max_error": 0.00017908604019089945,
+    "tool_socket_rotation_max_degrees": 0.14265250287968312,
+    "body_head_leg_curves_unchanged": true
+  },
+  "hands_over_head": {
+    "palm_centre_max_error": 1.7216484632886713e-06,
+    "tool_socket_position_max_error": 1.574524694626278e-06,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "hold_up": {
+    "palm_centre_max_error": 3.4020692279430847e-06,
+    "tool_socket_position_max_error": 3.1733526312970674e-06,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "idle": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "jump": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "run": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "sitting": {
+    "palm_centre_max_error": 1.121949582343165e-06,
+    "tool_socket_position_max_error": 1.0942972879253124e-06,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "sleep": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "stomach_pain": {
+    "palm_centre_max_error": 4.2385210333671434e-05,
+    "tool_socket_position_max_error": 2.981163415870451e-07,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "surrendering": {
+    "palm_centre_max_error": 4.706590676195609e-05,
+    "tool_socket_position_max_error": 3.132927236747367e-05,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "till": {
+    "palm_centre_max_error": 0.00826897726070337,
+    "tool_socket_position_max_error": 0.00018175474295539868,
+    "tool_socket_rotation_max_degrees": 0.14803749339042993,
+    "body_head_leg_curves_unchanged": true,
+    "min_hoe_z": 0.0019904410000890493
+  },
+  "walk": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  },
+  "walk_fast": {
+    "palm_centre_max_error": 0,
+    "tool_socket_position_max_error": 0,
+    "tool_socket_rotation_max_degrees": 0,
+    "body_head_leg_curves_unchanged": true
+  }
+}
