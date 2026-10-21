@@ -25,11 +25,12 @@ args=(
   --output             "$out_model"
   --tex-out            "$out_tex"
   --tex-pad            0           # 纹理块四周边距
-  --no-tex-pot                     # 非 POT；需要 POT 时改成 --tex-pot
-  # --deduplicate                  # 取消注释，复用像素完全相同的纹理块
+  --tex-pot
+#   --no-tex-pot         1            # 非 POT；需要 POT 时改成 --tex-pot
+  --deduplicate                  # 取消注释，复用像素完全相同的纹理块
   --merge-similar                  # 合并相似块（也匹配旋转/翻转），注释此行关闭
   --similarity-threshold 0.98       # 0～1，越高越严格；1 只合并完全相同的块
-  --similarity-max-error 16         # 单通道最大色差 0～255；alpha 必须完全一致
+  --similarity-max-error 25         # 单通道最大色差 0～255；alpha 必须完全一致
   --compress-solid-patches         # 纯色区块压成单像素采样，注释此行关闭
   --pack               dense       # 更充分装箱；shelf 更快
   --report-out         "$out_dir/repack_report.json"

@@ -3,33 +3,33 @@
   "output": "/Users/graylian/workspace/magicavoxel_merge/exports/test_cube_runtime/test_cube_runtime.gltf",
   "source_size": [
     4096,
-    8192
+    1024
   ],
   "packed_size": [
-    1440,
-    704
+    512,
+    512
   ],
-  "area_reduction_percent": 96.98,
-  "patches": 158,
-  "unique_patches": 31,
+  "area_reduction_percent": 93.75,
+  "patches": 166,
+  "unique_patches": 26,
   "padding": 0,
-  "deduplicate": false,
+  "deduplicate": true,
   "duplicated_vertices": 0,
-  "triangles": 316,
+  "triangles": 332,
   "resampled": false,
   "packing": "dense",
-  "rect_fill_percent": 96.21,
+  "rect_fill_percent": 50.73,
   "compress_solid": true,
-  "solid_compressed_patches": 124,
-  "solid_texels_before": 1269248,
-  "solid_texels_after": 124,
-  "solid_texels_saved_before_deduplication": 1269124,
+  "solid_compressed_patches": 135,
+  "solid_texels_before": 403072,
+  "solid_texels_after": 135,
+  "solid_texels_saved_before_deduplication": 402937,
   "merge_similar": true,
   "similarity_threshold": 0.98,
-  "similarity_max_error": 16,
-  "exact_merged_patches": 127,
+  "similarity_max_error": 25,
+  "exact_merged_patches": 140,
   "similar_merged_patches": 0,
-  "transformed_merged_patches": 3,
+  "transformed_merged_patches": 7,
   "lossy": false,
   "max_rgb_error": 0,
   "max_mean_rgb_error": 0.0,
@@ -72,7 +72,7 @@
     },
     {
       "patch": 9,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -240,7 +240,7 @@
     },
     {
       "patch": 23,
-      "owner": 5,
+      "owner": 0,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -288,7 +288,7 @@
     },
     {
       "patch": 27,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -456,18 +456,6 @@
     },
     {
       "patch": 41,
-      "owner": 8,
-      "transform": {
-        "swap_uv": false,
-        "flip_u": true,
-        "flip_v": false
-      },
-      "similarity": 1.0,
-      "mean_rgb_error": 0.0,
-      "max_rgb_error": 0
-    },
-    {
-      "patch": 42,
       "owner": 0,
       "transform": {
         "swap_uv": false,
@@ -479,7 +467,31 @@
       "max_rgb_error": 0
     },
     {
+      "patch": 42,
+      "owner": 5,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
       "patch": 43,
+      "owner": 8,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": true,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 44,
       "owner": 0,
       "transform": {
         "swap_uv": false,
@@ -492,7 +504,7 @@
     },
     {
       "patch": 45,
-      "owner": 4,
+      "owner": 0,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -504,10 +516,10 @@
     },
     {
       "patch": 46,
-      "owner": 5,
+      "owner": 3,
       "transform": {
         "swap_uv": false,
-        "flip_u": false,
+        "flip_u": true,
         "flip_v": false
       },
       "similarity": 1.0,
@@ -516,7 +528,7 @@
     },
     {
       "patch": 47,
-      "owner": 6,
+      "owner": 4,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -528,7 +540,7 @@
     },
     {
       "patch": 48,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -540,7 +552,7 @@
     },
     {
       "patch": 49,
-      "owner": 0,
+      "owner": 6,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -707,7 +719,31 @@
       "max_rgb_error": 0
     },
     {
-      "patch": 65,
+      "patch": 63,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 64,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 67,
       "owner": 5,
       "transform": {
         "swap_uv": false,
@@ -719,7 +755,7 @@
       "max_rgb_error": 0
     },
     {
-      "patch": 70,
+      "patch": 72,
       "owner": 5,
       "transform": {
         "swap_uv": false,
@@ -731,7 +767,7 @@
       "max_rgb_error": 0
     },
     {
-      "patch": 71,
+      "patch": 73,
       "owner": 5,
       "transform": {
         "swap_uv": false,
@@ -743,31 +779,7 @@
       "max_rgb_error": 0
     },
     {
-      "patch": 74,
-      "owner": 5,
-      "transform": {
-        "swap_uv": false,
-        "flip_u": false,
-        "flip_v": false
-      },
-      "similarity": 1.0,
-      "mean_rgb_error": 0.0,
-      "max_rgb_error": 0
-    },
-    {
-      "patch": 77,
-      "owner": 5,
-      "transform": {
-        "swap_uv": false,
-        "flip_u": false,
-        "flip_v": false
-      },
-      "similarity": 1.0,
-      "mean_rgb_error": 0.0,
-      "max_rgb_error": 0
-    },
-    {
-      "patch": 78,
+      "patch": 76,
       "owner": 5,
       "transform": {
         "swap_uv": false,
@@ -803,8 +815,20 @@
       "max_rgb_error": 0
     },
     {
+      "patch": 81,
+      "owner": 5,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
       "patch": 82,
-      "owner": 63,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -827,6 +851,42 @@
       "max_rgb_error": 0
     },
     {
+      "patch": 84,
+      "owner": 5,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 85,
+      "owner": 5,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 87,
+      "owner": 65,
+      "transform": {
+        "swap_uv": true,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
       "patch": 88,
       "owner": 5,
       "transform": {
@@ -839,31 +899,7 @@
       "max_rgb_error": 0
     },
     {
-      "patch": 89,
-      "owner": 5,
-      "transform": {
-        "swap_uv": false,
-        "flip_u": false,
-        "flip_v": false
-      },
-      "similarity": 1.0,
-      "mean_rgb_error": 0.0,
-      "max_rgb_error": 0
-    },
-    {
-      "patch": 90,
-      "owner": 72,
-      "transform": {
-        "swap_uv": false,
-        "flip_u": true,
-        "flip_v": false
-      },
-      "similarity": 1.0,
-      "mean_rgb_error": 0.0,
-      "max_rgb_error": 0
-    },
-    {
-      "patch": 92,
+      "patch": 93,
       "owner": 5,
       "transform": {
         "swap_uv": false,
@@ -876,7 +912,7 @@
     },
     {
       "patch": 94,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -888,9 +924,9 @@
     },
     {
       "patch": 95,
-      "owner": 0,
+      "owner": 74,
       "transform": {
-        "swap_uv": false,
+        "swap_uv": true,
         "flip_u": false,
         "flip_v": false
       },
@@ -900,9 +936,9 @@
     },
     {
       "patch": 96,
-      "owner": 0,
+      "owner": 75,
       "transform": {
-        "swap_uv": false,
+        "swap_uv": true,
         "flip_u": false,
         "flip_v": false
       },
@@ -912,7 +948,7 @@
     },
     {
       "patch": 97,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -924,9 +960,9 @@
     },
     {
       "patch": 98,
-      "owner": 0,
+      "owner": 77,
       "transform": {
-        "swap_uv": false,
+        "swap_uv": true,
         "flip_u": false,
         "flip_v": false
       },
@@ -1031,8 +1067,32 @@
       "max_rgb_error": 0
     },
     {
+      "patch": 107,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 108,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
       "patch": 109,
-      "owner": 108,
+      "owner": 0,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1044,7 +1104,7 @@
     },
     {
       "patch": 110,
-      "owner": 5,
+      "owner": 0,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1056,7 +1116,7 @@
     },
     {
       "patch": 111,
-      "owner": 5,
+      "owner": 0,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1104,7 +1164,7 @@
     },
     {
       "patch": 115,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1116,7 +1176,7 @@
     },
     {
       "patch": 116,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1128,7 +1188,7 @@
     },
     {
       "patch": 117,
-      "owner": 0,
+      "owner": 86,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1140,7 +1200,7 @@
     },
     {
       "patch": 118,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1176,7 +1236,7 @@
     },
     {
       "patch": 121,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1188,7 +1248,7 @@
     },
     {
       "patch": 122,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1248,7 +1308,7 @@
     },
     {
       "patch": 127,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1260,7 +1320,7 @@
     },
     {
       "patch": 128,
-      "owner": 0,
+      "owner": 5,
       "transform": {
         "swap_uv": false,
         "flip_u": false,
@@ -1547,8 +1607,104 @@
       "max_rgb_error": 0
     },
     {
+      "patch": 152,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 153,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 154,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
       "patch": 155,
-      "owner": 154,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 156,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 157,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 158,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 159,
+      "owner": 0,
+      "transform": {
+        "swap_uv": false,
+        "flip_u": false,
+        "flip_v": false
+      },
+      "similarity": 1.0,
+      "mean_rgb_error": 0.0,
+      "max_rgb_error": 0
+    },
+    {
+      "patch": 163,
+      "owner": 162,
       "transform": {
         "swap_uv": false,
         "flip_u": true,

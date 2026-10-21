@@ -61,6 +61,7 @@ class PipelineOptions:
     atlas: AtlasOptions = field(default_factory=AtlasOptions)
     handedness: str = "right"
     uv_mode: str = "atlas"
+    paint_unwrap: str = "box"
 
 
 _CULL_FACE_BY_LETTER: dict[str, tuple[int, int]] = {
@@ -105,6 +106,10 @@ def convert(
     opts = options or PipelineOptions()
     if opts.uv_mode not in ("atlas", "paint"):
         raise ValueError("uv_mode must be 'atlas' or 'paint'")
+    if opts.paint_unwrap not in ("box", "surface"):
+        raise ValueError("paint_unwrap must be 'box' or 'surface'")
+    if opts.paint_unwrap == "surface" and opts.uv_mode != "paint":
+        raise ValueError("paint_unwrap surface requires --uv-mode paint")
     if (uv_template_out or uv_islands_out) and opts.uv_mode != "paint":
         raise ValueError("UV template/island export requires --uv-mode paint")
     scene = load_scene(input_vox)
@@ -189,6 +194,7 @@ def convert(
             square=bool(opts.atlas.square), pot=bool(opts.atlas.pot),
             fixed_size=opts.atlas.fixed_size,
             alpha=("rgba" if any_cutout else str(opts.texture_alpha)),
+            unwrap=opts.paint_unwrap,
         )
     else:
         atlas_result = atlas_mod.build_atlas(

@@ -145,7 +145,9 @@ class SceneTransformTests(unittest.TestCase):
 
     def test_all_modes_preserve_world_geometry_for_every_pivot_and_handedness(self) -> None:
         modes = ({}, {"no_merge_nodes": True}, {"character_apart": True}, {"character_flat": True})
-        for mode in (dict(m, uv_mode=uv) for uv in ("atlas", "paint") for m in modes):
+        uv_modes = ({"uv_mode": "atlas"}, {"uv_mode": "paint"},
+                    {"uv_mode": "paint", "paint_unwrap": "surface"})
+        for mode in (dict(m, **uv) for uv in uv_modes for m in modes):
             for pivot in ("corner", "center", "bottom_center"):
                 for handedness in ("right", "left"):
                     with self.subTest(mode=mode, pivot=pivot, handedness=handedness):

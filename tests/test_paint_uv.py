@@ -16,6 +16,7 @@ from btp_vox.atlas import build_atlas
 from btp_vox.btp_mesher import MesherResult, build_quads
 from btp_vox.cli import build_parser, main
 from btp_vox.paint_uv import build_paint_atlas, unique_scene_models
+from btp_vox.surface_uv import map_surface_point, surface_joints
 from btp_vox.pipeline import (
     AtlasOptions, PipelineOptions, _build_model_meshes,
     _build_plat_cutout_quads_for_model, convert,
@@ -43,6 +44,37 @@ def _corners(uv) -> np.ndarray:
 
 
 class PaintUVTests(unittest.TestCase):
+    def assert_connected_islands(self, mesher, layout):
+        for chart in layout.charts:
+            quads = mesher.quads_per_model[chart.model]
+            neighbors = {qid: set() for qid in chart.quads}
+            for joint in surface_joints(quads):
+                if joint.left not in neighbors or joint.right not in neighbors:
+                    continue
+                matched = all(np.array_equal(
+                    map_surface_point(quads[joint.left], chart.quads[joint.left], p),
+                    map_surface_point(quads[joint.right], chart.quads[joint.right], p))
+                    for p in (joint.a, joint.b))
+                if matched:
+                    neighbors[joint.left].add(joint.right)
+                    neighbors[joint.right].add(joint.left)
+            visited, pending = set(), [next(iter(neighbors))]
+            while pending:
+                qid = pending.pop()
+                if qid not in visited:
+                    visited.add(qid)
+                    pending.extend(neighbors[qid] - visited)
+            self.assertEqual(visited, set(chart.quads), "An island contains disconnected surfaces")
+
+    def assert_outward_orientation(self, mesher, atlas):
+        for midx, quads in enumerate(mesher.quads_per_model):
+            for qid, q in enumerate(quads):
+                uv = _corners(atlas.quad_uvs[(midx, qid)])
+                det = np.linalg.det(np.stack((uv[1] - uv[0], uv[3] - uv[0])))
+                verts = np.asarray(q.verts)
+                orientation = np.dot(np.cross(verts[1] - verts[0], verts[3] - verts[0]), q.normal)
+                self.assertGreater(det * orientation, 0, "Outward UVs were mirrored")
+
     def assert_surface_colors(self, scene, mesher, result, scale) -> None:
         pixels = np.asarray(Image.open(io.BytesIO(result.texture_png)).convert("RGBA"))
         occupied = np.zeros(pixels.shape[:2], dtype=bool)
@@ -159,22 +191,25 @@ class PaintUVTests(unittest.TestCase):
         vox = _pattern((3, 4, 5))
         vox[1, 1, :] = 0
         scene = _scene(vox)
-        for basis in ((0, 1, 1, 1, 2, 1), (2, -1, 0, 1, 1, -1), (1, -1, 2, -1, 0, 1)):
-            quads = _build_plat_cutout_quads_for_model(scene, 0, mode="f", front_basis=basis)
-            mesher = MesherResult([quads])
-            result, _ = build_paint_atlas(scene, mesher, texel_scale=2, alpha="rgba")
-            pixels = np.asarray(Image.open(io.BytesIO(result.texture_png)))
-            for qid, q in enumerate(quads):
-                points = _corners(result.quad_uvs[(0, qid)]) * (result.width, result.height)
-                for v in range(q.size_v):
-                    for u in range(q.size_u):
-                        a, b = (u + 0.5) / q.size_u, (v + 0.5) / q.size_v
-                        xy = np.floor(points[0] + a * (points[1] - points[0]) + b * (points[3] - points[0])).astype(int)
-                        index = q.colors[v, u]
-                        if index:
-                            np.testing.assert_array_equal(pixels[xy[1], xy[0]], scene.palette_rgba[index - 1])
-                        else:
-                            self.assertEqual(pixels[xy[1], xy[0], 3], 0)
+        for unwrap in ("box", "surface"):
+            for basis in ((0, 1, 1, 1, 2, 1), (2, -1, 0, 1, 1, -1), (1, -1, 2, -1, 0, 1)):
+                quads = _build_plat_cutout_quads_for_model(scene, 0, mode="f", front_basis=basis)
+                mesher = MesherResult([quads])
+                result, layout = build_paint_atlas(scene, mesher, texel_scale=2, alpha="rgba", unwrap=unwrap)
+                self.assert_connected_islands(mesher, layout)
+                self.assert_outward_orientation(mesher, result)
+                pixels = np.asarray(Image.open(io.BytesIO(result.texture_png)))
+                for qid, q in enumerate(quads):
+                    points = _corners(result.quad_uvs[(0, qid)]) * (result.width, result.height)
+                    for v in range(q.size_v):
+                        for u in range(q.size_u):
+                            a, b = (u + 0.5) / q.size_u, (v + 0.5) / q.size_v
+                            xy = np.floor(points[0] + a * (points[1] - points[0]) + b * (points[3] - points[0])).astype(int)
+                            index = q.colors[v, u]
+                            if index:
+                                np.testing.assert_array_equal(pixels[xy[1], xy[0]], scene.palette_rgba[index - 1])
+                            else:
+                                self.assertEqual(pixels[xy[1], xy[0], 3], 0)
 
     def test_layout_is_deterministic_and_fixed_size_is_respected(self):
         scene = _scene(_pattern())
@@ -244,12 +279,141 @@ class PaintUVTests(unittest.TestCase):
     def test_cli_defaults_unchanged_and_template_requires_paint(self):
         args = build_parser().parse_args(["--input", "in.vox", "--output", "out.glb"])
         self.assertEqual(args.uv_mode, "atlas")
+        self.assertEqual(args.paint_unwrap, "box")
         self.assertEqual(args.tex_texel_scale, 1)
         self.assertTrue(args.tex_reuse_subrects)
         with patch("sys.stderr", new=io.StringIO()), self.assertRaises(SystemExit):
             main(["--input", "in.vox", "--output", "out.glb", "--uv-template-out", "guide.svg"])
         with self.assertRaisesRegex(ValueError, "requires"):
             convert("does-not-exist.vox", "out.glb", uv_template_out="guide.svg")
+
+    def test_surface_preserves_complete_box_cross(self):
+        scene = _scene(_pattern())
+        mesher = build_quads(scene)
+        old, _ = build_paint_atlas(scene, mesher, texel_scale=2, pad=0, pot=True)
+        new, layout = build_paint_atlas(scene, mesher, texel_scale=2, pad=0, pot=True, unwrap="surface")
+        self.assertEqual(new, old)
+        self.assertEqual(layout.unwrap, "surface")
+        self.assert_connected_islands(mesher, layout)
+
+    def test_surface_steps_holes_cavities_and_nonmanifold_edges(self):
+        for kind in ("step", "window", "cavity", "disconnected", "checker"):
+            vox = _pattern((5, 6, 7))
+            if kind == "step":
+                vox[2:, 2:, 3:] = 0
+            elif kind == "window":
+                vox[1:4, :, 2:5] = 0
+            elif kind == "cavity":
+                vox[1:4, 1:5, 1:6] = 0
+            elif kind == "disconnected":
+                vox[2:4, :, :] = 0
+            else:
+                vox[np.indices(vox.shape).sum(axis=0) % 2 == 0] = 0
+            with self.subTest(kind=kind):
+                scene = _scene(vox)
+                mesher = build_quads(scene)
+                atlas, layout = build_paint_atlas(scene, mesher, texel_scale=2, pad=2, unwrap="surface")
+                self.assert_surface_colors(scene, mesher, atlas, 2)
+                self.assert_connected_islands(mesher, layout)
+                self.assert_outward_orientation(mesher, atlas)
+                _, old = build_paint_atlas(scene, mesher)
+                if kind == "step":
+                    self.assertLess(len(layout.charts), len(old.charts))
+                if kind == "disconnected":
+                    # No chart may combine the two disconnected solid parts.
+                    for chart in layout.charts:
+                        xs = np.asarray([mesher.quads_per_model[0][i].verts for i in chart.quads])[:, :, 0]
+                        self.assertTrue(xs.max() <= 2 or xs.min() >= 4)
+
+    def test_surface_handles_partial_shared_edges_and_keeps_coplanar_panels(self):
+        vox = _pattern((5, 5, 3))
+        vox[2:, 2:, 2:] = 0
+        vox[3:, 1:3, :] = 0
+        scene = _scene(vox)
+        mesher = build_quads(scene)
+        atlas, layout = build_paint_atlas(scene, mesher, unwrap="surface", pad=0)
+        self.assert_surface_colors(scene, mesher, atlas, 1)
+        self.assert_connected_islands(mesher, layout)
+        mapping = {qid: chart for chart in layout.charts for qid in chart.quads}
+        partial = False
+        for joint in surface_joints(mesher.quads_per_model[0]):
+            a, b = (mesher.quads_per_model[0][i] for i in (joint.left, joint.right))
+            if joint.a not in a.verts or joint.b not in a.verts:
+                partial = True
+            if (a.axis, a.normal_sign) == (b.axis, b.normal_sign):
+                self.assertIs(mapping[joint.left], mapping[joint.right])
+                for p in (joint.a, joint.b):
+                    np.testing.assert_array_equal(
+                        map_surface_point(a, mapping[joint.left].quads[joint.left], p),
+                        map_surface_point(b, mapping[joint.right].quads[joint.right], p))
+        self.assertTrue(partial, "Fixture must exercise greedy-mesh T junctions")
+        for record in layout._records():
+            covered = {q["quad"]: 0 for q in record["quads"]}
+            for edge in record["connections"]:
+                points = np.asarray(edge["pixels"])
+                length = int(np.abs(points[1] - points[0]).sum())
+                for qid in edge["quads"]:
+                    covered[qid] += length
+            for edge in record["seams"]:
+                points = np.asarray(edge["pixels"])
+                covered[edge["quad"]] += int(np.abs(points[1] - points[0]).sum())
+            for qid, length in covered.items():
+                q = mesher.quads_per_model[0][qid]
+                self.assertEqual(length, 2 * (q.size_u + q.size_v))
+
+    def test_surface_random_occupancy_is_connected_nonoverlapping_and_deterministic(self):
+        rng = np.random.default_rng(1701)
+        for _ in range(12):
+            vox = _pattern((4, 4, 4))
+            vox[rng.random(vox.shape) < 0.4] = 0
+            scene = _scene(vox)
+            mesher = build_quads(scene)
+            first, layout = build_paint_atlas(scene, mesher, unwrap="surface", pad=1)
+            second, _ = build_paint_atlas(scene, mesher, unwrap="surface", pad=1)
+            self.assertEqual(first, second)
+            self.assert_surface_colors(scene, mesher, first, 1)
+            self.assert_connected_islands(mesher, layout)
+            self.assert_outward_orientation(mesher, first)
+
+    def test_surface_pipeline_preserves_geometry_and_exports_metadata(self):
+        vox = _pattern((5, 6, 7))
+        vox[2:, 2:, 3:] = 0
+        scene = _scene(vox)
+        with tempfile.TemporaryDirectory() as directory, patch("btp_vox.pipeline.load_scene", return_value=scene):
+            meshes = []
+            for unwrap in ("box", "surface"):
+                path = Path(directory) / f"{unwrap}.gltf"
+                metadata = Path(directory) / f"{unwrap}.json"
+                convert("source.vox", path, output_format="gltf", uv_islands_out=metadata,
+                        uv_template_out=path.with_suffix(".svg"),
+                        options=PipelineOptions(uv_mode="paint", paint_unwrap=unwrap, export_uv2=True))
+                doc = GLTF2().load(str(path))
+                blob = path.with_suffix(".bin").read_bytes()
+                attrs = doc.meshes[0].primitives[0].attributes
+                def data(index):
+                    acc = doc.accessors[index]
+                    view = doc.bufferViews[acc.bufferView]
+                    return blob[view.byteOffset:view.byteOffset + view.byteLength]
+                meshes.append([data(i) for i in (attrs.POSITION, attrs.NORMAL, doc.meshes[0].primitives[0].indices)])
+                self.assertEqual(data(attrs.TEXCOORD_0), data(attrs.TEXCOORD_1))
+                self.assertEqual(json.loads(metadata.read_text())["unwrap"], unwrap)
+                ET.fromstring(path.with_suffix(".svg").read_text())
+            self.assertEqual(meshes[0], meshes[1])
+
+    def test_surface_empty_fixed_size_and_argument_validation(self):
+        scene = _scene(np.zeros((3, 3, 3), dtype=np.int32))
+        atlas, layout = build_paint_atlas(scene, build_quads(scene), unwrap="surface")
+        self.assertEqual((atlas.width, atlas.height, layout.charts), (1, 1, []))
+        scene = _scene(_pattern())
+        mesher = build_quads(scene)
+        atlas, _ = build_paint_atlas(scene, mesher, unwrap="surface", fixed_size=(100, 70), pot=True)
+        self.assertEqual((atlas.width, atlas.height), (100, 70))
+        with self.assertRaisesRegex(ValueError, "too small"):
+            build_paint_atlas(scene, mesher, unwrap="surface", fixed_size=(2, 2))
+        with self.assertRaisesRegex(ValueError, "unwrap"):
+            build_paint_atlas(scene, mesher, unwrap="unknown")
+        with patch("sys.stderr", new=io.StringIO()), self.assertRaises(SystemExit):
+            main(["--input", "in.vox", "--output", "out.glb", "--paint-unwrap", "surface"])
 
 
 if __name__ == "__main__":

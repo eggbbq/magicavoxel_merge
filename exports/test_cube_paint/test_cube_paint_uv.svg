@@ -1,316 +1,791 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="8192" viewBox="0 0 4096 8192">
+<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="1024" viewBox="0 0 4096 1024">
 <title>Voxel painting UV guide</title>
 <desc>PNG pixel coordinates, top-left origin; exported UV flip V: False. Face letters use MagicaVoxel axes.</desc>
-<g id="chart-0" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] box-net</title>
-<polygon points="0,960 640,960 640,896 0,896"><title>house02 [0] l depth=0 quad=0</title></polygon>
-<polygon points="1920,960 1280,960 1280,896 1920,896"><title>house02 [0] r depth=80 quad=49</title></polygon>
-<polygon points="2560,960 2560,896 2528,896 2528,960"><title>house02 [0] k depth=0 quad=50</title></polygon>
-<polygon points="1952,960 1952,896 1920,896 1920,960"><title>house02 [0] k depth=0 quad=51</title></polygon>
-<polygon points="2528,928 2528,864 2496,864 2496,928"><title>house02 [0] k depth=0 quad=52</title></polygon>
-<polygon points="1984,928 1984,864 1952,864 1952,928"><title>house02 [0] k depth=0 quad=53</title></polygon>
-<polygon points="2496,896 2496,832 2464,832 2464,896"><title>house02 [0] k depth=0 quad=54</title></polygon>
-<polygon points="2016,896 2016,832 1984,832 1984,896"><title>house02 [0] k depth=0 quad=55</title></polygon>
-<polygon points="2464,864 2464,704 2432,704 2432,864"><title>house02 [0] k depth=0 quad=56</title></polygon>
-<polygon points="2048,864 2048,704 2016,704 2016,864"><title>house02 [0] k depth=0 quad=57</title></polygon>
-<polygon points="2432,736 2432,672 2400,672 2400,736"><title>house02 [0] k depth=0 quad=58</title></polygon>
-<polygon points="2080,736 2080,672 2048,672 2048,736"><title>house02 [0] k depth=0 quad=59</title></polygon>
-<polygon points="2400,704 2400,640 2368,640 2368,704"><title>house02 [0] k depth=0 quad=60</title></polygon>
-<polygon points="2112,704 2112,640 2080,640 2080,704"><title>house02 [0] k depth=0 quad=61</title></polygon>
-<polygon points="2368,672 2368,640 2112,640 2112,672"><title>house02 [0] k depth=0 quad=62</title></polygon>
-<polygon points="640,960 640,896 672,896 672,960"><title>house02 [0] f depth=80 quad=94</title></polygon>
-<polygon points="1248,960 1248,896 1280,896 1280,960"><title>house02 [0] f depth=80 quad=95</title></polygon>
-<polygon points="672,928 672,864 704,864 704,928"><title>house02 [0] f depth=80 quad=96</title></polygon>
-<polygon points="1216,928 1216,864 1248,864 1248,928"><title>house02 [0] f depth=80 quad=97</title></polygon>
-<polygon points="704,896 704,832 736,832 736,896"><title>house02 [0] f depth=80 quad=98</title></polygon>
-<polygon points="1184,896 1184,832 1216,832 1216,896"><title>house02 [0] f depth=80 quad=99</title></polygon>
-<polygon points="736,864 736,704 768,704 768,864"><title>house02 [0] f depth=80 quad=100</title></polygon>
-<polygon points="1152,864 1152,704 1184,704 1184,864"><title>house02 [0] f depth=80 quad=101</title></polygon>
-<polygon points="768,736 768,672 800,672 800,736"><title>house02 [0] f depth=80 quad=102</title></polygon>
-<polygon points="1120,736 1120,672 1152,672 1152,736"><title>house02 [0] f depth=80 quad=103</title></polygon>
-<polygon points="800,704 800,640 832,640 832,704"><title>house02 [0] f depth=80 quad=104</title></polygon>
-<polygon points="1088,704 1088,640 1120,640 1120,704"><title>house02 [0] f depth=80 quad=105</title></polygon>
-<polygon points="832,672 832,640 1088,640 1088,672"><title>house02 [0] f depth=80 quad=106</title></polygon>
-<polygon points="672,1888 1248,1888 1248,1328 672,1328"><title>house02 [0] b depth=0 quad=107</title></polygon>
-<polygon points="672,1328 864,1328 864,1312 672,1312"><title>house02 [0] b depth=0 quad=108</title></polygon>
-<polygon points="1056,1328 1248,1328 1248,1312 1056,1312"><title>house02 [0] b depth=0 quad=109</title></polygon>
-<polygon points="800,0 1120,0 1120,640 800,640"><title>house02 [0] t depth=80 quad=151</title></polygon>
+<g id="chart-0" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-0</title>
+<polygon points="1288,596 1560,596 1560,324 1288,324"><title>house02 [0] b depth=1 quad=117</title></polygon>
+<polygon points="1284,596 1284,324 1288,324 1288,596"><title>house02 [0] r depth=6 quad=9</title></polygon>
+<polygon points="1564,596 1564,324 1560,324 1560,596"><title>house02 [0] l depth=74 quad=42</title></polygon>
+<polygon points="1288,600 1288,596 1560,596 1560,600"><title>house02 [0] f depth=6 quad=79</title></polygon>
+<polygon points="1288,320 1288,324 1376,324 1376,320"><title>house02 [0] k depth=74 quad=84</title></polygon>
+<polygon points="1472,320 1472,324 1560,324 1560,320"><title>house02 [0] k depth=74 quad=85</title></polygon>
+<polygon points="1376,324 1376,152 1472,152 1472,324"><title>house02 [0] f depth=74 quad=86</title></polygon>
+<polygon points="1376,152 1472,152 1472,144 1376,144"><title>house02 [0] b depth=44 quad=128</title></polygon>
+<polygon points="1280,320 1280,144 1376,144 1376,320"><title>house02 [0] f depth=76 quad=87</title></polygon>
+<polygon points="1472,320 1472,16 1488,16 1488,320"><title>house02 [0] f depth=76 quad=88</title></polygon>
+<polygon points="1488,320 1488,32 1504,32 1504,320"><title>house02 [0] f depth=76 quad=89</title></polygon>
+<polygon points="1504,320 1504,48 1520,48 1520,320"><title>house02 [0] f depth=76 quad=90</title></polygon>
+<polygon points="1520,320 1520,112 1536,112 1536,320"><title>house02 [0] f depth=76 quad=91</title></polygon>
+<polygon points="1536,320 1536,128 1552,128 1552,320"><title>house02 [0] f depth=76 quad=92</title></polygon>
+<polygon points="1552,320 1552,144 1568,144 1568,320"><title>house02 [0] f depth=76 quad=93</title></polygon>
+<polygon points="1296,144 1296,128 1472,128 1472,144"><title>house02 [0] f depth=76 quad=94</title></polygon>
+<polygon points="1312,128 1312,112 1472,112 1472,128"><title>house02 [0] f depth=76 quad=95</title></polygon>
+<polygon points="1328,112 1328,48 1472,48 1472,112"><title>house02 [0] f depth=76 quad=96</title></polygon>
+<polygon points="1344,48 1344,32 1472,32 1472,48"><title>house02 [0] f depth=76 quad=97</title></polygon>
+<polygon points="1360,32 1360,16 1472,16 1472,32"><title>house02 [0] f depth=76 quad=98</title></polygon>
+<polygon points="1328,112 1312,112 1312,48 1328,48"><title>house02 [0] r depth=16 quad=18</title></polygon>
+<polygon points="1520,112 1536,112 1536,48 1520,48"><title>house02 [0] l depth=64 quad=35</title></polygon>
+<polygon points="1296,144 1280,144 1280,128 1296,128"><title>house02 [0] r depth=8 quad=12</title></polygon>
+<polygon points="1312,128 1296,128 1296,112 1312,112"><title>house02 [0] r depth=12 quad=15</title></polygon>
+<polygon points="1344,48 1328,48 1328,32 1344,32"><title>house02 [0] r depth=20 quad=21</title></polygon>
+<polygon points="1360,32 1344,32 1344,16 1360,16"><title>house02 [0] r depth=24 quad=23</title></polygon>
+<polygon points="1488,32 1504,32 1504,16 1488,16"><title>house02 [0] l depth=56 quad=29</title></polygon>
+<polygon points="1504,48 1520,48 1520,32 1504,32"><title>house02 [0] l depth=60 quad=32</title></polygon>
+<polygon points="1536,128 1552,128 1552,112 1536,112"><title>house02 [0] l depth=68 quad=38</title></polygon>
+<polygon points="1552,144 1568,144 1568,128 1552,128"><title>house02 [0] l depth=72 quad=41</title></polygon>
+<polygon points="1296,128 1296,112 1280,112 1280,128"><title>house02 [0] b depth=48 quad=133</title></polygon>
+<polygon points="1552,112 1552,128 1568,128 1568,112"><title>house02 [0] b depth=48 quad=135</title></polygon>
+<polygon points="1312,112 1312,96 1296,96 1296,112"><title>house02 [0] b depth=52 quad=139</title></polygon>
+<polygon points="1536,96 1536,112 1552,112 1552,96"><title>house02 [0] b depth=52 quad=141</title></polygon>
+<polygon points="1328,48 1328,32 1312,32 1312,48"><title>house02 [0] b depth=68 quad=146</title></polygon>
+<polygon points="1520,32 1520,48 1536,48 1536,32"><title>house02 [0] b depth=68 quad=148</title></polygon>
+<polygon points="1344,32 1344,16 1328,16 1328,32"><title>house02 [0] b depth=72 quad=151</title></polygon>
+<polygon points="1504,16 1504,32 1520,32 1520,16"><title>house02 [0] b depth=72 quad=153</title></polygon>
+<polygon points="1360,16 1488,16 1488,0 1360,0"><title>house02 [0] b depth=76 quad=157</title></polygon>
+<polygon points="992,320 1280,320 1280,256 992,256"><title>house02 [0] l depth=4 quad=3</title></polygon>
+<polygon points="992,256 1096,256 1096,160 992,160"><title>house02 [0] l depth=4 quad=4</title></polygon>
+<polygon points="1096,176 1280,176 1280,160 1096,160"><title>house02 [0] l depth=4 quad=5</title></polygon>
+<polygon points="1176,256 1280,256 1280,176 1176,176"><title>house02 [0] l depth=4 quad=6</title></polygon>
+<polygon points="1096,256 1096,176 1100,176 1100,256"><title>house02 [0] f depth=30 quad=80</title></polygon>
+<polygon points="1176,256 1176,176 1172,176 1172,256"><title>house02 [0] k depth=50 quad=82</title></polygon>
+<polygon points="1280,160 1264,160 1264,144 1280,144"><title>house02 [0] r depth=4 quad=7</title></polygon>
+<polygon points="1280,144 1280,128 1264,128 1264,144"><title>house02 [0] b depth=44 quad=126</title></polygon>
+<polygon points="992,320 992,608 1000,608 1000,320"><title>house02 [0] b depth=0 quad=112</title></polygon>
+<polygon points="1000,320 1000,328 1280,328 1280,320"><title>house02 [0] b depth=0 quad=113</title></polygon>
+<polygon points="1272,328 1272,416 1280,416 1280,328"><title>house02 [0] b depth=0 quad=114</title></polygon>
+<polygon points="1272,512 1272,608 1280,608 1280,512"><title>house02 [0] b depth=0 quad=115</title></polygon>
+<polygon points="1000,600 1000,608 1272,608 1272,600"><title>house02 [0] b depth=0 quad=116</title></polygon>
+<polygon points="992,320 816,320 816,416 992,416"><title>house02 [0] k depth=4 quad=65</title></polygon>
+<polygon points="992,416 928,416 928,608 992,608"><title>house02 [0] k depth=4 quad=66</title></polygon>
+<polygon points="928,512 688,512 688,528 928,528"><title>house02 [0] k depth=4 quad=67</title></polygon>
+<polygon points="928,528 704,528 704,544 928,544"><title>house02 [0] k depth=4 quad=68</title></polygon>
+<polygon points="928,544 720,544 720,560 928,560"><title>house02 [0] k depth=4 quad=69</title></polygon>
+<polygon points="928,560 784,560 784,576 928,576"><title>house02 [0] k depth=4 quad=70</title></polygon>
+<polygon points="928,576 800,576 800,592 928,592"><title>house02 [0] k depth=4 quad=71</title></polygon>
+<polygon points="928,592 816,592 816,608 928,608"><title>house02 [0] k depth=4 quad=72</title></polygon>
+<polygon points="816,336 800,336 800,512 816,512"><title>house02 [0] k depth=4 quad=73</title></polygon>
+<polygon points="800,352 784,352 784,512 800,512"><title>house02 [0] k depth=4 quad=74</title></polygon>
+<polygon points="784,368 720,368 720,512 784,512"><title>house02 [0] k depth=4 quad=75</title></polygon>
+<polygon points="720,384 704,384 704,512 720,512"><title>house02 [0] k depth=4 quad=76</title></polygon>
+<polygon points="704,400 688,400 688,512 704,512"><title>house02 [0] k depth=4 quad=77</title></polygon>
+<polygon points="928,416 928,420 816,420 816,416"><title>house02 [0] r depth=28 quad=24</title></polygon>
+<polygon points="928,512 928,508 816,508 816,512"><title>house02 [0] l depth=52 quad=26</title></polygon>
+<polygon points="784,352 784,368 720,368 720,352"><title>house02 [0] r depth=16 quad=16</title></polygon>
+<polygon points="784,576 784,560 720,560 720,576"><title>house02 [0] l depth=64 quad=33</title></polygon>
+<polygon points="832,304 832,320 816,320 816,304"><title>house02 [0] r depth=4 quad=1</title></polygon>
+<polygon points="816,320 816,336 800,336 800,320"><title>house02 [0] r depth=8 quad=10</title></polygon>
+<polygon points="800,336 800,352 784,352 784,336"><title>house02 [0] r depth=12 quad=13</title></polygon>
+<polygon points="720,368 720,384 704,384 704,368"><title>house02 [0] r depth=20 quad=19</title></polygon>
+<polygon points="704,384 704,400 688,400 688,384"><title>house02 [0] r depth=24 quad=22</title></polygon>
+<polygon points="704,544 704,528 688,528 688,544"><title>house02 [0] l depth=56 quad=28</title></polygon>
+<polygon points="720,560 720,544 704,544 704,560"><title>house02 [0] l depth=60 quad=30</title></polygon>
+<polygon points="800,592 800,576 784,576 784,592"><title>house02 [0] l depth=68 quad=36</title></polygon>
+<polygon points="816,608 816,592 800,592 800,608"><title>house02 [0] l depth=72 quad=39</title></polygon>
+<polygon points="816,304 800,304 800,320 816,320"><title>house02 [0] b depth=44 quad=125</title></polygon>
+<polygon points="800,320 784,320 784,336 800,336"><title>house02 [0] b depth=48 quad=132</title></polygon>
+<polygon points="784,608 800,608 800,592 784,592"><title>house02 [0] b depth=48 quad=134</title></polygon>
+<polygon points="784,336 768,336 768,352 784,352"><title>house02 [0] b depth=52 quad=138</title></polygon>
+<polygon points="768,592 784,592 784,576 768,576"><title>house02 [0] b depth=52 quad=140</title></polygon>
+<polygon points="720,352 704,352 704,368 720,368"><title>house02 [0] b depth=68 quad=145</title></polygon>
+<polygon points="704,576 720,576 720,560 704,560"><title>house02 [0] b depth=68 quad=147</title></polygon>
+<polygon points="704,368 688,368 688,384 704,384"><title>house02 [0] b depth=72 quad=150</title></polygon>
+<polygon points="688,560 704,560 704,544 688,544"><title>house02 [0] b depth=72 quad=152</title></polygon>
+<polygon points="672,400 672,528 688,528 688,400"><title>house02 [0] b depth=76 quad=156</title></polygon>
+<polygon points="1856,320 1568,320 1568,256 1856,256"><title>house02 [0] r depth=76 quad=46</title></polygon>
+<polygon points="1856,256 1752,256 1752,160 1856,160"><title>house02 [0] r depth=76 quad=47</title></polygon>
+<polygon points="1752,176 1568,176 1568,160 1752,160"><title>house02 [0] r depth=76 quad=48</title></polygon>
+<polygon points="1672,256 1568,256 1568,176 1672,176"><title>house02 [0] r depth=76 quad=49</title></polygon>
+<polygon points="1748,256 1748,176 1752,176 1752,256"><title>house02 [0] f depth=30 quad=81</title></polygon>
+<polygon points="1676,256 1676,176 1672,176 1672,256"><title>house02 [0] k depth=50 quad=83</title></polygon>
+<polygon points="1568,160 1584,160 1584,144 1568,144"><title>house02 [0] l depth=76 quad=50</title></polygon>
+<polygon points="1568,128 1568,144 1584,144 1584,128"><title>house02 [0] b depth=44 quad=130</title></polygon>
+<polygon points="832,624 832,608 816,608 816,624"><title>house02 [0] l depth=76 quad=44</title></polygon>
+<polygon points="800,624 816,624 816,608 800,608"><title>house02 [0] b depth=44 quad=129</title></polygon>
 </g>
-<text x="320" y="928" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:0</text>
-<text x="1600" y="928" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:80</text>
-<text x="2240" y="656" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:0</text>
-<text x="960" y="656" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:80</text>
-<text x="960" y="1608" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:0</text>
-<text x="960" y="320" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:80</text>
-<g id="chart-1" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-4</title>
-<polygon points="0,3840 640,3840 640,3808 0,3808"><title>house02 [0] l depth=4 quad=2</title></polygon>
-<polygon points="32,4224 608,4224 608,4096 32,4096"><title>house02 [0] l depth=4 quad=3</title></polygon>
-<polygon points="32,4096 240,4096 240,3904 32,3904"><title>house02 [0] l depth=4 quad=4</title></polygon>
-<polygon points="240,3936 608,3936 608,3904 240,3904"><title>house02 [0] l depth=4 quad=5</title></polygon>
-<polygon points="400,4096 608,4096 608,3936 400,3936"><title>house02 [0] l depth=4 quad=6</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M992,320 L992,416" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M992,416 L992,608" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M688,400 L688,512" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M688,512 L688,528" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1288,596 L1560,596" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1288,324 L1376,324" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1376,324 L1472,324" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1472,324 L1560,324" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1376,152 L1472,152" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1376,144 L1472,144" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1360,16 L1472,16" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1472,16 L1488,16" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M992,320 L1000,320" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1000,320 L1280,320" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M816,304 L816,320" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1280,144 L1264,144" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1288,596 L1288,324" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M800,320 L800,336" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1296,128 L1280,128" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M784,336 L784,352" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1312,112 L1296,112" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M720,352 L720,368" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1328,48 L1312,48" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M704,368 L704,384" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1344,32 L1328,32" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M704,560 L704,544" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1504,32 L1520,32" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M720,576 L720,560" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1520,48 L1536,48" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M784,592 L784,576" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1536,112 L1552,112" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M800,608 L800,592" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1552,128 L1568,128" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1560,596 L1560,324" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M816,624 L816,608" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1568,144 L1584,144" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M832,320 L816,320" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1096,256 L1096,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1176,256 L1176,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1280,320 L1280,256" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1280,256 L1280,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1280,176 L1280,160" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1280,160 L1280,144" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M816,336 L800,336" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1296,144 L1296,128" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M800,352 L784,352" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1312,128 L1312,112" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M784,368 L720,368" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1328,112 L1328,48" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M720,384 L704,384" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1344,48 L1344,32" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M704,400 L688,400" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1360,32 L1360,16" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M928,416 L816,416" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M928,512 L816,512" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M704,528 L688,528" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1488,32 L1488,16" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M720,544 L704,544" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1504,48 L1504,32" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M784,560 L720,560" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1520,112 L1520,48" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M800,576 L784,576" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1536,128 L1536,112" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M816,592 L800,592" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1552,144 L1552,128" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M832,608 L816,608" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1752,256 L1752,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1672,256 L1672,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1568,320 L1568,256" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1568,256 L1568,176" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1568,176 L1568,160" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1568,160 L1568,144" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1284,324 L1284,596" stroke="#d26621"/>
+<path d="M1284,324 L1288,324" stroke="#d26621"/>
+<path d="M1284,596 L1288,596" stroke="#d26621"/>
+<path d="M1564,324 L1564,596" stroke="#d26621"/>
+<path d="M1560,324 L1564,324" stroke="#d26621"/>
+<path d="M1560,596 L1564,596" stroke="#d26621"/>
+<path d="M1288,596 L1288,600" stroke="#d26621"/>
+<path d="M1560,596 L1560,600" stroke="#d26621"/>
+<path d="M1288,600 L1560,600" stroke="#d26621"/>
+<path d="M1288,320 L1288,324" stroke="#d26621"/>
+<path d="M1376,320 L1376,324" stroke="#d26621"/>
+<path d="M1288,320 L1376,320" stroke="#d26621"/>
+<path d="M1472,320 L1472,324" stroke="#d26621"/>
+<path d="M1560,320 L1560,324" stroke="#d26621"/>
+<path d="M1472,320 L1560,320" stroke="#d26621"/>
+<path d="M1376,152 L1376,324" stroke="#d26621"/>
+<path d="M1472,152 L1472,324" stroke="#d26621"/>
+<path d="M1472,144 L1472,152" stroke="#d26621"/>
+<path d="M1376,144 L1376,152" stroke="#d26621"/>
+<path d="M1280,144 L1296,144" stroke="#d26621"/>
+<path d="M1376,144 L1376,320" stroke="#d26621"/>
+<path d="M1280,320 L1376,320" stroke="#d26621"/>
+<path d="M1472,144 L1472,320" stroke="#d26621"/>
+<path d="M1472,320 L1488,320" stroke="#d26621"/>
+<path d="M1488,32 L1504,32" stroke="#d26621"/>
+<path d="M1488,320 L1504,320" stroke="#d26621"/>
+<path d="M1504,48 L1520,48" stroke="#d26621"/>
+<path d="M1504,320 L1520,320" stroke="#d26621"/>
+<path d="M1520,112 L1536,112" stroke="#d26621"/>
+<path d="M1520,320 L1536,320" stroke="#d26621"/>
+<path d="M1536,128 L1552,128" stroke="#d26621"/>
+<path d="M1536,320 L1552,320" stroke="#d26621"/>
+<path d="M1552,144 L1568,144" stroke="#d26621"/>
+<path d="M1552,320 L1568,320" stroke="#d26621"/>
+<path d="M1296,128 L1312,128" stroke="#d26621"/>
+<path d="M1312,112 L1328,112" stroke="#d26621"/>
+<path d="M1328,48 L1344,48" stroke="#d26621"/>
+<path d="M1344,32 L1360,32" stroke="#d26621"/>
+<path d="M1312,112 L1328,112" stroke="#d26621"/>
+<path d="M1312,48 L1312,112" stroke="#d26621"/>
+<path d="M1520,112 L1536,112" stroke="#d26621"/>
+<path d="M1536,48 L1536,112" stroke="#d26621"/>
+<path d="M1280,144 L1296,144" stroke="#d26621"/>
+<path d="M1280,128 L1280,144" stroke="#d26621"/>
+<path d="M1296,128 L1312,128" stroke="#d26621"/>
+<path d="M1296,112 L1296,128" stroke="#d26621"/>
+<path d="M1328,48 L1344,48" stroke="#d26621"/>
+<path d="M1328,32 L1328,48" stroke="#d26621"/>
+<path d="M1344,32 L1360,32" stroke="#d26621"/>
+<path d="M1344,16 L1344,32" stroke="#d26621"/>
+<path d="M1344,16 L1360,16" stroke="#d26621"/>
+<path d="M1488,32 L1504,32" stroke="#d26621"/>
+<path d="M1504,16 L1504,32" stroke="#d26621"/>
+<path d="M1488,16 L1504,16" stroke="#d26621"/>
+<path d="M1504,48 L1520,48" stroke="#d26621"/>
+<path d="M1520,32 L1520,48" stroke="#d26621"/>
+<path d="M1536,128 L1552,128" stroke="#d26621"/>
+<path d="M1552,112 L1552,128" stroke="#d26621"/>
+<path d="M1552,144 L1568,144" stroke="#d26621"/>
+<path d="M1568,128 L1568,144" stroke="#d26621"/>
+<path d="M1296,112 L1296,128" stroke="#d26621"/>
+<path d="M1280,112 L1296,112" stroke="#d26621"/>
+<path d="M1280,112 L1280,128" stroke="#d26621"/>
+<path d="M1552,112 L1552,128" stroke="#d26621"/>
+<path d="M1568,112 L1568,128" stroke="#d26621"/>
+<path d="M1552,112 L1568,112" stroke="#d26621"/>
+<path d="M1312,96 L1312,112" stroke="#d26621"/>
+<path d="M1296,96 L1312,96" stroke="#d26621"/>
+<path d="M1296,96 L1296,112" stroke="#d26621"/>
+<path d="M1536,96 L1536,112" stroke="#d26621"/>
+<path d="M1552,96 L1552,112" stroke="#d26621"/>
+<path d="M1536,96 L1552,96" stroke="#d26621"/>
+<path d="M1328,32 L1328,48" stroke="#d26621"/>
+<path d="M1312,32 L1328,32" stroke="#d26621"/>
+<path d="M1312,32 L1312,48" stroke="#d26621"/>
+<path d="M1520,32 L1520,48" stroke="#d26621"/>
+<path d="M1536,32 L1536,48" stroke="#d26621"/>
+<path d="M1520,32 L1536,32" stroke="#d26621"/>
+<path d="M1344,16 L1344,32" stroke="#d26621"/>
+<path d="M1328,16 L1344,16" stroke="#d26621"/>
+<path d="M1328,16 L1328,32" stroke="#d26621"/>
+<path d="M1504,16 L1504,32" stroke="#d26621"/>
+<path d="M1520,16 L1520,32" stroke="#d26621"/>
+<path d="M1504,16 L1520,16" stroke="#d26621"/>
+<path d="M1488,0 L1488,16" stroke="#d26621"/>
+<path d="M1360,0 L1488,0" stroke="#d26621"/>
+<path d="M1360,0 L1360,16" stroke="#d26621"/>
+<path d="M1096,256 L1176,256" stroke="#d26621"/>
+<path d="M992,256 L992,320" stroke="#d26621"/>
+<path d="M992,160 L1096,160" stroke="#d26621"/>
+<path d="M992,160 L992,256" stroke="#d26621"/>
+<path d="M1096,176 L1176,176" stroke="#d26621"/>
+<path d="M1096,160 L1280,160" stroke="#d26621"/>
+<path d="M1096,176 L1100,176" stroke="#d26621"/>
+<path d="M1100,176 L1100,256" stroke="#d26621"/>
+<path d="M1096,256 L1100,256" stroke="#d26621"/>
+<path d="M1172,176 L1176,176" stroke="#d26621"/>
+<path d="M1172,176 L1172,256" stroke="#d26621"/>
+<path d="M1172,256 L1176,256" stroke="#d26621"/>
+<path d="M1264,160 L1280,160" stroke="#d26621"/>
+<path d="M1264,144 L1264,160" stroke="#d26621"/>
+<path d="M1280,128 L1280,144" stroke="#d26621"/>
+<path d="M1264,128 L1280,128" stroke="#d26621"/>
+<path d="M1264,128 L1264,144" stroke="#d26621"/>
+<path d="M992,608 L1000,608" stroke="#d26621"/>
+<path d="M1000,328 L1000,600" stroke="#d26621"/>
+<path d="M1000,328 L1272,328" stroke="#d26621"/>
+<path d="M1280,320 L1280,328" stroke="#d26621"/>
+<path d="M1272,328 L1272,416" stroke="#d26621"/>
+<path d="M1272,416 L1280,416" stroke="#d26621"/>
+<path d="M1280,328 L1280,416" stroke="#d26621"/>
+<path d="M1272,512 L1272,600" stroke="#d26621"/>
+<path d="M1272,608 L1280,608" stroke="#d26621"/>
+<path d="M1280,512 L1280,608" stroke="#d26621"/>
+<path d="M1272,512 L1280,512" stroke="#d26621"/>
+<path d="M1000,608 L1272,608" stroke="#d26621"/>
+<path d="M1000,600 L1272,600" stroke="#d26621"/>
+<path d="M832,320 L992,320" stroke="#d26621"/>
+<path d="M816,320 L816,336" stroke="#d26621"/>
+<path d="M928,416 L928,512" stroke="#d26621"/>
+<path d="M928,608 L992,608" stroke="#d26621"/>
+<path d="M704,528 L704,544" stroke="#d26621"/>
+<path d="M720,544 L720,560" stroke="#d26621"/>
+<path d="M784,560 L784,576" stroke="#d26621"/>
+<path d="M800,576 L800,592" stroke="#d26621"/>
+<path d="M816,592 L816,608" stroke="#d26621"/>
+<path d="M832,608 L928,608" stroke="#d26621"/>
+<path d="M800,336 L800,352" stroke="#d26621"/>
+<path d="M816,416 L816,512" stroke="#d26621"/>
+<path d="M784,352 L784,368" stroke="#d26621"/>
+<path d="M720,368 L720,384" stroke="#d26621"/>
+<path d="M704,384 L704,400" stroke="#d26621"/>
+<path d="M928,416 L928,420" stroke="#d26621"/>
+<path d="M816,420 L928,420" stroke="#d26621"/>
+<path d="M816,416 L816,420" stroke="#d26621"/>
+<path d="M928,508 L928,512" stroke="#d26621"/>
+<path d="M816,508 L928,508" stroke="#d26621"/>
+<path d="M816,508 L816,512" stroke="#d26621"/>
+<path d="M784,352 L784,368" stroke="#d26621"/>
+<path d="M720,352 L784,352" stroke="#d26621"/>
+<path d="M784,560 L784,576" stroke="#d26621"/>
+<path d="M720,576 L784,576" stroke="#d26621"/>
+<path d="M832,304 L832,320" stroke="#d26621"/>
+<path d="M816,304 L832,304" stroke="#d26621"/>
+<path d="M816,320 L816,336" stroke="#d26621"/>
+<path d="M800,320 L816,320" stroke="#d26621"/>
+<path d="M800,336 L800,352" stroke="#d26621"/>
+<path d="M784,336 L800,336" stroke="#d26621"/>
+<path d="M720,368 L720,384" stroke="#d26621"/>
+<path d="M704,368 L720,368" stroke="#d26621"/>
+<path d="M704,384 L704,400" stroke="#d26621"/>
+<path d="M688,384 L688,400" stroke="#d26621"/>
+<path d="M688,384 L704,384" stroke="#d26621"/>
+<path d="M704,528 L704,544" stroke="#d26621"/>
+<path d="M688,528 L688,544" stroke="#d26621"/>
+<path d="M688,544 L704,544" stroke="#d26621"/>
+<path d="M720,544 L720,560" stroke="#d26621"/>
+<path d="M704,560 L720,560" stroke="#d26621"/>
+<path d="M800,576 L800,592" stroke="#d26621"/>
+<path d="M784,592 L800,592" stroke="#d26621"/>
+<path d="M816,592 L816,608" stroke="#d26621"/>
+<path d="M800,608 L816,608" stroke="#d26621"/>
+<path d="M800,304 L816,304" stroke="#d26621"/>
+<path d="M800,304 L800,320" stroke="#d26621"/>
+<path d="M800,320 L816,320" stroke="#d26621"/>
+<path d="M784,320 L800,320" stroke="#d26621"/>
+<path d="M784,320 L784,336" stroke="#d26621"/>
+<path d="M784,336 L800,336" stroke="#d26621"/>
+<path d="M784,608 L800,608" stroke="#d26621"/>
+<path d="M784,592 L800,592" stroke="#d26621"/>
+<path d="M784,592 L784,608" stroke="#d26621"/>
+<path d="M768,336 L784,336" stroke="#d26621"/>
+<path d="M768,336 L768,352" stroke="#d26621"/>
+<path d="M768,352 L784,352" stroke="#d26621"/>
+<path d="M768,592 L784,592" stroke="#d26621"/>
+<path d="M768,576 L784,576" stroke="#d26621"/>
+<path d="M768,576 L768,592" stroke="#d26621"/>
+<path d="M704,352 L720,352" stroke="#d26621"/>
+<path d="M704,352 L704,368" stroke="#d26621"/>
+<path d="M704,368 L720,368" stroke="#d26621"/>
+<path d="M704,576 L720,576" stroke="#d26621"/>
+<path d="M704,560 L720,560" stroke="#d26621"/>
+<path d="M704,560 L704,576" stroke="#d26621"/>
+<path d="M688,368 L704,368" stroke="#d26621"/>
+<path d="M688,368 L688,384" stroke="#d26621"/>
+<path d="M688,384 L704,384" stroke="#d26621"/>
+<path d="M688,560 L704,560" stroke="#d26621"/>
+<path d="M688,544 L704,544" stroke="#d26621"/>
+<path d="M688,544 L688,560" stroke="#d26621"/>
+<path d="M672,400 L672,528" stroke="#d26621"/>
+<path d="M672,528 L688,528" stroke="#d26621"/>
+<path d="M672,400 L688,400" stroke="#d26621"/>
+<path d="M1568,320 L1856,320" stroke="#d26621"/>
+<path d="M1672,256 L1752,256" stroke="#d26621"/>
+<path d="M1856,256 L1856,320" stroke="#d26621"/>
+<path d="M1752,160 L1856,160" stroke="#d26621"/>
+<path d="M1856,160 L1856,256" stroke="#d26621"/>
+<path d="M1672,176 L1752,176" stroke="#d26621"/>
+<path d="M1568,160 L1752,160" stroke="#d26621"/>
+<path d="M1748,176 L1748,256" stroke="#d26621"/>
+<path d="M1748,176 L1752,176" stroke="#d26621"/>
+<path d="M1748,256 L1752,256" stroke="#d26621"/>
+<path d="M1676,176 L1676,256" stroke="#d26621"/>
+<path d="M1672,176 L1676,176" stroke="#d26621"/>
+<path d="M1672,256 L1676,256" stroke="#d26621"/>
+<path d="M1568,160 L1584,160" stroke="#d26621"/>
+<path d="M1584,144 L1584,160" stroke="#d26621"/>
+<path d="M1568,128 L1568,144" stroke="#d26621"/>
+<path d="M1584,128 L1584,144" stroke="#d26621"/>
+<path d="M1568,128 L1584,128" stroke="#d26621"/>
+<path d="M832,608 L832,624" stroke="#d26621"/>
+<path d="M816,624 L832,624" stroke="#d26621"/>
+<path d="M800,624 L816,624" stroke="#d26621"/>
+<path d="M800,608 L816,608" stroke="#d26621"/>
+<path d="M800,608 L800,624" stroke="#d26621"/>
 </g>
-<text x="320" y="4160" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:4</text>
-<g id="chart-2" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-5</title>
-<polygon points="576,4736 736,4736 736,4576 576,4576"><title>house02 [0] l depth=5 quad=8</title></polygon>
+<text x="1424" y="460" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:1</text>
+<text x="1286" y="460" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:6</text>
+<text x="1562" y="460" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:74</text>
+<text x="1424" y="598" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:6</text>
+<text x="1332" y="322" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:74</text>
+<text x="1424" y="238" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:74</text>
+<text x="1424" y="148" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:44</text>
+<text x="1328" y="232" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:76</text>
+<text x="1320" y="80" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:16</text>
+<text x="1528" y="80" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:64</text>
+<text x="1288" y="136" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:8</text>
+<text x="1304" y="120" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:12</text>
+<text x="1336" y="40" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:20</text>
+<text x="1352" y="24" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:24</text>
+<text x="1496" y="24" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:56</text>
+<text x="1512" y="40" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:60</text>
+<text x="1544" y="120" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:68</text>
+<text x="1560" y="136" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:72</text>
+<text x="1288" y="120" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:48</text>
+<text x="1304" y="104" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:52</text>
+<text x="1320" y="40" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:68</text>
+<text x="1336" y="24" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:72</text>
+<text x="1424" y="8" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:76</text>
+<text x="1136" y="288" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:4</text>
+<text x="1098" y="216" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:30</text>
+<text x="1174" y="216" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:50</text>
+<text x="1272" y="152" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:4</text>
+<text x="996" y="464" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:0</text>
+<text x="904" y="368" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:4</text>
+<text x="872" y="418" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:28</text>
+<text x="872" y="510" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:52</text>
+<text x="1712" y="288" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:76</text>
+<text x="1576" y="152" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:76</text>
+<g id="chart-1" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-1</title>
+<polygon points="256,160 416,160 416,480 256,480"><title>house02 [0] t depth=80 quad=159</title></polygon>
+<polygon points="240,160 240,480 256,480 256,160"><title>house02 [0] l depth=20 quad=20</title></polygon>
+<polygon points="432,160 432,480 416,480 416,160"><title>house02 [0] r depth=60 quad=31</title></polygon>
+<polygon points="224,160 240,160 240,480 224,480"><title>house02 [0] t depth=76 quad=155</title></polygon>
+<polygon points="208,160 208,480 224,480 224,160"><title>house02 [0] l depth=16 quad=17</title></polygon>
+<polygon points="192,160 208,160 208,480 192,480"><title>house02 [0] t depth=72 quad=149</title></polygon>
+<polygon points="432,160 448,160 448,480 432,480"><title>house02 [0] t depth=76 quad=158</title></polygon>
+<polygon points="464,160 464,480 448,480 448,160"><title>house02 [0] r depth=64 quad=34</title></polygon>
+<polygon points="464,160 480,160 480,480 464,480"><title>house02 [0] t depth=72 quad=154</title></polygon>
+<polygon points="128,160 128,480 192,480 192,160"><title>house02 [0] l depth=12 quad=14</title></polygon>
+<polygon points="112,160 128,160 128,480 112,480"><title>house02 [0] t depth=56 quad=143</title></polygon>
+<polygon points="96,160 96,480 112,480 112,160"><title>house02 [0] l depth=8 quad=11</title></polygon>
+<polygon points="80,160 96,160 96,480 80,480"><title>house02 [0] t depth=52 quad=137</title></polygon>
+<polygon points="64,160 64,480 80,480 80,160"><title>house02 [0] l depth=4 quad=2</title></polygon>
+<polygon points="48,160 64,160 64,480 48,480"><title>house02 [0] t depth=48 quad=131</title></polygon>
+<polygon points="16,160 16,480 48,480 48,160"><title>house02 [0] l depth=0 quad=0</title></polygon>
+<polygon points="16,160 0,160 0,480 16,480"><title>house02 [0] b depth=40 quad=123</title></polygon>
+<polygon points="544,160 544,480 480,480 480,160"><title>house02 [0] r depth=68 quad=37</title></polygon>
+<polygon points="544,160 560,160 560,480 544,480"><title>house02 [0] t depth=56 quad=144</title></polygon>
+<polygon points="576,160 576,480 560,480 560,160"><title>house02 [0] r depth=72 quad=40</title></polygon>
+<polygon points="576,160 592,160 592,480 576,480"><title>house02 [0] t depth=52 quad=142</title></polygon>
+<polygon points="608,160 608,480 592,480 592,160"><title>house02 [0] r depth=76 quad=45</title></polygon>
+<polygon points="608,160 624,160 624,480 608,480"><title>house02 [0] t depth=48 quad=136</title></polygon>
+<polygon points="656,160 656,480 624,480 624,160"><title>house02 [0] r depth=80 quad=51</title></polygon>
+<polygon points="672,160 656,160 656,480 672,480"><title>house02 [0] b depth=40 quad=124</title></polygon>
+<polygon points="176,0 176,32 192,32 192,0"><title>house02 [0] k depth=0 quad=52</title></polygon>
+<polygon points="480,0 480,32 496,32 496,0"><title>house02 [0] k depth=0 quad=53</title></polygon>
+<polygon points="192,16 192,48 208,48 208,16"><title>house02 [0] k depth=0 quad=54</title></polygon>
+<polygon points="464,16 464,48 480,48 480,16"><title>house02 [0] k depth=0 quad=55</title></polygon>
+<polygon points="208,32 208,64 224,64 224,32"><title>house02 [0] k depth=0 quad=56</title></polygon>
+<polygon points="448,32 448,64 464,64 464,32"><title>house02 [0] k depth=0 quad=57</title></polygon>
+<polygon points="224,48 224,128 240,128 240,48"><title>house02 [0] k depth=0 quad=58</title></polygon>
+<polygon points="432,48 432,128 448,128 448,48"><title>house02 [0] k depth=0 quad=59</title></polygon>
+<polygon points="240,112 240,144 256,144 256,112"><title>house02 [0] k depth=0 quad=60</title></polygon>
+<polygon points="416,112 416,144 432,144 432,112"><title>house02 [0] k depth=0 quad=61</title></polygon>
+<polygon points="256,128 256,160 272,160 272,128"><title>house02 [0] k depth=0 quad=62</title></polygon>
+<polygon points="400,128 400,160 416,160 416,128"><title>house02 [0] k depth=0 quad=63</title></polygon>
+<polygon points="272,144 272,160 400,160 400,144"><title>house02 [0] k depth=0 quad=64</title></polygon>
+<polygon points="176,640 176,608 192,608 192,640"><title>house02 [0] f depth=80 quad=99</title></polygon>
+<polygon points="480,640 480,608 496,608 496,640"><title>house02 [0] f depth=80 quad=100</title></polygon>
+<polygon points="192,624 192,592 208,592 208,624"><title>house02 [0] f depth=80 quad=101</title></polygon>
+<polygon points="464,624 464,592 480,592 480,624"><title>house02 [0] f depth=80 quad=102</title></polygon>
+<polygon points="208,608 208,576 224,576 224,608"><title>house02 [0] f depth=80 quad=103</title></polygon>
+<polygon points="448,608 448,576 464,576 464,608"><title>house02 [0] f depth=80 quad=104</title></polygon>
+<polygon points="224,592 224,512 240,512 240,592"><title>house02 [0] f depth=80 quad=105</title></polygon>
+<polygon points="432,592 432,512 448,512 448,592"><title>house02 [0] f depth=80 quad=106</title></polygon>
+<polygon points="240,528 240,496 256,496 256,528"><title>house02 [0] f depth=80 quad=107</title></polygon>
+<polygon points="416,528 416,496 432,496 432,528"><title>house02 [0] f depth=80 quad=108</title></polygon>
+<polygon points="256,512 256,480 272,480 272,512"><title>house02 [0] f depth=80 quad=109</title></polygon>
+<polygon points="400,512 400,480 416,480 416,512"><title>house02 [0] f depth=80 quad=110</title></polygon>
+<polygon points="272,496 272,480 400,480 400,496"><title>house02 [0] f depth=80 quad=111</title></polygon>
 </g>
-<text x="656" y="4656" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:5</text>
-<g id="chart-3" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-8</title>
-<polygon points="1280,4768 1920,4768 1920,4736 1280,4736"><title>house02 [0] l depth=8 quad=10</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M256,160 L272,160" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M272,160 L400,160" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M400,160 L416,160" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M256,480 L272,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M272,480 L400,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M400,480 L416,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M16,160 L16,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M48,160 L48,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M64,160 L64,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M80,160 L80,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M96,160 L96,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M112,160 L112,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M128,160 L128,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M192,160 L192,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M208,160 L208,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M224,160 L224,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M240,160 L240,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M256,160 L256,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M432,160 L432,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M416,160 L416,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M464,160 L464,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M448,160 L448,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M544,160 L544,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M480,160 L480,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M576,160 L576,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M560,160 L560,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M608,160 L608,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M592,160 L592,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M656,160 L656,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M624,160 L624,480" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M240,480 L256,480" stroke="#d26621"/>
+<path d="M240,160 L256,160" stroke="#d26621"/>
+<path d="M416,480 L432,480" stroke="#d26621"/>
+<path d="M416,160 L432,160" stroke="#d26621"/>
+<path d="M224,160 L240,160" stroke="#d26621"/>
+<path d="M224,480 L240,480" stroke="#d26621"/>
+<path d="M208,480 L224,480" stroke="#d26621"/>
+<path d="M208,160 L224,160" stroke="#d26621"/>
+<path d="M192,160 L208,160" stroke="#d26621"/>
+<path d="M192,480 L208,480" stroke="#d26621"/>
+<path d="M432,160 L448,160" stroke="#d26621"/>
+<path d="M432,480 L448,480" stroke="#d26621"/>
+<path d="M448,480 L464,480" stroke="#d26621"/>
+<path d="M448,160 L464,160" stroke="#d26621"/>
+<path d="M464,160 L480,160" stroke="#d26621"/>
+<path d="M464,480 L480,480" stroke="#d26621"/>
+<path d="M128,480 L192,480" stroke="#d26621"/>
+<path d="M128,160 L192,160" stroke="#d26621"/>
+<path d="M112,160 L128,160" stroke="#d26621"/>
+<path d="M112,480 L128,480" stroke="#d26621"/>
+<path d="M96,480 L112,480" stroke="#d26621"/>
+<path d="M96,160 L112,160" stroke="#d26621"/>
+<path d="M80,160 L96,160" stroke="#d26621"/>
+<path d="M80,480 L96,480" stroke="#d26621"/>
+<path d="M64,480 L80,480" stroke="#d26621"/>
+<path d="M64,160 L80,160" stroke="#d26621"/>
+<path d="M48,160 L64,160" stroke="#d26621"/>
+<path d="M48,480 L64,480" stroke="#d26621"/>
+<path d="M16,480 L48,480" stroke="#d26621"/>
+<path d="M16,160 L48,160" stroke="#d26621"/>
+<path d="M0,160 L16,160" stroke="#d26621"/>
+<path d="M0,160 L0,480" stroke="#d26621"/>
+<path d="M0,480 L16,480" stroke="#d26621"/>
+<path d="M480,480 L544,480" stroke="#d26621"/>
+<path d="M480,160 L544,160" stroke="#d26621"/>
+<path d="M544,160 L560,160" stroke="#d26621"/>
+<path d="M544,480 L560,480" stroke="#d26621"/>
+<path d="M560,480 L576,480" stroke="#d26621"/>
+<path d="M560,160 L576,160" stroke="#d26621"/>
+<path d="M576,160 L592,160" stroke="#d26621"/>
+<path d="M576,480 L592,480" stroke="#d26621"/>
+<path d="M592,480 L608,480" stroke="#d26621"/>
+<path d="M592,160 L608,160" stroke="#d26621"/>
+<path d="M608,160 L624,160" stroke="#d26621"/>
+<path d="M608,480 L624,480" stroke="#d26621"/>
+<path d="M624,480 L656,480" stroke="#d26621"/>
+<path d="M624,160 L656,160" stroke="#d26621"/>
+<path d="M656,160 L672,160" stroke="#d26621"/>
+<path d="M656,480 L672,480" stroke="#d26621"/>
+<path d="M672,160 L672,480" stroke="#d26621"/>
+<path d="M176,0 L176,32" stroke="#d26621"/>
+<path d="M176,32 L192,32" stroke="#d26621"/>
+<path d="M192,0 L192,16" stroke="#d26621"/>
+<path d="M176,0 L192,0" stroke="#d26621"/>
+<path d="M480,0 L480,16" stroke="#d26621"/>
+<path d="M480,32 L496,32" stroke="#d26621"/>
+<path d="M496,0 L496,32" stroke="#d26621"/>
+<path d="M480,0 L496,0" stroke="#d26621"/>
+<path d="M192,32 L192,48" stroke="#d26621"/>
+<path d="M192,48 L208,48" stroke="#d26621"/>
+<path d="M208,16 L208,32" stroke="#d26621"/>
+<path d="M192,16 L208,16" stroke="#d26621"/>
+<path d="M464,16 L464,32" stroke="#d26621"/>
+<path d="M464,48 L480,48" stroke="#d26621"/>
+<path d="M480,32 L480,48" stroke="#d26621"/>
+<path d="M464,16 L480,16" stroke="#d26621"/>
+<path d="M208,48 L208,64" stroke="#d26621"/>
+<path d="M208,64 L224,64" stroke="#d26621"/>
+<path d="M224,32 L224,48" stroke="#d26621"/>
+<path d="M208,32 L224,32" stroke="#d26621"/>
+<path d="M448,32 L448,48" stroke="#d26621"/>
+<path d="M448,64 L464,64" stroke="#d26621"/>
+<path d="M464,48 L464,64" stroke="#d26621"/>
+<path d="M448,32 L464,32" stroke="#d26621"/>
+<path d="M224,64 L224,128" stroke="#d26621"/>
+<path d="M224,128 L240,128" stroke="#d26621"/>
+<path d="M240,48 L240,112" stroke="#d26621"/>
+<path d="M224,48 L240,48" stroke="#d26621"/>
+<path d="M432,48 L432,112" stroke="#d26621"/>
+<path d="M432,128 L448,128" stroke="#d26621"/>
+<path d="M448,64 L448,128" stroke="#d26621"/>
+<path d="M432,48 L448,48" stroke="#d26621"/>
+<path d="M240,128 L240,144" stroke="#d26621"/>
+<path d="M240,144 L256,144" stroke="#d26621"/>
+<path d="M256,112 L256,128" stroke="#d26621"/>
+<path d="M240,112 L256,112" stroke="#d26621"/>
+<path d="M416,112 L416,128" stroke="#d26621"/>
+<path d="M416,144 L432,144" stroke="#d26621"/>
+<path d="M432,128 L432,144" stroke="#d26621"/>
+<path d="M416,112 L432,112" stroke="#d26621"/>
+<path d="M256,144 L256,160" stroke="#d26621"/>
+<path d="M272,128 L272,144" stroke="#d26621"/>
+<path d="M256,128 L272,128" stroke="#d26621"/>
+<path d="M400,128 L400,144" stroke="#d26621"/>
+<path d="M416,144 L416,160" stroke="#d26621"/>
+<path d="M400,128 L416,128" stroke="#d26621"/>
+<path d="M272,144 L400,144" stroke="#d26621"/>
+<path d="M176,608 L176,640" stroke="#d26621"/>
+<path d="M176,608 L192,608" stroke="#d26621"/>
+<path d="M192,624 L192,640" stroke="#d26621"/>
+<path d="M176,640 L192,640" stroke="#d26621"/>
+<path d="M480,624 L480,640" stroke="#d26621"/>
+<path d="M480,608 L496,608" stroke="#d26621"/>
+<path d="M496,608 L496,640" stroke="#d26621"/>
+<path d="M480,640 L496,640" stroke="#d26621"/>
+<path d="M192,592 L192,608" stroke="#d26621"/>
+<path d="M192,592 L208,592" stroke="#d26621"/>
+<path d="M208,608 L208,624" stroke="#d26621"/>
+<path d="M192,624 L208,624" stroke="#d26621"/>
+<path d="M464,608 L464,624" stroke="#d26621"/>
+<path d="M464,592 L480,592" stroke="#d26621"/>
+<path d="M480,592 L480,608" stroke="#d26621"/>
+<path d="M464,624 L480,624" stroke="#d26621"/>
+<path d="M208,576 L208,592" stroke="#d26621"/>
+<path d="M208,576 L224,576" stroke="#d26621"/>
+<path d="M224,592 L224,608" stroke="#d26621"/>
+<path d="M208,608 L224,608" stroke="#d26621"/>
+<path d="M448,592 L448,608" stroke="#d26621"/>
+<path d="M448,576 L464,576" stroke="#d26621"/>
+<path d="M464,576 L464,592" stroke="#d26621"/>
+<path d="M448,608 L464,608" stroke="#d26621"/>
+<path d="M224,512 L224,576" stroke="#d26621"/>
+<path d="M224,512 L240,512" stroke="#d26621"/>
+<path d="M240,528 L240,592" stroke="#d26621"/>
+<path d="M224,592 L240,592" stroke="#d26621"/>
+<path d="M432,528 L432,592" stroke="#d26621"/>
+<path d="M432,512 L448,512" stroke="#d26621"/>
+<path d="M448,512 L448,576" stroke="#d26621"/>
+<path d="M432,592 L448,592" stroke="#d26621"/>
+<path d="M240,496 L240,512" stroke="#d26621"/>
+<path d="M240,496 L256,496" stroke="#d26621"/>
+<path d="M256,512 L256,528" stroke="#d26621"/>
+<path d="M240,528 L256,528" stroke="#d26621"/>
+<path d="M416,512 L416,528" stroke="#d26621"/>
+<path d="M416,496 L432,496" stroke="#d26621"/>
+<path d="M432,496 L432,512" stroke="#d26621"/>
+<path d="M416,528 L432,528" stroke="#d26621"/>
+<path d="M256,480 L256,496" stroke="#d26621"/>
+<path d="M272,496 L272,512" stroke="#d26621"/>
+<path d="M256,512 L272,512" stroke="#d26621"/>
+<path d="M400,496 L400,512" stroke="#d26621"/>
+<path d="M416,480 L416,496" stroke="#d26621"/>
+<path d="M400,512 L416,512" stroke="#d26621"/>
+<path d="M272,496 L400,496" stroke="#d26621"/>
 </g>
-<text x="1600" y="4752" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:8</text>
-<g id="chart-4" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-12</title>
-<polygon points="896,4704 1536,4704 1536,4576 896,4576"><title>house02 [0] l depth=12 quad=13</title></polygon>
+<text x="336" y="320" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:80</text>
+<text x="248" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:20</text>
+<text x="424" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:60</text>
+<text x="232" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:76</text>
+<text x="216" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:16</text>
+<text x="200" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:72</text>
+<text x="456" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:64</text>
+<text x="160" y="320" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:12</text>
+<text x="120" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:56</text>
+<text x="104" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:8</text>
+<text x="88" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:52</text>
+<text x="72" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:4</text>
+<text x="56" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:48</text>
+<text x="32" y="320" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:0</text>
+<text x="8" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:40</text>
+<text x="512" y="320" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:68</text>
+<text x="568" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:72</text>
+<text x="600" y="320" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:76</text>
+<text x="640" y="320" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:80</text>
+<text x="336" y="152" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:0</text>
+<text x="336" y="488" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:80</text>
+<g id="chart-2" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-2</title>
+<polygon points="1968,116 1968,4 1872,4 1872,116"><title>house02 [0] k depth=5 quad=78</title></polygon>
+<polygon points="1968,120 1872,120 1872,116 1968,116"><title>house02 [0] t depth=16 quad=119</title></polygon>
+<polygon points="1968,0 1872,0 1872,4 1968,4"><title>house02 [0] b depth=44 quad=127</title></polygon>
 </g>
-<text x="1216" y="4640" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:12</text>
-<g id="chart-5" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-16</title>
-<polygon points="1920,4768 2560,4768 2560,4736 1920,4736"><title>house02 [0] l depth=16 quad=16</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M1968,116 L1872,116" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1968,4 L1872,4" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1968,4 L1968,116" stroke="#d26621"/>
+<path d="M1872,4 L1872,116" stroke="#d26621"/>
+<path d="M1872,120 L1968,120" stroke="#d26621"/>
+<path d="M1872,116 L1872,120" stroke="#d26621"/>
+<path d="M1968,116 L1968,120" stroke="#d26621"/>
+<path d="M1872,0 L1968,0" stroke="#d26621"/>
+<path d="M1872,0 L1872,4" stroke="#d26621"/>
+<path d="M1968,0 L1968,4" stroke="#d26621"/>
 </g>
-<text x="2240" y="4752" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:16</text>
-<g id="chart-6" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-20</title>
-<polygon points="0,4896 640,4896 640,4864 0,4864"><title>house02 [0] l depth=20 quad=19</title></polygon>
+<text x="1920" y="60" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:5</text>
+<text x="1920" y="118" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:16</text>
+<text x="1920" y="2" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:44</text>
+<g id="chart-3" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-3</title>
+<polygon points="1968,84 2048,84 2048,4 1968,4"><title>house02 [0] l depth=5 quad=8</title></polygon>
+<polygon points="1968,88 1968,84 2048,84 2048,88"><title>house02 [0] t depth=16 quad=118</title></polygon>
+<polygon points="1968,0 1968,4 2048,4 2048,0"><title>house02 [0] b depth=36 quad=121</title></polygon>
 </g>
-<text x="320" y="4880" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:20</text>
-<g id="chart-7" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-52</title>
-<polygon points="1856,4032 1864,4032 1864,3808 1856,3808"><title>house02 [0] l depth=52 quad=25</title></polygon>
-<polygon points="2416,4160 2432,4160 2432,3808 2416,3808"><title>house02 [0] l depth=52 quad=26</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M1968,84 L2048,84" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M1968,4 L2048,4" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M2048,4 L2048,84" stroke="#d26621"/>
+<path d="M1968,4 L1968,84" stroke="#d26621"/>
+<path d="M1968,84 L1968,88" stroke="#d26621"/>
+<path d="M2048,84 L2048,88" stroke="#d26621"/>
+<path d="M1968,88 L2048,88" stroke="#d26621"/>
+<path d="M1968,0 L1968,4" stroke="#d26621"/>
+<path d="M2048,0 L2048,4" stroke="#d26621"/>
+<path d="M1968,0 L2048,0" stroke="#d26621"/>
 </g>
-<text x="2424" y="3984" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:52</text>
-<g id="chart-8" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-56</title>
-<polygon points="640,4896 672,4896 672,4864 640,4864"><title>house02 [0] l depth=56 quad=27</title></polygon>
-<polygon points="1248,4896 1280,4896 1280,4864 1248,4864"><title>house02 [0] l depth=56 quad=28</title></polygon>
+<text x="2008" y="44" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:5</text>
+<text x="2008" y="86" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:16</text>
+<text x="2008" y="2" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:36</text>
+<g id="chart-4" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-4</title>
+<polygon points="2128,84 2048,84 2048,4 2128,4"><title>house02 [0] r depth=75 quad=43</title></polygon>
+<polygon points="2128,84 2128,88 2048,88 2048,84"><title>house02 [0] t depth=16 quad=120</title></polygon>
+<polygon points="2128,4 2128,0 2048,0 2048,4"><title>house02 [0] b depth=36 quad=122</title></polygon>
 </g>
-<text x="656" y="4880" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:56</text>
-<g id="chart-9" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-60</title>
-<polygon points="1280,4896 1312,4896 1312,4864 1280,4864"><title>house02 [0] l depth=60 quad=29</title></polygon>
-<polygon points="1888,4896 1920,4896 1920,4864 1888,4864"><title>house02 [0] l depth=60 quad=31</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M2128,84 L2048,84" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M2128,4 L2048,4" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M2048,4 L2048,84" stroke="#d26621"/>
+<path d="M2128,4 L2128,84" stroke="#d26621"/>
+<path d="M2128,84 L2128,88" stroke="#d26621"/>
+<path d="M2048,88 L2128,88" stroke="#d26621"/>
+<path d="M2048,84 L2048,88" stroke="#d26621"/>
+<path d="M2128,0 L2128,4" stroke="#d26621"/>
+<path d="M2048,0 L2128,0" stroke="#d26621"/>
+<path d="M2048,0 L2048,4" stroke="#d26621"/>
 </g>
-<text x="1296" y="4880" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:60</text>
-<g id="chart-10" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-64</title>
-<polygon points="1536,4704 1568,4704 1568,4576 1536,4576"><title>house02 [0] l depth=64 quad=32</title></polygon>
-<polygon points="2144,4704 2176,4704 2176,4576 2144,4576"><title>house02 [0] l depth=64 quad=34</title></polygon>
+<text x="2088" y="44" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:75</text>
+<text x="2088" y="86" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:16</text>
+<text x="2088" y="2" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:36</text>
+<g id="chart-5" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-5</title>
+<polygon points="1864,176 1856,176 1856,0 1864,0"><title>house02 [0] r depth=28 quad=25</title></polygon>
 </g>
-<text x="1552" y="4640" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:64</text>
-<g id="chart-11" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-68</title>
-<polygon points="1920,4896 1952,4896 1952,4864 1920,4864"><title>house02 [0] l depth=68 quad=35</title></polygon>
-<polygon points="2528,4896 2560,4896 2560,4864 2528,4864"><title>house02 [0] l depth=68 quad=37</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M1856,176 L1864,176" stroke="#d26621"/>
+<path d="M1856,0 L1856,176" stroke="#d26621"/>
+<path d="M1856,0 L1864,0" stroke="#d26621"/>
+<path d="M1864,0 L1864,176" stroke="#d26621"/>
 </g>
-<text x="1936" y="4880" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:68</text>
-<g id="chart-12" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-72</title>
-<polygon points="0,4928 32,4928 32,4896 0,4896"><title>house02 [0] l depth=72 quad=38</title></polygon>
-<polygon points="608,4928 640,4928 640,4896 608,4896"><title>house02 [0] l depth=72 quad=40</title></polygon>
+<text x="1860" y="88" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:28</text>
+<g id="chart-6" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] surface-island-6</title>
+<polygon points="1864,176 1872,176 1872,0 1864,0"><title>house02 [0] l depth=52 quad=27</title></polygon>
 </g>
-<text x="16" y="4912" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:72</text>
-<g id="chart-13" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-l-76</title>
-<polygon points="640,4928 672,4928 672,4896 640,4896"><title>house02 [0] l depth=76 quad=42</title></polygon>
-<polygon points="1248,4928 1280,4928 1280,4896 1248,4896"><title>house02 [0] l depth=76 quad=48</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M1864,176 L1872,176" stroke="#d26621"/>
+<path d="M1872,0 L1872,176" stroke="#d26621"/>
+<path d="M1864,0 L1872,0" stroke="#d26621"/>
+<path d="M1864,0 L1864,176" stroke="#d26621"/>
 </g>
-<text x="656" y="4912" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:76</text>
-<g id="chart-14" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-4</title>
-<polygon points="1920,4928 1888,4928 1888,4896 1920,4896"><title>house02 [0] r depth=4 quad=1</title></polygon>
-<polygon points="1312,4928 1280,4928 1280,4896 1312,4896"><title>house02 [0] r depth=4 quad=7</title></polygon>
+<text x="1868" y="88" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] l:52</text>
+<g id="chart-7" fill="none" stroke="#222" stroke-width="0.6"><title>crate [model 1] surface-box-net</title>
+<polygon points="0,768 64,768 64,704 0,704"><title>crate [1] l depth=0 quad=0</title></polygon>
+<polygon points="192,768 128,768 128,704 192,704"><title>crate [1] r depth=16 quad=1</title></polygon>
+<polygon points="256,768 256,704 192,704 192,768"><title>crate [1] k depth=0 quad=2</title></polygon>
+<polygon points="64,768 64,704 128,704 128,768"><title>crate [1] f depth=16 quad=3</title></polygon>
+<polygon points="64,832 128,832 128,768 64,768"><title>crate [1] b depth=0 quad=4</title></polygon>
+<polygon points="64,640 128,640 128,704 64,704"><title>crate [1] t depth=16 quad=5</title></polygon>
 </g>
-<text x="1904" y="4912" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:4</text>
-<g id="chart-15" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-8</title>
-<polygon points="2560,4928 2528,4928 2528,4896 2560,4896"><title>house02 [0] r depth=8 quad=9</title></polygon>
-<polygon points="1952,4928 1920,4928 1920,4896 1952,4896"><title>house02 [0] r depth=8 quad=11</title></polygon>
+<g fill="none" stroke-width="1.2">
+<path d="M64,768 L128,768" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M64,704 L128,704" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M64,768 L64,704" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M192,768 L192,704" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M128,768 L128,704" stroke="#1686bd" stroke-dasharray="3 2"/>
+<path d="M0,768 L64,768" stroke="#d26621"/>
+<path d="M0,704 L64,704" stroke="#d26621"/>
+<path d="M0,704 L0,768" stroke="#d26621"/>
+<path d="M128,768 L192,768" stroke="#d26621"/>
+<path d="M128,704 L192,704" stroke="#d26621"/>
+<path d="M256,704 L256,768" stroke="#d26621"/>
+<path d="M192,704 L256,704" stroke="#d26621"/>
+<path d="M192,768 L256,768" stroke="#d26621"/>
+<path d="M64,832 L128,832" stroke="#d26621"/>
+<path d="M128,768 L128,832" stroke="#d26621"/>
+<path d="M64,768 L64,832" stroke="#d26621"/>
+<path d="M64,640 L128,640" stroke="#d26621"/>
+<path d="M128,640 L128,704" stroke="#d26621"/>
+<path d="M64,640 L64,704" stroke="#d26621"/>
 </g>
-<text x="2544" y="4912" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:8</text>
-<g id="chart-16" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-12</title>
-<polygon points="640,4960 608,4960 608,4928 640,4928"><title>house02 [0] r depth=12 quad=12</title></polygon>
-<polygon points="32,4960 0,4960 0,4928 32,4928"><title>house02 [0] r depth=12 quad=14</title></polygon>
-</g>
-<text x="624" y="4944" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:12</text>
-<g id="chart-17" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-16</title>
-<polygon points="640,4864 608,4864 608,4736 640,4736"><title>house02 [0] r depth=16 quad=15</title></polygon>
-<polygon points="32,4864 0,4864 0,4736 32,4736"><title>house02 [0] r depth=16 quad=17</title></polygon>
-</g>
-<text x="624" y="4800" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:16</text>
-<g id="chart-18" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-20</title>
-<polygon points="1280,4960 1248,4960 1248,4928 1280,4928"><title>house02 [0] r depth=20 quad=18</title></polygon>
-<polygon points="672,4960 640,4960 640,4928 672,4928"><title>house02 [0] r depth=20 quad=20</title></polygon>
-</g>
-<text x="1264" y="4944" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:20</text>
-<g id="chart-19" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-24</title>
-<polygon points="1920,4960 1888,4960 1888,4928 1920,4928"><title>house02 [0] r depth=24 quad=21</title></polygon>
-<polygon points="1312,4960 1280,4960 1280,4928 1312,4928"><title>house02 [0] r depth=24 quad=22</title></polygon>
-</g>
-<text x="1904" y="4944" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:24</text>
-<g id="chart-20" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-28</title>
-<polygon points="576,4448 568,4448 568,4224 576,4224"><title>house02 [0] r depth=28 quad=23</title></polygon>
-<polygon points="16,4576 0,4576 0,4224 16,4224"><title>house02 [0] r depth=28 quad=24</title></polygon>
-</g>
-<text x="8" y="4400" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:28</text>
-<g id="chart-21" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-60</title>
-<polygon points="2560,4960 1920,4960 1920,4928 2560,4928"><title>house02 [0] r depth=60 quad=30</title></polygon>
-</g>
-<text x="2240" y="4944" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:60</text>
-<g id="chart-22" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-64</title>
-<polygon points="640,4992 0,4992 0,4960 640,4960"><title>house02 [0] r depth=64 quad=33</title></polygon>
-</g>
-<text x="320" y="4976" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:64</text>
-<g id="chart-23" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-68</title>
-<polygon points="1280,4864 640,4864 640,4736 1280,4736"><title>house02 [0] r depth=68 quad=36</title></polygon>
-</g>
-<text x="960" y="4800" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:68</text>
-<g id="chart-24" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-72</title>
-<polygon points="1280,4992 640,4992 640,4960 1280,4960"><title>house02 [0] r depth=72 quad=39</title></polygon>
-</g>
-<text x="960" y="4976" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:72</text>
-<g id="chart-25" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-75</title>
-<polygon points="896,4736 736,4736 736,4576 896,4576"><title>house02 [0] r depth=75 quad=41</title></polygon>
-</g>
-<text x="816" y="4656" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:75</text>
-<g id="chart-26" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-r-76</title>
-<polygon points="1280,3840 640,3840 640,3808 1280,3808"><title>house02 [0] r depth=76 quad=43</title></polygon>
-<polygon points="1248,4224 672,4224 672,4096 1248,4096"><title>house02 [0] r depth=76 quad=44</title></polygon>
-<polygon points="1248,4096 1040,4096 1040,3904 1248,3904"><title>house02 [0] r depth=76 quad=45</title></polygon>
-<polygon points="1040,3936 672,3936 672,3904 1040,3904"><title>house02 [0] r depth=76 quad=46</title></polygon>
-<polygon points="880,4096 672,4096 672,3936 880,3936"><title>house02 [0] r depth=76 quad=47</title></polygon>
-</g>
-<text x="960" y="4160" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] r:76</text>
-<g id="chart-27" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-k-4</title>
-<polygon points="1536,3776 1536,3424 1344,3424 1344,3776"><title>house02 [0] k depth=4 quad=63</title></polygon>
-<polygon points="1344,3776 1344,3648 960,3648 960,3776"><title>house02 [0] k depth=4 quad=64</title></polygon>
-<polygon points="1152,3648 1152,3168 1120,3168 1120,3648"><title>house02 [0] k depth=4 quad=65</title></polygon>
-<polygon points="1120,3648 1120,3200 1088,3200 1088,3648"><title>house02 [0] k depth=4 quad=66</title></polygon>
-<polygon points="1088,3648 1088,3232 1056,3232 1056,3648"><title>house02 [0] k depth=4 quad=67</title></polygon>
-<polygon points="1056,3648 1056,3360 1024,3360 1024,3648"><title>house02 [0] k depth=4 quad=68</title></polygon>
-<polygon points="1024,3648 1024,3392 992,3392 992,3648"><title>house02 [0] k depth=4 quad=69</title></polygon>
-<polygon points="992,3648 992,3424 960,3424 960,3648"><title>house02 [0] k depth=4 quad=70</title></polygon>
-<polygon points="1504,3424 1504,3392 1152,3392 1152,3424"><title>house02 [0] k depth=4 quad=71</title></polygon>
-<polygon points="1472,3392 1472,3360 1152,3360 1152,3392"><title>house02 [0] k depth=4 quad=72</title></polygon>
-<polygon points="1440,3360 1440,3232 1152,3232 1152,3360"><title>house02 [0] k depth=4 quad=73</title></polygon>
-<polygon points="1408,3232 1408,3200 1152,3200 1152,3232"><title>house02 [0] k depth=4 quad=74</title></polygon>
-<polygon points="1376,3200 1376,3168 1152,3168 1152,3200"><title>house02 [0] k depth=4 quad=75</title></polygon>
-</g>
-<text x="1440" y="3600" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:4</text>
-<g id="chart-28" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-k-5</title>
-<polygon points="960,4448 960,4224 768,4224 768,4448"><title>house02 [0] k depth=5 quad=76</title></polygon>
-</g>
-<text x="864" y="4336" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:5</text>
-<g id="chart-29" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-k-50</title>
-<polygon points="1536,4384 1536,4224 1528,4224 1528,4384"><title>house02 [0] k depth=50 quad=79</title></polygon>
-<polygon points="968,4384 968,4224 960,4224 960,4384"><title>house02 [0] k depth=50 quad=80</title></polygon>
-</g>
-<text x="1532" y="4304" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] k:50</text>
-<g id="chart-30" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-f-30</title>
-<polygon points="1536,4384 1536,4224 1544,4224 1544,4384"><title>house02 [0] f depth=30 quad=77</title></polygon>
-<polygon points="2104,4384 2104,4224 2112,4224 2112,4384"><title>house02 [0] f depth=30 quad=78</title></polygon>
-</g>
-<text x="1540" y="4304" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:30</text>
-<g id="chart-31" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-f-74</title>
-<polygon points="576,4576 576,4224 768,4224 768,4576"><title>house02 [0] f depth=74 quad=81</title></polygon>
-</g>
-<text x="672" y="4400" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:74</text>
-<g id="chart-32" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-f-76</title>
-<polygon points="1536,3776 1536,3424 1728,3424 1728,3776"><title>house02 [0] f depth=76 quad=82</title></polygon>
-<polygon points="1920,3776 1920,3168 1952,3168 1952,3776"><title>house02 [0] f depth=76 quad=83</title></polygon>
-<polygon points="1952,3776 1952,3200 1984,3200 1984,3776"><title>house02 [0] f depth=76 quad=84</title></polygon>
-<polygon points="1984,3776 1984,3232 2016,3232 2016,3776"><title>house02 [0] f depth=76 quad=85</title></polygon>
-<polygon points="2016,3776 2016,3360 2048,3360 2048,3776"><title>house02 [0] f depth=76 quad=86</title></polygon>
-<polygon points="2048,3776 2048,3392 2080,3392 2080,3776"><title>house02 [0] f depth=76 quad=87</title></polygon>
-<polygon points="2080,3776 2080,3424 2112,3424 2112,3776"><title>house02 [0] f depth=76 quad=88</title></polygon>
-<polygon points="1568,3424 1568,3392 1920,3392 1920,3424"><title>house02 [0] f depth=76 quad=89</title></polygon>
-<polygon points="1600,3392 1600,3360 1920,3360 1920,3392"><title>house02 [0] f depth=76 quad=90</title></polygon>
-<polygon points="1632,3360 1632,3232 1920,3232 1920,3360"><title>house02 [0] f depth=76 quad=91</title></polygon>
-<polygon points="1664,3232 1664,3200 1920,3200 1920,3232"><title>house02 [0] f depth=76 quad=92</title></polygon>
-<polygon points="1696,3200 1696,3168 1920,3168 1920,3200"><title>house02 [0] f depth=76 quad=93</title></polygon>
-</g>
-<text x="1632" y="3600" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] f:76</text>
-<g id="chart-33" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-36</title>
-<polygon points="0,4736 8,4736 8,4576 0,4576"><title>house02 [0] b depth=36 quad=113</title></polygon>
-<polygon points="568,4736 576,4736 576,4576 568,4576"><title>house02 [0] b depth=36 quad=114</title></polygon>
-</g>
-<text x="4" y="4656" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:36</text>
-<g id="chart-34" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-40</title>
-<polygon points="0,2528 32,2528 32,1888 0,1888"><title>house02 [0] b depth=40 quad=115</title></polygon>
-<polygon points="608,2528 640,2528 640,1888 608,1888"><title>house02 [0] b depth=40 quad=116</title></polygon>
-</g>
-<text x="16" y="2208" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:40</text>
-<g id="chart-35" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-44</title>
-<polygon points="1280,2528 1312,2528 1312,2496 1280,2496"><title>house02 [0] b depth=44 quad=117</title></polygon>
-<polygon points="1280,1920 1312,1920 1312,1888 1280,1888"><title>house02 [0] b depth=44 quad=118</title></polygon>
-<polygon points="1472,2496 1664,2496 1664,2488 1472,2488"><title>house02 [0] b depth=44 quad=119</title></polygon>
-<polygon points="1472,1936 1664,1936 1664,1920 1472,1920"><title>house02 [0] b depth=44 quad=120</title></polygon>
-<polygon points="1824,2528 1856,2528 1856,2496 1824,2496"><title>house02 [0] b depth=44 quad=121</title></polygon>
-<polygon points="1824,1920 1856,1920 1856,1888 1824,1888"><title>house02 [0] b depth=44 quad=122</title></polygon>
-</g>
-<text x="1568" y="1928" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:44</text>
-<g id="chart-36" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-48</title>
-<polygon points="0,3168 32,3168 32,3136 0,3136"><title>house02 [0] b depth=48 quad=124</title></polygon>
-<polygon points="0,2560 32,2560 32,2528 0,2528"><title>house02 [0] b depth=48 quad=125</title></polygon>
-<polygon points="480,3168 512,3168 512,3136 480,3136"><title>house02 [0] b depth=48 quad=126</title></polygon>
-<polygon points="480,2560 512,2560 512,2528 480,2528"><title>house02 [0] b depth=48 quad=127</title></polygon>
-</g>
-<text x="16" y="3152" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:48</text>
-<g id="chart-37" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-52</title>
-<polygon points="1024,3168 1056,3168 1056,3136 1024,3136"><title>house02 [0] b depth=52 quad=130</title></polygon>
-<polygon points="1024,2560 1056,2560 1056,2528 1024,2528"><title>house02 [0] b depth=52 quad=131</title></polygon>
-<polygon points="1440,3168 1472,3168 1472,3136 1440,3136"><title>house02 [0] b depth=52 quad=132</title></polygon>
-<polygon points="1440,2560 1472,2560 1472,2528 1440,2528"><title>house02 [0] b depth=52 quad=133</title></polygon>
-</g>
-<text x="1040" y="3152" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:52</text>
-<g id="chart-38" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-68</title>
-<polygon points="1920,3168 1952,3168 1952,3136 1920,3136"><title>house02 [0] b depth=68 quad=137</title></polygon>
-<polygon points="1920,2560 1952,2560 1952,2528 1920,2528"><title>house02 [0] b depth=68 quad=138</title></polygon>
-<polygon points="2272,3168 2304,3168 2304,3136 2272,3136"><title>house02 [0] b depth=68 quad=139</title></polygon>
-<polygon points="2272,2560 2304,2560 2304,2528 2272,2528"><title>house02 [0] b depth=68 quad=140</title></polygon>
-</g>
-<text x="1936" y="3152" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:68</text>
-<g id="chart-39" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-72</title>
-<polygon points="384,3808 416,3808 416,3776 384,3776"><title>house02 [0] b depth=72 quad=142</title></polygon>
-<polygon points="384,3200 416,3200 416,3168 384,3168"><title>house02 [0] b depth=72 quad=143</title></polygon>
-<polygon points="672,3808 704,3808 704,3776 672,3776"><title>house02 [0] b depth=72 quad=144</title></polygon>
-<polygon points="672,3200 704,3200 704,3168 672,3168"><title>house02 [0] b depth=72 quad=145</title></polygon>
-</g>
-<text x="400" y="3792" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:72</text>
-<g id="chart-40" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-b-76</title>
-<polygon points="704,3808 960,3808 960,3776 704,3776"><title>house02 [0] b depth=76 quad=148</title></polygon>
-<polygon points="704,3200 960,3200 960,3168 704,3168"><title>house02 [0] b depth=76 quad=149</title></polygon>
-</g>
-<text x="832" y="3792" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] b:76</text>
-<g id="chart-41" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-16</title>
-<polygon points="1280,4016 1288,4016 1288,4176 1280,4176"><title>house02 [0] t depth=16 quad=110</title></polygon>
-<polygon points="1472,3808 1664,3808 1664,3816 1472,3816"><title>house02 [0] t depth=16 quad=111</title></polygon>
-<polygon points="1848,4016 1856,4016 1856,4176 1848,4176"><title>house02 [0] t depth=16 quad=112</title></polygon>
-</g>
-<text x="1568" y="3812" text-anchor="middle" font-family="sans-serif" font-size="2" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:16</text>
-<g id="chart-42" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-48</title>
-<polygon points="640,1888 672,1888 672,2528 640,2528"><title>house02 [0] t depth=48 quad=123</title></polygon>
-<polygon points="1248,1888 1280,1888 1280,2528 1248,2528"><title>house02 [0] t depth=48 quad=128</title></polygon>
-</g>
-<text x="656" y="2208" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:48</text>
-<g id="chart-43" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-52</title>
-<polygon points="1856,1888 1888,1888 1888,2528 1856,2528"><title>house02 [0] t depth=52 quad=129</title></polygon>
-<polygon points="2400,1888 2432,1888 2432,2528 2400,2528"><title>house02 [0] t depth=52 quad=134</title></polygon>
-</g>
-<text x="1872" y="2208" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:52</text>
-<g id="chart-44" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-56</title>
-<polygon points="512,2528 544,2528 544,3168 512,3168"><title>house02 [0] t depth=56 quad=135</title></polygon>
-<polygon points="992,2528 1024,2528 1024,3168 992,3168"><title>house02 [0] t depth=56 quad=136</title></polygon>
-</g>
-<text x="528" y="2848" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:56</text>
-<g id="chart-45" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-72</title>
-<polygon points="1472,2528 1504,2528 1504,3168 1472,3168"><title>house02 [0] t depth=72 quad=141</title></polygon>
-<polygon points="1888,2528 1920,2528 1920,3168 1888,3168"><title>house02 [0] t depth=72 quad=146</title></polygon>
-</g>
-<text x="1488" y="2848" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:72</text>
-<g id="chart-46" fill="none" stroke="#222" stroke-width="0.6"><title>house02 [model 0] plane-t-76</title>
-<polygon points="0,3168 32,3168 32,3808 0,3808"><title>house02 [0] t depth=76 quad=147</title></polygon>
-<polygon points="352,3168 384,3168 384,3808 352,3808"><title>house02 [0] t depth=76 quad=150</title></polygon>
-</g>
-<text x="16" y="3488" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">house02 [0] t:76</text>
-<g id="chart-47" fill="none" stroke="#222" stroke-width="0.6"><title>crate [model 1] box-net</title>
-<polygon points="0,5248 128,5248 128,5120 0,5120"><title>crate [1] l depth=0 quad=0</title></polygon>
-<polygon points="384,5248 256,5248 256,5120 384,5120"><title>crate [1] r depth=16 quad=1</title></polygon>
-<polygon points="512,5248 512,5120 384,5120 384,5248"><title>crate [1] k depth=0 quad=2</title></polygon>
-<polygon points="128,5248 128,5120 256,5120 256,5248"><title>crate [1] f depth=16 quad=3</title></polygon>
-<polygon points="128,5376 256,5376 256,5248 128,5248"><title>crate [1] b depth=0 quad=4</title></polygon>
-<polygon points="128,4992 256,4992 256,5120 128,5120"><title>crate [1] t depth=16 quad=5</title></polygon>
-</g>
-<text x="64" y="5184" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] l:0</text>
-<text x="320" y="5184" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] r:16</text>
-<text x="448" y="5184" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] k:0</text>
-<text x="192" y="5184" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] f:16</text>
-<text x="192" y="5312" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] b:0</text>
-<text x="192" y="5056" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] t:16</text>
+<text x="32" y="736" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] l:0</text>
+<text x="160" y="736" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] r:16</text>
+<text x="224" y="736" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] k:0</text>
+<text x="96" y="736" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] f:16</text>
+<text x="96" y="800" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] b:0</text>
+<text x="96" y="672" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#111" stroke="white" stroke-width="0.4" paint-order="stroke">crate [1] t:16</text>
 </svg>

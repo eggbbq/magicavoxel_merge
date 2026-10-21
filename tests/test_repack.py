@@ -112,6 +112,27 @@ class RepackTests(unittest.TestCase):
         self.assertGreater(report["area_reduction_percent"], 0)
         self.assert_same_surfaces(before, _Document(self.output))
 
+    def test_surface_unwrap_with_painted_holes_and_steps_can_be_repacked(self):
+        vox = (np.arange(5 * 6 * 7).reshape(5, 6, 7) % 254 + 1).astype(np.int32)
+        vox[1:4, :, 2:5] = 0
+        vox[3:, 3:, 5:] = 0
+        palette = np.full((256, 4), 255, dtype=np.uint8)
+        scene = VoxScene([VoxModel("house", vox.shape, vox, (0, 0, 0), (0, 0, 0, 1))],
+                         palette, [VoxNode("shp", "house", model_ids=[0])], [0])
+        with patch("btp_vox.pipeline.load_scene", return_value=scene):
+            convert("source.vox", self.source, output_format="gltf",
+                    options=PipelineOptions(uv_mode="paint", paint_unwrap="surface",
+                                            atlas=AtlasOptions(texel_scale=3, pad=2)))
+        before = _Document(self.source)
+        pixels = _pixels(before).copy()
+        yy, xx = np.indices(pixels.shape[:2])
+        pixels[:, :, :3] = np.stack((xx * 17 % 256, yy * 29 % 256, (xx + yy) * 13 % 256), axis=2)
+        Image.fromarray(pixels).save(self.source.with_suffix(".png"))
+        report = repack(self.source, self.output, pad=2, deduplicate=True,
+                        compress_solid=True, packing="dense")
+        self.assertFalse(report["resampled"])
+        self.assert_same_surfaces(before, _Document(self.output))
+
     def test_final_paint_and_bake_pixels_are_used_without_vox_or_layout_json(self):
         pixels = _pixels(_Document(self.source)).copy()
         # Simulate detailed painting and a baked intensity gradient, including alpha.

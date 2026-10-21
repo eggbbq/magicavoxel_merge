@@ -1,8 +1,7 @@
 """Deterministic voxel surface unfolding for painting, without geometry changes.
 
-Outer bounding planes form a box net (left/front/right/back, top/bottom).
-Recessed planes are separate charts: projecting different depths onto one face
-would overlap paintable surfaces. Coplanar quads retain their spatial adjacency.
+Choose the legacy box/depth projection or connected surface unfolding. Both
+retain the original geometry and rasterize through exact integer-grid maps.
 """
 
 from __future__ import annotations
@@ -73,6 +72,7 @@ class PaintLayout:
     pad: int
     charts: list[_Chart]
     quads_per_model: list[list[Quad]]
+    unwrap: str = "box"
 
     def _records(self) -> list[dict]:
         records = []
@@ -92,7 +92,61 @@ class PaintLayout:
                 "rect": [chart.x, chart.y, chart.width, chart.height],
                 "quads": quads,
             })
+        if self.unwrap == "surface":
+            self._add_surface_edges(records)
         return records
+
+    def _add_surface_edges(self, records: list[dict]) -> None:
+        """Expose actual cuts and folds, including partial-edge connections."""
+        from .surface_uv import map_surface_point, surface_joints
+
+        by_quad = {}
+        joined: dict[tuple[int, int, int], list[tuple[int, int]]] = {}
+        for record in records:
+            record["connections"], record["seams"] = [], []
+            for q in record["quads"]:
+                by_quad[(record["model"], q["quad"])] = (record, np.asarray(q["pixels"]))
+        for midx, quads in enumerate(self.quads_per_model):
+            for joint in surface_joints(quads):
+                left_record, left = by_quad[(midx, joint.left)]
+                right_record, right = by_quad[(midx, joint.right)]
+                if left_record is not right_record:
+                    continue
+                points = np.asarray([map_surface_point(quads[joint.left], left, p)
+                                     for p in (joint.a, joint.b)])
+                other = np.asarray([map_surface_point(quads[joint.right], right, p)
+                                    for p in (joint.a, joint.b)])
+                if not np.array_equal(points, other):
+                    continue
+                a, b = quads[joint.left], quads[joint.right]
+                left_record["connections"].append({
+                    "quads": [joint.left, joint.right], "pixels": points.tolist(),
+                    "folded": (a.axis, a.normal_sign) != (b.axis, b.normal_sign),
+                })
+                axis = int(np.flatnonzero(points[0] != points[1])[0])
+                lo, hi = sorted(points[:, axis].tolist())
+                for qid, pixels in ((joint.left, left), (joint.right, right)):
+                    for side in range(4):
+                        e0, e1 = pixels[side], pixels[(side + 1) % 4]
+                        if (e0[1 - axis] == e1[1 - axis] == points[0, 1 - axis]
+                                and min(e0[axis], e1[axis]) <= lo < hi <= max(e0[axis], e1[axis])):
+                            joined.setdefault((midx, qid, side), []).append((lo, hi))
+        for record in records:
+            midx = record["model"]
+            for q in record["quads"]:
+                pixels = np.asarray(q["pixels"])
+                for side in range(4):
+                    a, b = pixels[side], pixels[(side + 1) % 4]
+                    axis = int(np.flatnonzero(a != b)[0])
+                    lo, hi = sorted((int(a[axis]), int(b[axis])))
+                    intervals = sorted(joined.get((midx, q["quad"], side), [])) + [(hi, hi)]
+                    cursor = lo
+                    for start, end in intervals:
+                        if cursor < start:
+                            p0, p1 = a.copy(), a.copy()
+                            p0[axis], p1[axis] = cursor, start
+                            record["seams"].append({"quad": q["quad"], "pixels": [p0.tolist(), p1.tolist()]})
+                        cursor = max(cursor, end)
 
     def write_json(self, path: str | Path, *, flip_v: bool = False) -> None:
         """Pixel positions always address the PNG, even when exported UVs flip V."""
@@ -100,6 +154,7 @@ class PaintLayout:
             "version": 1, "mode": "paint", "width": self.width, "height": self.height,
             "pixel_origin": "top-left", "uv_flip_v": flip_v,
             "texel_scale": self.texel_scale, "padding": self.pad,
+            "unwrap": self.unwrap,
             "face_space": "MagicaVoxel: t=+Z b=-Z l=-X r=+X f=+Y k=-Y",
             "charts": self._records(),
         }, ensure_ascii=False, indent=2) + "\n")
@@ -124,6 +179,19 @@ class PaintLayout:
                 lines.append(f'<polygon points="{coords}"><title>{title}</title></polygon>')
                 faces.setdefault((quad["face"], quad["plane"]), []).append(np.asarray(points))
             lines.append('</g>')
+            if self.unwrap == "surface":
+                # Orange = cut boundary, blue dashed = unfolded 3D hinge.
+                # Thin quad outlines remain useful for locating mesh rectangles.
+                lines.append('<g fill="none" stroke-width="1.2">')
+                for connection in record["connections"]:
+                    if connection["folded"]:
+                        (x0, y0), (x1, y1) = connection["pixels"]
+                        lines.append(f'<path d="M{x0},{y0} L{x1},{y1}" stroke="#1686bd" '
+                                     'stroke-dasharray="3 2"/>')
+                for seam in record["seams"]:
+                    (x0, y0), (x1, y1) = seam["pixels"]
+                    lines.append(f'<path d="M{x0},{y0} L{x1},{y1}" stroke="#d26621"/>')
+                lines.append('</g>')
             for (face, plane), polygons in faces.items():
                 # Anchor on the largest actual quad, rather than a possibly empty
                 # centre of a disconnected or concave planar projection.
@@ -197,6 +265,24 @@ def _crop_chart(midx: int, name: str, kind: str, quads: dict[int, np.ndarray], p
                   {qid: p - low + pad for qid, p in quads.items()})
 
 
+def _surface_charts(midx: int, name: str, quads: list[Quad], scale: int, pad: int) -> list[_Chart]:
+    from .surface_uv import unfold_surface
+
+    # Preserve the familiar cross for a complete cuboid. Unlike a generic
+    # bounding-box projection, this shortcut cannot join disconnected parts.
+    if len(quads) == 6 and len({(q.axis, q.normal_sign) for q in quads}) == 6:
+        box = _model_charts(midx, name, quads, scale, pad)
+        if len(box) == 1 and box[0].kind == "box-net":
+            vertices = np.asarray([q.verts for q in quads], dtype=np.int64)
+            size = np.ptp(vertices, axis=(0, 1))
+            if all(q.size_u * q.size_v == int(np.prod(np.delete(size, q.axis))) for q in quads):
+                box[0].kind = "surface-box-net"
+                return box
+    return [_crop_chart(midx, name, f"surface-island-{i}",
+                        {qid: p * scale for qid, p in points.items()}, pad)
+            for i, points in enumerate(unfold_surface(quads))]
+
+
 def _blit_quad(block: np.ndarray, mask: np.ndarray, points: np.ndarray, quad: Quad,
                palette: np.ndarray, scale: int) -> None:
     """Rasterize the original color grid through the same affine map as the UVs.
@@ -245,14 +331,18 @@ def build_paint_atlas(
     scene: VoxScene, mesher_result: MesherResult, *, pad: int = 2,
     texel_scale: int = 1, square: bool = False, pot: bool = False,
     fixed_size: tuple[int, int] | None = None, alpha: str = "auto",
+    unwrap: str = "box",
 ) -> tuple[AtlasBuildResult, PaintLayout]:
     if pad < 0 or texel_scale < 1:
         raise ValueError("paint UV requires tex-pad >= 0 and tex-texel-scale >= 1")
     if alpha not in ("auto", "rgb", "rgba"):
         raise ValueError("alpha must be 'auto', 'rgb', or 'rgba'")
+    if unwrap not in ("box", "surface"):
+        raise ValueError("paint unwrap must be 'box' or 'surface'")
     charts = []
+    chart_builder = _surface_charts if unwrap == "surface" else _model_charts
     for midx, quads in enumerate(mesher_result.quads_per_model):
-        charts.extend(_model_charts(midx, scene.models[midx].name, quads, texel_scale, pad))
+        charts.extend(chart_builder(midx, scene.models[midx].name, quads, texel_scale, pad))
 
     # Pack all charts of one model together. No rotation or content-dependent
     # deduplication: the net remains readable and identical colours stay unique.
@@ -303,4 +393,4 @@ def build_paint_atlas(
     if alpha == "rgb" or (alpha == "auto" and bool(np.all(pixels[:, :, 3] == 255))):
         image = image.convert("RGB")
     result = AtlasBuildResult(width, height, _image_to_bytes(image), quad_uvs, model_uvs)
-    return result, PaintLayout(width, height, texel_scale, pad, charts, mesher_result.quads_per_model)
+    return result, PaintLayout(width, height, texel_scale, pad, charts, mesher_result.quads_per_model, unwrap)

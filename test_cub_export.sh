@@ -24,11 +24,12 @@ args=(
   --output             "$out_model"
   --format             gltf
   --uv-mode            paint
+  --paint-unwrap       surface     # 沿表面公共边展开；box 使用原包围盒/深度投影
   --character-apart
   --handedness         right
   --scale              0.02
   --pivot              bottom_center
-  --tex-texel-scale    8           # 每体素面单位的像素倍率，原始密度填 1
+  --tex-texel-scale    4           # 每体素面单位的像素倍率，原始密度填 1
   --tex-pad            0           # 展开片外边距
   --tex-pot                        # POT；关闭时注释这一整行
   --tex-fmt            auto        # auto / rgba / rgb

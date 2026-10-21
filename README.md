@@ -9,8 +9,9 @@
 - 支持多模型、场景树和按场景实例导出
 - 支持 cutout、UV2、顶点色和多种 atlas 打包选项
 - 支持输出 Y-up 右手系或兼容旧资源的 Y-up 左手系
-- 提供绘画用 `paint` UV 展开、SVG 参考图和详细布局 JSON，方便二次绘制与烘焙
+- 提供绘画用 `paint` UV 展开，可沿真实表面公共边连接 UV 岛，导出 SVG 参考图和详细布局 JSON，方便二次绘制与烘焙
 - 支持对加工后的 glTF/GLB 独立重新 layout，进行区块复用、相似合并、纯色压缩和密集装箱
+- 支持多个 glTF/GLB 合并颜色贴图，保留各模型为独立 glTF，共用一张 PNG，并同步更新 UV
 
 纹理二次加工使用两个脚本：`test_cub_export.sh` 导出加工版，绘制完成后运行 `test_cub_relayout.sh` 生成发布版。脚本参数逐行排列，可直接编辑；完整流程和配置见下文“用于二次绘制的 UV 展开”及“二次加工后重新打包模型和纹理”。原有 VOX 导出默认仍使用 `atlas` 模式。
 
@@ -139,6 +140,7 @@ UV / 顶点数据：
 
 - `--uv-out <path>`：导出 UV 矩形 JSON
 - `--uv-mode atlas|paint`：默认 `atlas` 保留原有打包；`paint` 生成用于二次绘制的独立展开
+- `--paint-unwrap box|surface`：绘画展开算法；CLI 默认 `box` 保持旧布局，`surface` 按表面共边关系展开，需要 `--uv-mode paint`；专用导出脚本使用 `surface`
 - `--uv-template-out <path.svg>`：导出带名称和面方向的透明 SVG 绘画参考图，需要 `paint`
 - `--uv-islands-out <path.json>`：导出绘画布局和各四边形的像素坐标，需要 `paint`
 - `--uv-flip-v`：翻转 V
@@ -216,7 +218,7 @@ cutout：
 - `test_cube_paint.gltf`、`test_cube_paint.bin`：模型，引用同目录 PNG
 - `test_cube_paint.png`：可直接修改的颜色贴图
 - `test_cube_paint_uv.svg`：与 PNG 同尺寸的透明参考图，作为绘画软件的参考图层，不要合并进最终贴图
-- `test_cube_paint_islands.json`：部件、展开片、面方向、深度及四边形像素坐标
+- `test_cube_paint_islands.json`：部件、展开片、面方向、深度及四边形像素坐标；`surface` 还记录连接边、折边和接缝
 - `test_cube_paint_uv.json`：保持原格式的每个模型 UV 包围矩形
 
 两个脚本均使用逐行排列的 `args=(...)` 参数列表，直接打开 `.sh` 修改。输入、输出路径在脚本顶部的 `in_vox` / `in_model` / `in_tex` / `out_dir` 等变量中修改。
@@ -227,9 +229,10 @@ cutout：
 |---|---|---|
 | 输入 | `test_cube.vox` | 加工版 `.gltf` 和 PNG |
 | 输出目录 | `exports/test_cube_paint/` | `exports/test_cube_runtime/` |
+| 展开方法 | `--paint-unwrap surface`，沿真实公共边连接 | 使用输入模型的 UV 读取贴图 |
 | 像素密度 | 每体素面单位 `8×8` 像素 | 保留输入像素，纯色块可折叠 |
 | 边距 | `--tex-pad 0` | `--tex-pad 0` |
-| POT | 开启 `--tex-pot` | 使用 `--no-tex-pot` |
+| POT | 开启 `--tex-pot` | 开启 `--tex-pot`，可改为 `--no-tex-pot` |
 | 区块复用 | 关闭，保持可独立绘制 | 开启相似合并，阈值 `0.98`、最大通道色差 `16` |
 | 纯色压缩 | 关闭 | 开启 |
 | 装箱 | 按模型集中排布 | `dense` 密集装箱 |
@@ -239,6 +242,7 @@ cutout：
 导出脚本默认每体素面单位为 `8×8` 像素、外边距为 `0`，并开启 POT。加工版不默认增加外边距，避免十字展开宽度从 `512` 增加到 `520` 后，被 POT 扩展到 `1024`。例如在参数列表中编辑：
 
 ```bash
+  --paint-unwrap       surface  # 改为 box 使用原包围盒/深度投影
   --tex-texel-scale    8     # 改为 1 使用原始像素密度
   --tex-pad            0     # 修改展开片外边距
   --tex-pot                  # 需要非 POT 时，注释这一整行
@@ -252,6 +256,7 @@ python3 -m btp_vox.cli \
   --output paint.gltf \
   --format gltf \
   --uv-mode paint \
+  --paint-unwrap surface \
   --character-apart \
   --tex-texel-scale 8 \
   --tex-pad 0 \
@@ -261,23 +266,31 @@ python3 -m btp_vox.cli \
   --uv-islands-out paint_islands.json
 ```
 
-绘画模式的布局规则：
+绘画模式支持两种展开算法，均按 model 分组排布：
 
-- 每个 model 单独展开并集中排布，外包围面的相邻表面保持六面十字布局。方盒的排列为 `l / f / r / k`，`t` 在 `f` 上方，`b` 在 `f` 下方；字母使用 MagicaVoxel 模型空间，含义与 `--cull` 一致。
-- 同方向但处于不同深度的凹槽、台阶或内部表面另建平面展开片，防止投影重叠。同一平面的四边形按空间位置连接，缺口留空。
+- `surface`：先沿真实公共边连接共面四边形，再以公共边为折线，逐步把相邻平面摊到同一个 UV 岛。共边可只占长边的一部分，支持贪心合并网格的 T 形接点；仅点接触的区域不会连接。窗洞、台阶及不同朝向/深度的表面，只要相邻且展开后不重叠，就能留在同一岛内。
+- `surface` 的平面区域可有凹形轮廓或孔洞；碰撞检查使用实际四边形占用区域。放置后会重叠的面另开接缝，非流形边上连接关系不唯一的部分也切开。每个生成的岛都通过真实公共边连续相连，不会把不相连的表面仅因方向或深度相同而归为一岛。
+- 展开只做整像素的平移和 90° 旋转，不拉伸、不改变像素密度、不镜像外向表面；不改变网格拓扑。完整六面方盒仍保留熟悉的十字布局：`l / f / r / k`，`t` 在 `f` 上方，`b` 在 `f` 下方。字母使用 MagicaVoxel 模型空间，含义与 `--cull` 一致。
+- `box`：保留原来的外包围盒六面展开；不同深度的凹槽、台阶或内部表面按方向和深度分别投影。同组可能包含互不相连的面。旧 CLI 调用不加 `--paint-unwrap` 时继续使用此方法，方便复现旧布局。
+
+两种算法的共同规则：
 - 不复用相同、镜像或子矩形纹理，不压缩纯色面；模型名中的面复用规则（例如 `@lrfk@tb`）也会被忽略。不同 shape 对同一 model 的引用会获得独立绘画区域，方便单独绘制左右肢体。
 - 原始体素颜色直接写入新布局，网格形状、顶点、法线、坐标系、锚点和节点变换保持原流程；cutout 和剔面仍然有效。
 - `--tex-texel-scale 8` 表示每个体素面单位占 `8×8` 像素；CLI 默认仍为 `1`，专用脚本默认 `8`。`--tex-pad` 控制展开片外的颜色扩边；相连的面之间没有间隔。
 - 支持 `--tex-pot`、`--tex-square`、`--tex-fixed-size`、纹理格式和 UV2。固定尺寸不够时会报错，不会自动缩小绘制分辨率。
 - 本模式固定使用原色烘焙与按模型分组；`--tex-style`、`--tex-layout`、`--tex-tight-blocks`、纹理复用、纯色压缩、face alias 和 `--tex-inset` 参数不参与绘画布局。旧 `atlas` 模式继续使用这些参数。
 
-SVG 与详细 JSON 均使用 PNG 的左上角像素坐标，四边形坐标按原始顶点顺序排列。`--uv-flip-v` 仍仅翻转导出的网格 UV，元数据中会记录该设置，参考图继续对应实际 PNG。固定模型和配置的输出是确定的；改变模型尺寸、可见表面或实例数量后布局可能变化，应重新导出参考图。
+SVG 与详细 JSON 均使用 PNG 的左上角像素坐标，四边形坐标按原始顶点顺序排列。`surface` 的 SVG 用橙色实线标记切开的接缝、蓝色虚线标记已展开连接的折边，细线标记原四边形边界。JSON 顶层 `unwrap` 记录算法；每个岛的 `connections` 记录连接的两个四边形、像素端点及是否为折边，`seams` 记录切开的边段，也支持部分边连接。
+
+`--uv-flip-v` 仍仅翻转导出的网格 UV，元数据中会记录该设置，参考图继续对应实际 PNG。固定模型和配置的输出是确定的；改变模型尺寸、可见表面、实例数量或展开算法后布局可能变化，应重新导出参考图。已有加工贴图应继续与原模型配套，不能直接替换为另一算法生成的模型。
 
 POT 仅约束画布宽高，不保证 UV 填满画布。16×16×16 方盒的六个独立表面共需 `6×16×16=1536` 个像素，无法恰好填满面积也是 2 的幂的画布。当前连续十字展开为 4×3 个面：每体素 1 像素、无边距时为 `64×48`，POT 后为 `64×64`；每体素 8 像素则为 `512×384`，POT 后为 `512×512`。保留连续展开本身也会留下空白，第 4 步再紧凑打包。
 
 绘制时保留 PNG 的尺寸和文件名，保存后重新载入模型贴图即可；另存为其他文件时修改重排脚本的 `in_tex`。重新运行第 2 步会覆盖同名加工版输出，绘制成果请另存备份。
 
-当前 `paint` 使用外包围盒六面展开和不同深度的分平面展开。复杂模型的凹槽、窗洞、台阶可能被分成较多布局组，同组也可能包含不相连的面；它还不是按拓扑邻接关系选择接缝、尽量连接相邻表面的通用展开算法。“沿接缝生成连续 UV 岛”目前尚未实现，需要这类布局时可在 Blender 中编辑，并使用新的模型/贴图执行第 4 步。
+当前仓库的复杂 `test_cube.vox` 包含房屋和木箱。相同的每体素 8 像素、无边距、POT 配置下，`box` 生成 48 个投影组和 `4096×8192` 贴图；`surface` 生成 6 个连续 UV 岛（房屋 5 个、木箱 1 个）和 `4096×4096` 贴图，面积减少 50%。逐面核对原始颜色和像素密度，并检查无表面重叠、岛内连通及几何保留；输出仍可直接交给第 4 步重新 layout。
+
+`surface` 使用确定性的贪心接缝选择，目标是便于绘制的连续岛，不保证最少岛数、最短接缝或最小画布。复杂曲面会留下必要的接缝；连续展开及 POT 也仍可能留白。算法适用于本工具生成的轴对齐体素四边形；如需手工指定接缝，可在 Blender 中继续编辑，并以匹配的新模型/贴图执行第 4 步。
 
 ## 二次加工后重新打包模型和纹理
 
@@ -291,7 +304,7 @@ POT 仅约束画布宽高，不保证 UV 填满画布。16×16×16 方盒的六�
 # 非 POT，默认；输出到 exports/test_cube_runtime/
 ./test_cub_relayout.sh
 
-# POT：在脚本中将 --no-tex-pot 改为 --tex-pot 后，再执行同一脚本
+# 脚本当前开启 POT；需要非 POT 时，将 --tex-pot 改为 --no-tex-pot
 # 另存的加工模型和贴图：修改脚本顶部的 in_model 和 in_tex 路径
 ```
 
@@ -399,6 +412,53 @@ VOX 导出器写入的是最近邻采样（glTF 的 `magFilter/minFilter=9728`�
 
 VOX 导出的 `atlas` 模式已有子矩形复用能力；加工后使用的 `btp_vox.repack` 是另一条流程，目前仅提供上述整块合并和纯色压缩，不会因为 VOX 导出器支持某个选项就自动支持它。原有导出参数、模型命名规则和批处理脚本保持原有用途。
 
+## 多个 glTF 共用一张纹理
+
+使用 Python 程序 `btp_vox/merge_textures.py`，或直接运行调用脚本：
+
+```bash
+./merge_gltf_textures.sh
+```
+
+脚本顶部的 `in_models=(...)` 是输入模型列表，默认使用仓库中的 `hero1.gltf` 和 `hero2.gltf`。可以逐行增加、删除或修改文件路径；`out_dir` 和 `out_tex` 分别控制输出目录和公共 PNG 路径。参数继续使用逐行排列的 `args=(...)`，便于直接修改。
+
+默认输出到 `exports/shared_atlas/`：
+
+```text
+hero1.gltf / hero1.bin
+hero2.gltf / hero2.bin
+shared_atlas.png
+merge_report.json
+```
+
+新模型中参与合并的颜色贴图均引用同一张公共 PNG，各自的 UV 已按新区块位置和旋转/镜像变换更新。模型分别保存，几何、层级、材质属性、骨骼、动画及形变数据按原模型保留；只在 UV 接缝需要拆分顶点时复制相应的顶点属性。输入文件不会被覆盖。不同目录中的同名模型会自动使用 `name.gltf`、`name_2.gltf` 等名称，报告中记录输入与输出的对应关系。
+
+通用命令：
+
+```bash
+python3 -m btp_vox.merge_textures \
+  --input model_a.gltf model_b.gltf model_c.glb \
+  --output-dir exports/shared_atlas \
+  --tex-pot \
+  --tex-pad 0 \
+  --merge-similar \
+  --similarity-threshold 0.98 \
+  --similarity-max-error 16 \
+  --compress-solid-patches \
+  --pack dense
+```
+
+- 输入支持 `.gltf`、`.glb`，也支持一个模型引用多张颜色贴图；输出统一为独立 `.gltf + .bin`，共享外部 PNG。
+- 区块从所有输入模型共同收集、统一装箱，因此相同或相似区块可以跨模型复用。支持现有的 8 种旋转/镜像匹配及 UV 修正、alpha 完全匹配约束、纯色压缩和密集装箱。
+- `--tex-pot` 开启 POT，`--no-tex-pot` 关闭；`--tex-out` 可指定公共 PNG 路径，模型中保存相对引用。
+- 示例脚本默认开启相似合并、纯色压缩、POT 和 `dense` 装箱，边距为 `0`。CLI / Python API 默认关闭这些优化，边距为 `2`、装箱为 `shelf`，可按需开启。
+- 如果只允许无颜色变化的复用，可将相似度设为 `1`、最大色差设为 `0`，同时保留旋转/镜像比较；只开 `--deduplicate` 时只比较原方向的完全相同区块。
+- 支持范围与单模型重排一致：三角网格、0–1 范围 UV、Base Color 贴图。法线/粗糙度等多通道贴图、纹理变换、范围外重复 UV 和压缩模型需先处理。不支持的输入会报错。
+
+报告包含各模型输出路径、贴图尺寸、区块总数、保留数、`cross_model_merged_patches`（跨模型共用的区块数），以及相似匹配的误差和变换。`similarity_matches` 中的 `model` / `owner_model` 对应 `models` 数组的下标。输入贴图总面积按原图像内容去重后统计；POT、边距及输入原布局都会影响面积变化，不保证每批资源都缩小。
+
+仓库中 `hero1.gltf` 和 `hero2.gltf` 的脚本配置实测：两张输入贴图分别为 `32×32` 和 `16×32`，输出共用一张 `16×16` POT 贴图，610 个区块保留 18 个，其中 52 个区块跨模型复用，本次没有近似颜色替换。
+
 ## 模型命名约定
 
 推荐规则：
@@ -466,10 +526,14 @@ Blender 中看不到贴图：
 
 ```bash
 python3 -m unittest discover -s tests -v
-bash -n test_cub_export.sh test_cub_relayout.sh
+bash -n test_cub_export.sh
+bash -n test_cub_relayout.sh
+bash -n merge_gltf_textures.sh
 ```
 
-相关测试位于 `tests/test_paint_uv.py`、`tests/test_repack.py` 和 `tests/test_scene_transforms.py`，覆盖展开颜色、接缝、旋转/翻转 UV、相似度约束、alpha、纯色中心采样、密集装箱、输入文件保护，以及几何、骨骼、动画和形变数据的保留。这些检查不代替目标游戏引擎验证。
+相关测试位于 `tests/test_paint_uv.py`、`tests/test_repack.py` 和 `tests/test_scene_transforms.py`，覆盖展开颜色、岛内连通、T 形接点、窗洞/台阶/非流形边、接缝元数据、旋转/翻转 UV、相似度约束、alpha、纯色中心采样、密集装箱、输入文件保护，以及几何、骨骼、动画和形变数据的保留；也覆盖连续展开后绘制贴图再重排的流程。这些检查不代替目标游戏引擎验证。
+
+`tests/test_merge_textures.py` 另外覆盖跨模型共享、8 种变换后的 UV、不同尺寸及多张源贴图、GLB 输入、动画蒙皮、UV 集选择、同名文件、路径中的空格、原文件保护和确定性输出。
 
 打印节点树：
 

@@ -414,19 +414,7 @@ def _material_uv(gltf, primitive):
             sampler.wrapT if sampler and sampler.wrapT is not None else 10497)
 
 
-def repack(input_model: str | Path, output_model: str | Path, *,
-           texture: str | Path | None = None, texture_out: str | Path | None = None,
-           pad: int = 2, pot: bool = False, deduplicate: bool = False,
-           merge_similar: bool = False, similarity_threshold: float = 0.98,
-           similarity_max_error: int = 16,
-           compress_solid: bool = False,
-           packing: str = "shelf",
-           report_out: str | Path | None = None) -> dict:
-    source, destination = Path(input_model).resolve(), Path(output_model).resolve()
-    if source == destination:
-        raise ValueError("Use a new output path to preserve the editing model")
-    if destination.suffix.lower() not in (".gltf", ".glb"):
-        raise ValueError("Output must be .gltf or .glb")
+def _validate_options(*, pad, packing, similarity_threshold, similarity_max_error):
     if pad < 0:
         raise ValueError("Padding must be >= 0")
     if packing not in ("shelf", "dense"):
@@ -435,30 +423,13 @@ def repack(input_model: str | Path, output_model: str | Path, *,
         raise ValueError("Similarity threshold must be finite and between 0 and 1")
     if not isinstance(similarity_max_error, (int, np.integer)) or not 0 <= similarity_max_error <= 255:
         raise ValueError("Similarity max error must be an integer between 0 and 255")
-    document = _Document(source)
+
+
+def _collect_jobs(document: _Document) -> dict[int, list[tuple]]:
     gltf = document.gltf
     if set(gltf.extensionsUsed or []) - {"KHR_materials_unlit", "KHR_mesh_quantization", "KHR_lights_punctual"}:
         raise ValueError("Decode/bake model extensions before repacking")
-    source_paths = {source}
-    for item in [*gltf.buffers, *gltf.images]:
-        if item.uri and not item.uri.startswith("data:"):
-            source_paths.add((source.parent / unquote(item.uri)).resolve())
-    if texture:
-        source_paths.add(Path(texture).resolve())
-    output_texture = (Path(texture_out).resolve() if texture_out else destination.with_suffix(".png"))
-    write_paths = [destination]
-    if destination.suffix.lower() == ".gltf":
-        write_paths.extend((destination.with_suffix(".bin"), output_texture))
-    elif texture_out:
-        write_paths.append(output_texture)
-    if report_out:
-        write_paths.append(Path(report_out).resolve())
-    if len(set(write_paths)) != len(write_paths):
-        raise ValueError("Model, buffer, texture and report output paths must be distinct")
-    if source_paths & set(write_paths):
-        raise ValueError("An output would overwrite an input model, buffer or painted image")
-
-    jobs, image_ids = [], set()
+    jobs_by_image = {}
     for mesh in gltf.meshes:
         for primitive in mesh.primitives:
             material = _material_uv(gltf, primitive)
@@ -467,7 +438,6 @@ def repack(input_model: str | Path, output_model: str | Path, *,
             if primitive.extensions or primitive.mode not in (None, 4):
                 raise ValueError("Triangulate/decode the textured mesh before repacking")
             image_id, uv_name, wrap_s, wrap_t = material
-            image_ids.add(image_id)
             uv_index = getattr(primitive.attributes, uv_name, None)
             if uv_index is None:
                 raise ValueError(f"Missing {uv_name}")
@@ -479,19 +449,12 @@ def repack(input_model: str | Path, output_model: str | Path, *,
                        if primitive.indices is not None else np.arange(len(positions)))
             if not len(indices) or len(indices) % 3:
                 raise ValueError("Textured triangle indices are empty or incomplete")
-            jobs.append((primitive, uv_name, positions, uv, indices.reshape(-1, 3), wrap_s, wrap_t))
-    if len(image_ids) != 1:
-        raise ValueError("Repacking requires exactly one shared base-colour image")
-    image_id = next(iter(image_ids))
-    raw = Path(texture).read_bytes() if texture else document.image(image_id)
-    original = Image.open(io.BytesIO(raw)).convert("RGBA")
-    pixels = np.asarray(original)
-    patches, job_patches = [], []
-    for _, _, positions, uv, triangles, wrap_s, wrap_t in jobs:
-        current = _patches(positions, uv, triangles, pixels, pad, wrap_s, wrap_t)
-        job_patches.append(current)
-        patches.extend(current)
+            jobs_by_image.setdefault(image_id, []).append((primitive, uv_name, positions, uv, indices.reshape(-1, 3), wrap_s, wrap_t))
+    return jobs_by_image
 
+
+def _layout_patches(patches, *, pad, pot, deduplicate, merge_similar,
+                    similarity_threshold, similarity_max_error, compress_solid, packing):
     solid_texels_before = 0
     if compress_solid:
         for patch in patches:
@@ -521,9 +484,13 @@ def repack(input_model: str | Path, output_model: str | Path, *,
         x, y = placements[patch.owner]
         patch.x, patch.y = x + pad, y + pad
 
+    return width, height, rects, packed, solid_texels_before
+
+
+def _rewrite_jobs(document, jobs, job_patches, patches, *, source_size, atlas_size):
+    width, height = atlas_size
     duplicated = 0
     for (primitive, uv_name, _, uv, triangles, _, _), current in zip(jobs, job_patches):
-        uv_index = getattr(primitive.attributes, uv_name)
         remap = list(range(len(uv)))
         new_uv = list(uv.copy())
         first, split = {}, {}
@@ -539,7 +506,7 @@ def repack(input_model: str | Path, output_model: str | Path, *,
                     new_uv.append(uv[old].copy())
                     duplicated += 1
                 split[(int(old), cid)] = new
-                new_uv[new] = _mapped_pixels(patch, patches[patch.owner], uv[old] * original.size) / (width, height)
+                new_uv[new] = _mapped_pixels(patch, patches[patch.owner], uv[old] * source_size) / (width, height)
             for tid in patch.triangles:
                 new_indices[tid] = [split[(int(v), cid)] for v in triangles[tid]]
         if len(remap) != len(uv):
@@ -554,37 +521,38 @@ def repack(input_model: str | Path, output_model: str | Path, *,
         setattr(primitive.attributes, uv_name, document.add_accessor(np.asarray(new_uv, dtype="<f4")))
         primitive.indices = document.add_accessor(new_indices.astype("<u4").reshape(-1, 1), indices=True)
 
-    texture_bytes = _image_to_bytes(Image.fromarray(packed))
-    # Embed any other images so moving the new model cannot break their paths.
+    return duplicated
+
+
+def _write_document(document, destination: Path, image_ids: set[int],
+                    texture_bytes: bytes, output_texture: Path | None, *, write_texture: bool = True):
+    """Save a model, embedding secondary images and optionally sharing a PNG."""
+    gltf = document.gltf
     for index, image in enumerate(gltf.images):
-        data = texture_bytes if index == image_id else document.image(index)
-        image.uri = None
-        image.mimeType = "image/png" if index == image_id else (image.mimeType or Image.MIME[Image.open(io.BytesIO(data)).format])
-        image.bufferView = document.add_view(data)
+        if index in image_ids and destination.suffix.lower() == ".gltf":
+            image.bufferView = None
+            image.mimeType = "image/png"
+            image.uri = quote(Path(os.path.relpath(output_texture, destination.parent)).as_posix(), safe="/")
+        else:
+            data = texture_bytes if index in image_ids else document.image(index)
+            image.uri = None
+            image.mimeType = ("image/png" if index in image_ids else
+                              (image.mimeType or Image.MIME[Image.open(io.BytesIO(data)).format]))
+            image.bufferView = document.add_view(data)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.suffix.lower() == ".gltf":
-        image = gltf.images[image_id]
-        image.bufferView = None
-        image.uri = quote(Path(os.path.relpath(output_texture, destination.parent)).as_posix(), safe="/")
     document.compact()
     if destination.suffix.lower() == ".glb":
         gltf.save_binary(str(destination))
     else:
         gltf.save_json(str(destination))
-    if destination.suffix.lower() == ".gltf" or texture_out:
+    if output_texture is not None and write_texture:
         output_texture.parent.mkdir(parents=True, exist_ok=True)
         output_texture.write_bytes(texture_bytes)
-    report = {
-        "input": str(source), "output": str(destination),
-        "source_size": list(original.size), "packed_size": [width, height],
-        "area_reduction_percent": round((1 - width * height / (original.width * original.height)) * 100, 2),
-        "patches": len(patches), "unique_patches": len(rects), "padding": pad,
-        "deduplicate": deduplicate, "duplicated_vertices": duplicated,
-        "triangles": sum(len(j[4]) for j in jobs),
-        "resampled": False,
-        "packing": packing,
-        "rect_fill_percent": round(sum(w * h for _, w, h in rects) / (width * height) * 100, 2),
-    }
+
+
+def _optimization_report(patches, *, compress_solid, solid_texels_before,
+                         merge_similar, similarity_threshold, similarity_max_error):
+    report = {}
     if compress_solid:
         count = sum(p.compressed_solid for p in patches)
         report.update({"compress_solid": True, "solid_compressed_patches": count,
@@ -608,6 +576,87 @@ def repack(input_model: str | Path, output_model: str | Path, *,
             "max_mean_rgb_error": max((m["mean_rgb_error"] for m in matches), default=0.0),
             "similarity_matches": matches,
         })
+    return report
+
+
+def repack(input_model: str | Path, output_model: str | Path, *,
+           texture: str | Path | None = None, texture_out: str | Path | None = None,
+           pad: int = 2, pot: bool = False, deduplicate: bool = False,
+           merge_similar: bool = False, similarity_threshold: float = 0.98,
+           similarity_max_error: int = 16,
+           compress_solid: bool = False,
+           packing: str = "shelf",
+           report_out: str | Path | None = None) -> dict:
+    source, destination = Path(input_model).resolve(), Path(output_model).resolve()
+    if source == destination:
+        raise ValueError("Use a new output path to preserve the editing model")
+    if destination.suffix.lower() not in (".gltf", ".glb"):
+        raise ValueError("Output must be .gltf or .glb")
+    _validate_options(pad=pad, packing=packing, similarity_threshold=similarity_threshold,
+                      similarity_max_error=similarity_max_error)
+    document = _Document(source)
+    gltf = document.gltf
+    source_paths = {source}
+    for item in [*gltf.buffers, *gltf.images]:
+        if item.uri and not item.uri.startswith("data:"):
+            source_paths.add((source.parent / unquote(item.uri)).resolve())
+    if texture:
+        source_paths.add(Path(texture).resolve())
+    output_texture = (Path(texture_out).resolve() if texture_out else destination.with_suffix(".png"))
+    write_paths = [destination]
+    if destination.suffix.lower() == ".gltf":
+        write_paths.extend((destination.with_suffix(".bin"), output_texture))
+    elif texture_out:
+        write_paths.append(output_texture)
+    if report_out:
+        write_paths.append(Path(report_out).resolve())
+    if len(set(write_paths)) != len(write_paths):
+        raise ValueError("Model, buffer, texture and report output paths must be distinct")
+    if source_paths & set(write_paths):
+        raise ValueError("An output would overwrite an input model, buffer or painted image")
+
+    jobs_by_image = _collect_jobs(document)
+    image_ids = set(jobs_by_image)
+    if len(image_ids) != 1:
+        raise ValueError("Repacking requires exactly one shared base-colour image")
+    image_id = next(iter(image_ids))
+    jobs = jobs_by_image[image_id]
+    raw = Path(texture).read_bytes() if texture else document.image(image_id)
+    original = Image.open(io.BytesIO(raw)).convert("RGBA")
+    pixels = np.asarray(original)
+    patches, job_patches = [], []
+    for _, _, positions, uv, triangles, wrap_s, wrap_t in jobs:
+        current = _patches(positions, uv, triangles, pixels, pad, wrap_s, wrap_t)
+        job_patches.append(current)
+        patches.extend(current)
+
+    width, height, rects, packed, solid_texels_before = _layout_patches(
+        patches, pad=pad, pot=pot, deduplicate=deduplicate, merge_similar=merge_similar,
+        similarity_threshold=similarity_threshold, similarity_max_error=similarity_max_error,
+        compress_solid=compress_solid, packing=packing)
+
+    duplicated = _rewrite_jobs(document, jobs, job_patches, patches,
+                               source_size=original.size, atlas_size=(width, height))
+
+    texture_bytes = _image_to_bytes(Image.fromarray(packed))
+    _write_document(document, destination, image_ids, texture_bytes,
+                    output_texture if destination.suffix.lower() == ".gltf" or texture_out else None)
+    report = {
+        "input": str(source), "output": str(destination),
+        "source_size": list(original.size), "packed_size": [width, height],
+        "area_reduction_percent": round((1 - width * height / (original.width * original.height)) * 100, 2),
+        "patches": len(patches), "unique_patches": len(rects), "padding": pad,
+        "deduplicate": deduplicate, "duplicated_vertices": duplicated,
+        "triangles": sum(len(j[4]) for j in jobs),
+        "resampled": False,
+        "packing": packing,
+        "rect_fill_percent": round(sum(w * h for _, w, h in rects) / (width * height) * 100, 2),
+    }
+    report.update(_optimization_report(patches, compress_solid=compress_solid,
+                                       solid_texels_before=solid_texels_before,
+                                       merge_similar=merge_similar,
+                                       similarity_threshold=similarity_threshold,
+                                       similarity_max_error=similarity_max_error))
     if report_out:
         path = Path(report_out)
         path.parent.mkdir(parents=True, exist_ok=True)
