@@ -1,4 +1,0 @@
-interface:
-  display_name: "体素角色动画制作"
-  short_description: "从体素模型制作骨骼动作、修顺循环，并导出精简的游戏角色资源"
-  default_prompt: "使用 $voxel-character-animation 为体素角色制作并验证动画，保留已有满意动作，导出游戏可用资源。"

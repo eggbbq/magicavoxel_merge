@@ -15,6 +15,26 @@
 
 纹理二次加工使用两个脚本：`test_cub_export.sh` 导出加工版，绘制完成后运行 `test_cub_relayout.sh` 生成发布版。脚本参数逐行排列，可直接编辑；完整流程和配置见下文“用于二次绘制的 UV 展开”及“二次加工后重新打包模型和纹理”。原有 VOX 导出默认仍使用 `atlas` 模式。
 
+按用途选择脚本：
+
+| 用途 | 脚本 | 结果 |
+|---|---|---|
+| 从 VOX 导出方便绘制的模型和 UV | `./test_cub_export.sh` | 加工版模型、独立绘画贴图、SVG 和 UV JSON |
+| 将一个加工后的模型重新 layout | `./test_cub_relayout.sh` | 新的发布版模型和紧凑贴图 |
+| 将多个模型的颜色贴图合并 | `./merge_gltf_textures.sh` | 各自独立的新 glTF，共用一张 PNG，自动更新 UV |
+
+多模型合并可以直接读取已绘制完成的加工版模型，也可以读取已有发布版模型，无需先对每个模型单独重排。日常编辑保留源模型和源贴图，发布时按需要运行单模型重排或多模型合并。
+
+供 AI 或自动化脚本接入的精简调用约定见 [`docs/AI_USAGE.md`](docs/AI_USAGE.md)，包含入口选择、CLI / Python API、参数对应关系、输出约定和验证方式；根目录 [`AGENTS.md`](AGENTS.md) 提供仓库内 AI 工作入口。
+
+## 目录与归档
+
+根目录保留 `btp_vox/`、`tests/`、`docs/`、转换与纹理处理脚本，以及对应的示例输入和 `exports/` 输出。`hero1/hero2` 的基础 `.vox`、`.gltf`、`.bin`、`.png` 和 UV JSON 继续作为导出与合并示例资源，模型、缓冲和贴图需配套保留。
+
+角色动画、Blender 工程及备份、预览、验证报告、船模型、动画模板、历史 `old/` 和动画技能已移至 `bk/`，内部保留原目录结构。基础角色输入在 `bk/` 中另存一份，方便后续独立管理；两处副本修改后不会自动同步。文件迁移和副本清单见 [`bk/archive_manifest.json`](bk/archive_manifest.json)。
+
+动画脚本现在位于 `bk/scripts/`，运行历史命令时先进入 `bk/`。归档中的旧报告、说明或 Blender 工程可能仍记录原来的绝对路径，重新运行前检查外部资源引用与输出位置。
+
 ## 依赖
 
 ```bash
@@ -31,6 +51,12 @@ python -m btp_vox.cli --help
 
 ```bash
 python3 -m btp_vox.repack --help
+```
+
+查看多模型贴图合并参数：
+
+```bash
+python3 -m btp_vox.merge_textures --help
 ```
 
 ## 快速开始
@@ -233,7 +259,7 @@ cutout：
 | 像素密度 | 每体素面单位 `8×8` 像素 | 保留输入像素，纯色块可折叠 |
 | 边距 | `--tex-pad 0` | `--tex-pad 0` |
 | POT | 开启 `--tex-pot` | 开启 `--tex-pot`，可改为 `--no-tex-pot` |
-| 区块复用 | 关闭，保持可独立绘制 | 开启相似合并，阈值 `0.98`、最大通道色差 `16` |
+| 区块复用 | 关闭，保持可独立绘制 | 开启相似合并，阈值 `0.98`、最大通道色差 `25` |
 | 纯色压缩 | 关闭 | 开启 |
 | 装箱 | 按模型集中排布 | `dense` 密集装箱 |
 
@@ -301,7 +327,7 @@ POT 仅约束画布宽高，不保证 UV 填满画布。16×16×16 方盒的六�
 木箱专用脚本：
 
 ```bash
-# 非 POT，默认；输出到 exports/test_cube_runtime/
+# 按脚本中的 POT 配置导出到 exports/test_cube_runtime/
 ./test_cub_relayout.sh
 
 # 脚本当前开启 POT；需要非 POT 时，将 --tex-pot 改为 --no-tex-pot
@@ -316,10 +342,10 @@ python3 -m btp_vox.repack \
   --texture finished.png \
   --output runtime/model.gltf \
   --tex-pad 0 \
-  --no-tex-pot \
+  --tex-pot \
   --merge-similar \
   --similarity-threshold 0.98 \
-  --similarity-max-error 16 \
+  --similarity-max-error 25 \
   --compress-solid-patches \
   --pack dense \
   --report-out runtime/repack_report.json
@@ -331,7 +357,7 @@ python3 -m btp_vox.repack \
 
 - `--tex-pot` / `--no-tex-pot`：选择 POT / 非 POT，默认非 POT。
 - `--tex-pad`：纹理块四周的像素边距，默认 2；复制原贴图中对应的邻接像素，保留原边缘的线性采样颜色。
-- `--deduplicate`：可选，复用最终像素和边距都完全相同的纹理块；脚本中取消这一行的注释即可开启。
+- `--deduplicate`：可选，复用最终像素和边距都完全相同的纹理块；当前脚本已开启。`--merge-similar` 也包含完全匹配去重，无需同时开启。
 - `--merge-similar`：合并相似区块，也尝试旋转和翻转，自动修正 UV。只比较尺寸相同或旋转后尺寸相同的区块，不缩放图案。
 - `--similarity-threshold 0.98`：最低相似度，定义为 `1 - RGB 平均绝对误差 / 255`。越高越严格，设为 `1` 时只接受完全匹配；这不是感知相似度或 SSIM。
 - `--similarity-max-error 16`：每个 RGB 通道允许的最大差值，用于保护平均误差可能掩盖的小图案。alpha 必须逐像素完全相同，边距也参与比较。每块直接与保留的原始代表块比较，避免链式合并累积误差。
@@ -342,10 +368,10 @@ python3 -m btp_vox.repack \
 
 ```bash
   --tex-pad                 0
-  --no-tex-pot                     # 改为 --tex-pot 开启 POT
+  --tex-pot                        # 改为 --no-tex-pot 关闭 POT
   --merge-similar                  # 注释整行关闭相似合并
   --similarity-threshold    0.98
-  --similarity-max-error    16
+  --similarity-max-error    25
   --compress-solid-patches         # 注释整行关闭纯色压缩
   --pack                    dense
 ```
@@ -414,7 +440,17 @@ VOX 导出的 `atlas` 模式已有子矩形复用能力；加工后使用的 `bt
 
 ## 多个 glTF 共用一张纹理
 
-使用 Python 程序 `btp_vox/merge_textures.py`，或直接运行调用脚本：
+入口为 Python 程序 [`btp_vox/merge_textures.py`](btp_vox/merge_textures.py) 和调用脚本 [`merge_gltf_textures.sh`](merge_gltf_textures.sh)。程序额外生成新的 glTF，并将新模型的顶点 UV 更新到公共贴图；源 glTF、源缓冲和源贴图保持原样。
+
+推荐工作流程：
+
+1. 保留各模型的源 `.gltf` / `.glb` 及其绘制贴图。若在 Blender 中修改了网格或 UV，先导出与最终贴图匹配的模型。
+2. 修改脚本顶部的 `in_models`，列出要合并的模型；模型引用的颜色贴图就是输入图像，支持外部图像和 GLB 内嵌图像。
+3. 按需设置 POT、相似度、边距和纯色压缩，然后运行脚本。
+4. 在 Blender 或引擎中加载输出目录里的新 glTF，并将其 `.bin` 和公共 PNG 一起作为发布资源。
+5. 后续绘制回到源模型和源贴图，完成后再次运行合并脚本，更新整批发布版资源。
+
+运行脚本：
 
 ```bash
 ./merge_gltf_textures.sh
@@ -432,6 +468,33 @@ merge_report.json
 ```
 
 新模型中参与合并的颜色贴图均引用同一张公共 PNG，各自的 UV 已按新区块位置和旋转/镜像变换更新。模型分别保存，几何、层级、材质属性、骨骼、动画及形变数据按原模型保留；只在 UV 接缝需要拆分顶点时复制相应的顶点属性。输入文件不会被覆盖。不同目录中的同名模型会自动使用 `name.gltf`、`name_2.gltf` 等名称，报告中记录输入与输出的对应关系。
+
+### 新 glTF 与 UV 的关系
+
+| 项目 | 处理方式 |
+|---|---|
+| 源 `.gltf` / `.glb`、缓冲和贴图 | 保留，供后续编辑及重新生成使用 |
+| 新 `.gltf` | 每个输入模型各生成一份，引用对应的新缓冲和公共 PNG |
+| 新 `.bin` 中的顶点 UV | 按新区块位置和画布尺寸重新计算，并补偿区块旋转、镜像 |
+| 区块复用 | 多个模型表面可以使用公共贴图中的同一区域 |
+| 纯色压缩 | 对应 UV 定位到保留像素的中心 |
+| 颜色贴图使用的 UV 集 | 根据材质选择更新 `TEXCOORD_0` 或其他 UV 集，其他 UV 集按原顶点保留 |
+
+区块在图集里旋转或镜像后，模型上显示的图案方向仍与输入一致。相似合并可能带来阈值允许的颜色变化；只允许完全匹配时不会进行近似颜色替换。
+
+使用输出目录里的新 glTF 加载公共贴图。源模型的 UV 对应源贴图，直接给源模型替换公共 PNG 会产生错位。移动输出资源时，保留 glTF 到 `.bin` 和公共 PNG 的相对路径；再次运行相同配置会更新同名输出。改变模型列表或绘制内容后，布局可能变化，应一起更新本批新模型和公共贴图。
+
+### 配置与命令
+
+脚本中的模型列表示例：
+
+```bash
+in_models=(
+  "$SCRIPT_DIR/hero1.gltf"
+  "$SCRIPT_DIR/hero2.gltf"
+  # "$SCRIPT_DIR/another_model.glb"  # 需要时取消注释或继续添加路径
+)
+```
 
 通用命令：
 
@@ -454,6 +517,37 @@ python3 -m btp_vox.merge_textures \
 - 示例脚本默认开启相似合并、纯色压缩、POT 和 `dense` 装箱，边距为 `0`。CLI / Python API 默认关闭这些优化，边距为 `2`、装箱为 `shelf`，可按需开启。
 - 如果只允许无颜色变化的复用，可将相似度设为 `1`、最大色差设为 `0`，同时保留旋转/镜像比较；只开 `--deduplicate` 时只比较原方向的完全相同区块。
 - 支持范围与单模型重排一致：三角网格、0–1 范围 UV、Base Color 贴图。法线/粗糙度等多通道贴图、纹理变换、范围外重复 UV 和压缩模型需先处理。不支持的输入会报错。
+
+例如，保留旋转/镜像匹配且只合并完全相同的区块：
+
+```bash
+  --merge-similar
+  --similarity-threshold   1
+  --similarity-max-error   0
+```
+
+`--merge-similar` 已包含完全匹配去重，无需额外开启 `--deduplicate`。相似度采用 `1 - RGB 平均绝对误差 / 255`，最大通道色差和 alpha 一致性会同时检查；参与比较的是像素图案，不仅是平均颜色。普通区块需尺寸相同或旋转后尺寸相同，不缩放图案。
+
+在 Python 中调用：
+
+```python
+from btp_vox.merge_textures import merge_textures
+
+report = merge_textures(
+    ["hero1.gltf", "hero2.gltf"],
+    "exports/shared_atlas",
+    pad=0,
+    pot=True,
+    merge_similar=True,
+    similarity_threshold=0.98,
+    similarity_max_error=16,
+    compress_solid=True,
+    packing="dense",
+)
+print(report["packed_size"], report["cross_model_merged_patches"])
+```
+
+### 报告与验证
 
 报告包含各模型输出路径、贴图尺寸、区块总数、保留数、`cross_model_merged_patches`（跨模型共用的区块数），以及相似匹配的误差和变换。`similarity_matches` 中的 `model` / `owner_model` 对应 `models` 数组的下标。输入贴图总面积按原图像内容去重后统计；POT、边距及输入原布局都会影响面积变化，不保证每批资源都缩小。
 
