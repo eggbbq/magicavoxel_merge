@@ -16,16 +16,25 @@
 
 ## 2. 执行环境与路径
 
-在仓库根目录执行，依赖见 `requirements.txt`：
+运行环境要求 Python >=3.10。从 Git 安装需要 `git`，并且远程仓库已经包含 `pyproject.toml` 打包配置：
 
 ```bash
-python3 -m pip install -r requirements.txt
-python3 -m btp_vox.cli --help
-python3 -m btp_vox.repack --help
-python3 -m btp_vox.merge_textures --help
+python3 -m pip install "btp-vox @ git+https://github.com/eggbbq/magicavoxel_merge.git"
 ```
 
-从其他目录调用时，将仓库根目录加入 `PYTHONPATH` 或 Python 搜索路径；三个示例 SH 已处理此项。模块使用相对导入，应通过 `python3 -m btp_vox.<模块>` 执行。
+在仓库根目录也可执行 `python3 -m pip install .`，开发时使用 `python3 -m pip install -e .`。依赖从 `requirements.txt` 自动安装；发行包名为 `btp-vox`，导入名为 `btp_vox`。
+
+安装后可从任意目录调用，不需要 `PYTHONPATH`：
+
+| 安装后的命令 | 模块入口 |
+|---|---|
+| `btp-vox` | `python3 -m btp_vox.cli` 或 `python3 -m btp_vox` |
+| `btp-vox-repack` | `python3 -m btp_vox.repack` |
+| `btp-vox-merge-textures` | `python3 -m btp_vox.merge_textures` |
+
+三者均支持 `--help`，模块参数与命令参数相同，Python API 导入路径不变。发行包只安装 `btp_vox` 工具代码，不含示例资源、`.sh`、测试或归档；输入路径由调用方提供。需要示例脚本时另行克隆仓库。
+
+未安装而直接从其他目录调用源码时，将仓库根目录加入 `PYTHONPATH` 或 Python 搜索路径；三个示例 SH 已处理此项。模块使用相对导入，应通过 `python3 -m btp_vox.<模块>` 执行。
 
 自动化优先传入明确的输入、输出路径。示例 SH 默认读取仓库内资源，重新运行会更新同名输出；运行前读取其实际 `in_*`、`out_*` 和 `args`，不要假定用户仍使用初始配置。VOX 导出前创建目标目录；重排和合并程序会创建输出目录。
 

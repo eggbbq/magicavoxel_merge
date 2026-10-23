@@ -35,29 +35,66 @@
 
 动画脚本现在位于 `bk/scripts/`，运行历史命令时先进入 `bk/`。归档中的旧报告、说明或 Blender 工程可能仍记录原来的绝对路径，重新运行前检查外部资源引用与输出位置。
 
-## 依赖
+## 安装
+
+需要 Python 3.10 或更新版本；从 Git 安装还需要系统中有 `git`。建议在虚拟环境中安装。
+
+从仓库安装（需先将本次打包配置提交并推送到远程仓库）：
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install "btp-vox @ git+https://github.com/eggbbq/magicavoxel_merge.git"
 ```
 
-也可以在仓库根目录直接运行：
+安装指定分支、标签或提交时，在 `.git` 后追加 `@<ref>`，将 `<ref>` 替换为实际名称或完整提交哈希。更新已安装版本：
 
 ```bash
-python -m btp_vox.cli --help
+python3 -m pip install --upgrade "btp-vox @ git+https://github.com/eggbbq/magicavoxel_merge.git"
 ```
 
-查看加工后重排工具的参数：
+从本地源码安装，或在开发时使用可编辑安装：
 
 ```bash
-python3 -m btp_vox.repack --help
+python3 -m pip install .
+# 开发模式，源码改动立即生效：
+python3 -m pip install -e .
 ```
 
-查看多模型贴图合并参数：
+安装会自动处理 `requirements.txt` 中的 NumPy、Pillow 和 pygltflib 依赖。发行包名为 `btp-vox`，Python 导入名仍为 `btp_vox`；安装后可在任意目录使用下列命令，无需配置 `PYTHONPATH`：
+
+| 命令 | 用途 | 等价模块入口 |
+|---|---|---|
+| `btp-vox` | VOX 导出及绘画 UV 展开 | `python3 -m btp_vox.cli` 或 `python3 -m btp_vox` |
+| `btp-vox-repack` | 单模型与最终贴图重排 | `python3 -m btp_vox.repack` |
+| `btp-vox-merge-textures` | 多模型共享颜色贴图 | `python3 -m btp_vox.merge_textures` |
 
 ```bash
-python3 -m btp_vox.merge_textures --help
+btp-vox --help
+btp-vox-repack --help
+btp-vox-merge-textures --help
 ```
+
+例如，在模型所在目录直接合并：
+
+```bash
+btp-vox-merge-textures \
+  --input model_a.gltf model_b.glb \
+  --output-dir shared \
+  --tex-pad 0 \
+  --tex-pot \
+  --merge-similar \
+  --compress-solid-patches \
+  --pack dense
+```
+
+Python API 保持兼容：
+
+```python
+from btp_vox import AtlasOptions, PipelineOptions, convert
+from btp_vox.repack import repack
+from btp_vox.merge_textures import merge_textures
+```
+
+安装包只包含 `btp_vox` 工具代码；示例模型、贴图、`.sh`、测试、`exports/` 和 `bk/` 不会安装。需要仓库示例脚本和示例资源时，请另行克隆仓库。已有的 `python3 -m btp_vox.<模块>` 调用继续有效；直接运行源码时仍可在仓库根目录执行。
 
 ## 快速开始
 

@@ -1,0 +1,8 @@
+include README.md requirements.txt
+recursive-include btp_vox *.py
+prune bk
+prune tests
+prune exports
+prune .agents
+prune .codex
+global-exclude __pycache__ *.py[cod] .DS_Store

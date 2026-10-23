@@ -1,0 +1,7 @@
+"""Run the VOX exporter with ``python -m btp_vox``."""
+
+from .cli import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
